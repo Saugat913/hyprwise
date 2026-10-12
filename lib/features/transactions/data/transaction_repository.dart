@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
+import 'package:finance_tracker/features/transactions/domain/transaction_categories.dart';
 import 'package:finance_tracker/features/transactions/domain/transaction_draft.dart';
 import 'package:finance_tracker/features/transactions/domain/transaction_type.dart';
 
@@ -99,8 +100,12 @@ class TransactionRepository {
         'Transaction amount must be positive',
       );
     }
-    if (draft.category.trim().isEmpty || draft.category.length > 40) {
-      throw ArgumentError.value(draft.category, 'category', 'Invalid category');
+    if (TransactionCategories.find(draft.category, draft.type) == null) {
+      throw ArgumentError.value(
+        draft.category,
+        'category',
+        'Choose a category for the selected transaction type',
+      );
     }
     if ((draft.note?.trim().length ?? 0) > 500) {
       throw ArgumentError.value(draft.note, 'note', 'Use 500 characters or fewer');
