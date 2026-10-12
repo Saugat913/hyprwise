@@ -31,10 +31,14 @@ abstract final class TransactionCategories {
   static List<TransactionCategory> forType(TransactionType type) =>
       all.where((category) => category.type == type).toList(growable: false);
 
+  static TransactionCategory? find(String value, TransactionType type) {
+    for (final category in all) {
+      if (category.value == value && category.type == type) return category;
+    }
+    return null;
+  }
+
   static TransactionCategory fromValue(String value, TransactionType type) =>
-      all.cast<TransactionCategory?>().firstWhere(
-        (category) => category?.value == value && category?.type == type,
-        orElse: () => null,
-      ) ??
-      (type == TransactionType.income ? all.first : all[5]);
+      find(value, type) ??
+      (type == TransactionType.income ? all[4] : all.last);
 }
