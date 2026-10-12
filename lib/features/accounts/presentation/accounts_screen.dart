@@ -46,6 +46,12 @@ class AccountsScreen extends StatelessWidget {
                             ],
                           ),
                         ),
+                        IconButton(
+                          tooltip: 'Transactions',
+                          onPressed: () => Navigator.of(context).pushNamed('/transactions'),
+                          icon: const Icon(Icons.receipt_long_rounded),
+                        ),
+                        const SizedBox(width: 4),
                         IconButton.filled(
                           tooltip: 'Add account',
                           onPressed: () => _showAccountForm(context, repository),
