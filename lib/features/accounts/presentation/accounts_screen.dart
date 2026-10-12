@@ -135,7 +135,7 @@ class AccountsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Opening balances adjusted by recorded income and expenses.',
+                            'Opening balances adjusted by income, expenses, and transfers.',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onPrimary.withValues(alpha: 0.75),
                             ),
