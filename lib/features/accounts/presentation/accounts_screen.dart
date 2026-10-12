@@ -4,6 +4,7 @@ import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/features/accounts/data/account_repository.dart';
 import 'package:finance_tracker/features/transactions/data/transaction_repository.dart';
+import 'package:finance_tracker/features/transfers/data/transfer_repository.dart';
 import 'package:finance_tracker/features/accounts/domain/account_draft.dart';
 import 'package:finance_tracker/features/accounts/domain/account_type.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -24,6 +25,10 @@ class AccountsScreen extends StatelessWidget {
             final accounts = snapshot.data ?? const <Account>[];
 
             return StreamBuilder(
+              stream: getIt<TransferRepository>().watchTransfers(),
+              builder: (context, transferSnapshot) {
+                final transfers = transferSnapshot.data ?? const [];
+                return StreamBuilder(
               stream: getIt<TransactionRepository>().watchTransactions(),
               builder: (context, transactionSnapshot) {
                 final transactions = transactionSnapshot.data ?? const [];
@@ -36,6 +41,19 @@ class AccountsScreen extends StatelessWidget {
                     transaction.accountId as int,
                     (current) => current + amount,
                     ifAbsent: () => amount,
+                  );
+                }
+
+                for (final transfer in transfers) {
+                  movementByAccount.update(
+                    transfer.sourceAccountId,
+                    (current) => current - transfer.amountMinor,
+                    ifAbsent: () => -transfer.amountMinor,
+                  );
+                  movementByAccount.update(
+                    transfer.destinationAccountId,
+                    (current) => current + transfer.amountMinor,
+                    ifAbsent: () => transfer.amountMinor,
                   );
                 }
 
@@ -73,6 +91,11 @@ class AccountsScreen extends StatelessWidget {
                           tooltip: 'Transactions',
                           onPressed: () => context.push('/transactions'),
                           icon: const Icon(Icons.receipt_long_rounded),
+                        ),
+                        IconButton(
+                          tooltip: 'Transfers',
+                          onPressed: () => context.push('/transfers'),
+                          icon: const Icon(Icons.swap_horiz_rounded),
                         ),
                         const SizedBox(width: 4),
                         IconButton.filled(
@@ -238,6 +261,8 @@ class AccountsScreen extends StatelessWidget {
                     ),
                   ),
               ],
+            );
+              },
             );
               },
             );
