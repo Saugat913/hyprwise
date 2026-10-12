@@ -35,10 +35,10 @@ class AccountsScreen extends StatelessWidget {
                 final movementByAccount = <int, int>{};
                 for (final transaction in transactions) {
                   final amount = transaction.type == 'income'
-                      ? transaction.amountMinor as int
-                      : -(transaction.amountMinor as int);
+                      ? transaction.amountMinor
+                      : -(transaction.amountMinor);
                   movementByAccount.update(
-                    transaction.accountId as int,
+                    transaction.accountId,
                     (current) => current + amount,
                     ifAbsent: () => amount,
                   );
@@ -204,7 +204,7 @@ class AccountsScreen extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                     sliver: SliverList.separated(
                       itemCount: accounts.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final account = accounts[index];
                         final type = AccountType.fromValue(account.type);
@@ -381,7 +381,7 @@ class _AccountFormState extends State<_AccountForm> {
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<AccountType>(
-                value: _type,
+                initialValue: _type,
                 decoration: const InputDecoration(labelText: 'Account type'),
                 items: AccountType.values
                     .map((type) => DropdownMenuItem(value: type, child: Text(type.label)))
@@ -390,7 +390,7 @@ class _AccountFormState extends State<_AccountForm> {
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
-                value: _currencyCode,
+                initialValue: _currencyCode,
                 decoration: const InputDecoration(labelText: 'Currency'),
                 items: const [
                   DropdownMenuItem(value: 'NPR', child: Text('NPR · Nepalese rupee')),
