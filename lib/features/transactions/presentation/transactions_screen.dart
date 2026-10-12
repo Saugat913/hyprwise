@@ -137,7 +137,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           child: _EmptyState(
                             title: 'Nothing recorded yet',
                             message: 'Add income or an expense to start understanding where your money goes.',
-                            icon: HugeIcons.strokeRoundedTransaction,
+                            icon: HugeIcons.strokeRoundedWallet01,
                           ),
                         );
                       }
