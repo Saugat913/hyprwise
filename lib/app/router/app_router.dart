@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/features/accounts/presentation/accounts_screen.dart';
+import 'package:finance_tracker/features/home/presentation/home_dashboard_screen.dart';
 import 'package:finance_tracker/features/transactions/presentation/transactions_screen.dart';
 import 'package:finance_tracker/features/transfers/presentation/transfers_screen.dart';
 import 'package:finance_tracker/features/shell/presentation/app_shell.dart';
@@ -32,11 +33,7 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: AppRoutes.home,
-              builder: (context, state) => const PlaceholderScreen(
-                title: 'Home',
-                description: 'Your financial overview will live here.',
-                icon: HugeIcons.strokeRoundedHome01,
-              ),
+              builder: (context, state) => const HomeDashboardScreen(),
             ),
           ],
         ),
