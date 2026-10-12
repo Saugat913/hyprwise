@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:finance_tracker/features/accounts/presentation/accounts_screen.dart';
 import 'package:finance_tracker/features/shell/presentation/app_shell.dart';
 import 'package:finance_tracker/features/placeholder/presentation/placeholder_screen.dart';
 import 'package:finance_tracker/features/splash/presentation/app_splash_screen.dart';
@@ -56,12 +57,7 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: AppRoutes.money,
-              builder:
-                  (context, state) => const PlaceholderScreen(
-                    title: 'Money',
-                    description: 'Accounts and transactions will live here.',
-                    icon: HugeIcons.strokeRoundedBanknote,
-                  ),
+              builder: (context, state) => const AccountsScreen(),
             ),
           ],
         ),
