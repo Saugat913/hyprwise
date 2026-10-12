@@ -23,7 +23,7 @@ class TransfersScreen extends StatelessWidget {
               .where((account) => !account.isArchived)
               .toList();
           return FloatingActionButton.extended(
-            onPressed: accounts.length < 2
+            onPressed: !_hasCompatibleAccountPair(accounts)
                 ? null
                 : () => _showTransferForm(context, accounts, transferRepository),
             icon: const Icon(Icons.swap_horiz_rounded),
@@ -55,7 +55,7 @@ class TransfersScreen extends StatelessWidget {
                       !transferSnapshot.hasData)) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (accounts.where((account) => !account.isArchived).length < 2) {
+              if (!_hasCompatibleAccountPair(accounts)) {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(28),
@@ -68,7 +68,7 @@ class TransfersScreen extends StatelessWidget {
                         Text('Two accounts needed', style: theme.textTheme.titleLarge),
                         const SizedBox(height: 8),
                         Text(
-                          'Create at least two active accounts in Money. Transfers move money between accounts without counting as income or expense.',
+                          'Create at least two active accounts with the same currency in Money. Transfers do not count as income or expense.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
@@ -263,9 +263,8 @@ class _TransferFormState extends State<_TransferForm> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  late int _sourceId = widget.accounts.first.id;
-  late int _destinationId =
-      widget.accounts.firstWhere((account) => account.id != _sourceId).id;
+  late int _sourceId = _sourceOptions.first.id;
+  late int _destinationId = _destinations.first.id;
   DateTime _date = DateTime.now();
   bool _saving = false;
 
@@ -276,12 +275,19 @@ class _TransferFormState extends State<_TransferForm> {
     super.dispose();
   }
 
+  List<Account> get _sourceOptions => widget.accounts
+      .where((source) => widget.accounts.any(
+            (other) =>
+                other.id != source.id &&
+                other.currencyCode == source.currencyCode,
+          ))
+      .toList();
+
   List<Account> get _destinations => widget.accounts
       .where((account) =>
           account.id != _sourceId &&
-          account.currencyCode == widget.accounts
-              .firstWhere((account) => account.id == _sourceId)
-              .currencyCode)
+          account.currencyCode ==
+              widget.accounts.firstWhere((account) => account.id == _sourceId).currencyCode)
       .toList();
 
   Future<void> _save() async {
@@ -340,7 +346,7 @@ class _TransferFormState extends State<_TransferForm> {
               DropdownButtonFormField<int>(
                 initialValue: _sourceId,
                 decoration: const InputDecoration(labelText: 'From account'),
-                items: widget.accounts
+                items: _sourceOptions
                     .map((account) => DropdownMenuItem(
                           value: account.id,
                           child: Text('${account.name} · ${account.currencyCode}'),
@@ -436,4 +442,16 @@ class _TransferFormState extends State<_TransferForm> {
       ),
     );
   }
+}
+
+
+bool _hasCompatibleAccountPair(List<Account> accounts) {
+  final activeAccounts = accounts.where((account) => !account.isArchived);
+  return activeAccounts.any(
+    (source) => activeAccounts.any(
+      (destination) =>
+          destination.id != source.id &&
+          destination.currencyCode == source.currencyCode,
+    ),
+  );
 }
