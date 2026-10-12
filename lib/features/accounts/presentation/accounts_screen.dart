@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/features/accounts/data/account_repository.dart';
@@ -48,7 +49,7 @@ class AccountsScreen extends StatelessWidget {
                         ),
                         IconButton(
                           tooltip: 'Transactions',
-                          onPressed: () => Navigator.of(context).pushNamed('/transactions'),
+                          onPressed: () => context.push('/transactions'),
                           icon: const Icon(Icons.receipt_long_rounded),
                         ),
                         const SizedBox(width: 4),
