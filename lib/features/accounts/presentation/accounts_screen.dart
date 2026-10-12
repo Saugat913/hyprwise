@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/features/accounts/data/account_repository.dart';
+import 'package:finance_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:finance_tracker/features/accounts/domain/account_draft.dart';
 import 'package:finance_tracker/features/accounts/domain/account_type.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -21,11 +22,32 @@ class AccountsScreen extends StatelessWidget {
           stream: repository.watchAccounts(),
           builder: (context, snapshot) {
             final accounts = snapshot.data ?? const <Account>[];
-            final totalMinor = accounts
-                .where((account) => account.currencyCode == 'NPR')
-                .fold<int>(0, (sum, account) => sum + account.openingBalanceMinor);
 
-            return CustomScrollView(
+            return StreamBuilder(
+              stream: getIt<TransactionRepository>().watchTransactions(),
+              builder: (context, transactionSnapshot) {
+                final transactions = transactionSnapshot.data ?? const [];
+                final movementByAccount = <int, int>{};
+                for (final transaction in transactions) {
+                  final amount = transaction.type == 'income'
+                      ? transaction.amountMinor as int
+                      : -(transaction.amountMinor as int);
+                  movementByAccount.update(
+                    transaction.accountId as int,
+                    (current) => current + amount,
+                    ifAbsent: () => amount,
+                  );
+                }
+
+                int currentBalance(Account account) =>
+                    account.openingBalanceMinor +
+                    (movementByAccount[account.id] ?? 0);
+
+                final totalMinor = accounts
+                    .where((account) => account.currencyCode == 'NPR')
+                    .fold<int>(0, (sum, account) => sum + currentBalance(account));
+
+                return CustomScrollView(
               slivers: [
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -75,7 +97,7 @@ class AccountsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Opening balances · NPR',
+                            'Current balance · NPR',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onPrimary.withValues(alpha: 0.75),
                             ),
@@ -90,7 +112,7 @@ class AccountsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Transactions will contribute to current balances in the next step.',
+                            'Opening balances adjusted by recorded income and expenses.',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onPrimary.withValues(alpha: 0.75),
                             ),
@@ -204,7 +226,7 @@ class AccountsScreen extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                _formatMoney(account.openingBalanceMinor, account.currencyCode),
+                                _formatMoney(currentBalance(account), account.currencyCode),
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -216,6 +238,8 @@ class AccountsScreen extends StatelessWidget {
                     ),
                   ),
               ],
+            );
+              },
             );
           },
         ),
