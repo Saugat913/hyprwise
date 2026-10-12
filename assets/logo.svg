@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <title>Finance Planner</title>
+  <desc>A clean financial growth symbol with three rounded bars and an ascending line.</desc>
+  <path d="M112 370V160" stroke="#087F8C" stroke-width="28" stroke-linecap="round"/>
+  <path d="M112 370H402" stroke="#087F8C" stroke-width="28" stroke-linecap="round"/>
+  <rect x="154" y="282" width="54" height="60" rx="16" fill="#8AD9D8"/>
+  <rect x="235" y="230" width="54" height="112" rx="16" fill="#45B9BA"/>
+  <rect x="316" y="170" width="54" height="172" rx="16" fill="#087F8C"/>
+  <path d="M152 244L225 194L273 209L368 118" stroke="#087F8C" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M320 118H368V166" stroke="#087F8C" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
