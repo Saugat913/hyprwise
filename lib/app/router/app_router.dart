@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/features/accounts/presentation/accounts_screen.dart';
+import 'package:finance_tracker/features/transactions/presentation/transactions_screen.dart';
 import 'package:finance_tracker/features/shell/presentation/app_shell.dart';
 import 'package:finance_tracker/features/placeholder/presentation/placeholder_screen.dart';
 import 'package:finance_tracker/features/splash/presentation/app_splash_screen.dart';
@@ -88,6 +89,10 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(
+      path: '/transactions',
+      builder: (context, state) => const TransactionsScreen(),
     ),
   ],
 );
