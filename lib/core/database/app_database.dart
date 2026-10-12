@@ -4,15 +4,16 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'tables/accounts.dart';
 import 'tables/app_preferences.dart';
 import 'tables/transactions.dart';
+import 'tables/transfers.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [AppPreferences, Accounts, Transactions])
+@DriftDatabase(tables: [AppPreferences, Accounts, Transactions, Transfers])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'finance_tracker'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -25,6 +26,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await migrator.createTable(transactions);
+      }
+      if (from < 4) {
+        await migrator.createTable(transfers);
       }
     },
     beforeOpen: (details) async {

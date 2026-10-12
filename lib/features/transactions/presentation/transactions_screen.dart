@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/features/accounts/data/account_repository.dart';
-import 'package:finance_tracker/features/accounts/domain/account_type.dart';
 import 'package:finance_tracker/features/transactions/data/transaction_repository.dart';
 import 'package:finance_tracker/features/transactions/domain/transaction_categories.dart';
 import 'package:finance_tracker/features/transactions/domain/transaction_draft.dart';
@@ -146,7 +145,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                         sliver: SliverList.separated(
                           itemCount: transactions.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (_, _) => const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final transaction = transactions[index];
                             final type = TransactionType.fromValue(transaction.type);
@@ -201,10 +200,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                             color: theme.colorScheme.onSurfaceVariant,
                                           ),
                                         ),
-                                        if ((transaction.note as String?)?.isNotEmpty == true) ...[
+                                        if ((transaction.note)?.isNotEmpty == true) ...[
                                           const SizedBox(height: 3),
                                           Text(
-                                            transaction.note as String,
+                                            transaction.note!,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: theme.textTheme.bodySmall?.copyWith(
@@ -217,7 +216,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    '${type == TransactionType.income ? '+' : '−'}${_formatMoney(transaction.amountMinor as int, account?.currencyCode ?? 'NPR')}',
+                                    '${type == TransactionType.income ? '+' : '−'}${_formatMoney(transaction.amountMinor, account?.currencyCode ?? 'NPR')}',
                                     style: theme.textTheme.titleSmall?.copyWith(
                                       color: color,
                                       fontWeight: FontWeight.w700,
@@ -245,7 +244,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                         ),
                                       );
                                       if (confirmed == true && context.mounted) {
-                                        await transactionRepository.deleteTransaction(transaction.id as int);
+                                        await transactionRepository.deleteTransaction(transaction.id);
                                       }
                                     },
                                     itemBuilder: (_) => const [
@@ -489,7 +488,7 @@ class _TransactionFormState extends State<_TransactionForm> {
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<int>(
-                value: _accountId,
+                initialValue: _accountId,
                 decoration: const InputDecoration(labelText: 'Account'),
                 items: widget.accounts
                     .map((account) => DropdownMenuItem(
@@ -501,7 +500,7 @@ class _TransactionFormState extends State<_TransactionForm> {
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
-                value: _category,
+                initialValue: _category,
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: categories
                     .map((category) => DropdownMenuItem(
