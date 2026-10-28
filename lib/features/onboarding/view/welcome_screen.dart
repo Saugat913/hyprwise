@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/app/routes.dart';
@@ -9,10 +8,9 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
-import 'package:finance_tracker/features/shared/data/currency.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
-/// First screen on a fresh install: pitch card with concentric rings design, language toggle, and "Get started".
+/// First screen on a fresh install: pitch card with concentric rings design and "Get started".
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
@@ -41,17 +39,11 @@ class WelcomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      SvgPicture.asset(
-                        isDark
-                            ? 'assets/brand/logo/hyprwise-logo-dark.svg'
-                            : 'assets/brand/logo/hyprwise-logo-primary.svg',
-                        height: 26,
-                      ),
-                      const _WelcomeLanguageSelector(),
-                    ],
+                  SvgPicture.asset(
+                    isDark
+                        ? 'assets/brand/logo/hyprwise-logo-dark.svg'
+                        : 'assets/brand/logo/hyprwise-logo-primary.svg',
+                    height: 26,
                   ),
                   const SizedBox(height: AppSpace.md),
                   Expanded(
@@ -108,68 +100,6 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _WelcomeLanguageSelector extends StatelessWidget {
-  const _WelcomeLanguageSelector();
-
-  @override
-  Widget build(BuildContext context) {
-    final settingsRepo = getIt<SettingsRepository>();
-
-    return ListenableBuilder(
-      listenable: settingsRepo,
-      builder: (context, _) {
-        final currentLocale = settingsRepo.settings.localeCode;
-        final scheme = Theme.of(context).colorScheme;
-        final text = Theme.of(context).textTheme;
-        final currentLang = AppLanguage.supported.firstWhere(
-          (l) => l.code == currentLocale,
-          orElse: () => AppLanguage.supported.first,
-        );
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          onTap: () => showAppLanguageSheet(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              border: Border.all(color: scheme.outlineVariant),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppIcon(
-                  HugeIcons.strokeRoundedGlobe02,
-                  size: 14,
-                  color: scheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: AppSpace.xs),
-                Text(
-                  currentLang.nativeName,
-                  style: text.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '⇄',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
             ),
           ),
         );

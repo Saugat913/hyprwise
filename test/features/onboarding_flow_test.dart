@@ -44,7 +44,7 @@ void main() {
     await db.close();
   });
 
-  testWidgets('WelcomeScreen renders language toggle and switches locale smoothly', (tester) async {
+  testWidgets('WelcomeScreen renders clean pitch without top-right language switcher', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -56,22 +56,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify initial English pitch and button
-    expect(find.text('English'), findsOneWidget);
+    // Verify clean WelcomeScreen without language toggle (language is asked after login)
+    expect(find.text('English'), findsNothing);
     expect(find.text('Get started'), findsOneWidget);
-
-    // Tap language selector on WelcomeScreen
-    await tester.tap(find.text('English'));
-    await tester.pumpAndSettle();
-
-    // Select Nepali from the bottom sheet
-    await tester.tap(find.text('नेपाली'));
-    await tester.pumpAndSettle();
-
-    // Verify locale switched to Nepali
-    expect(settingsRepo.settings.localeCode, 'ne');
-    expect(find.text('नेपाली'), findsOneWidget);
-    expect(find.text('सुरु गर्नुहोस्'), findsOneWidget);
   });
 
   testWidgets('Onboarding Wizard renders Language step first then advances to Currency step', (tester) async {

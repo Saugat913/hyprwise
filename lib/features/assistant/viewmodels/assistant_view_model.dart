@@ -109,6 +109,39 @@ class AssistantViewModel extends ChangeNotifier {
   final List<AssistantMessage> _messages = [];
   List<AssistantMessage> get messages => _messages;
 
+  static const int freeDailyAiLimit = 5;
+  String _usageDateKey = '';
+  int _dailyQueriesUsed = 0;
+
+  void _syncUsageDay() {
+    final now = DateTime.now();
+    final key = '${now.year}-${now.month}-${now.day}';
+    if (_usageDateKey != key) {
+      _usageDateKey = key;
+      _dailyQueriesUsed = 0;
+    }
+  }
+
+  int get dailyQueriesUsed {
+    _syncUsageDay();
+    return _dailyQueriesUsed;
+  }
+
+  int get remainingFreeQueries {
+    final rem = freeDailyAiLimit - dailyQueriesUsed;
+    return rem < 0 ? 0 : rem;
+  }
+
+  bool isLimitReached({required bool isPro}) {
+    if (isPro) return false;
+    return dailyQueriesUsed >= freeDailyAiLimit;
+  }
+
+  void _recordAiQuery() {
+    _syncUsageDay();
+    _dailyQueriesUsed++;
+  }
+
   String get baseCurrency => financeStore.baseCurrency;
 
   void clear() {
@@ -116,7 +149,9 @@ class AssistantViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> scanBillImage(XFile imageFile) async {
+  Future<void> scanBillImage(XFile imageFile, {bool isPro = false}) async {
+    if (isLimitReached(isPro: isPro)) return;
+    _recordAiQuery();
     final bytes = await imageFile.readAsBytes();
     _messages.add(
       AssistantMessage(
@@ -353,8 +388,10 @@ Respond ONLY with a JSON object in this exact format:
   bool _isTyping = false;
   bool get isTyping => _isTyping;
 
-  Future<void> sendMessage(String query) async {
+  Future<void> sendMessage(String query, {bool isPro = false}) async {
     if (query.trim().isEmpty) return;
+    if (isLimitReached(isPro: isPro)) return;
+    _recordAiQuery();
     _isTyping = true;
     try {
       await _sendMessage(query);

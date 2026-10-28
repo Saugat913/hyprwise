@@ -309,194 +309,180 @@ class AlertsScreen extends StatelessWidget {
             ],
           ),
           body: SafeArea(
-            child: Padding(
+            child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.page, vertical: AppSpace.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tr.whichAlertsQuestion,
-                    style: text.headlineMedium,
+              children: [
+                Text(
+                  tr.changeThemAnytime,
+                  style: text.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: AppSpace.sm),
-                  Text(
-                    tr.changeThemAnytime,
-                    style: text.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpace.lg),
+                ),
+                const SizedBox(height: AppSpace.lg),
 
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        SwitchRow(
-                          title: tr.shiftRemindersTitle,
-                          subtitle: tr.oneHourBefore,
-                          value: settings.shiftReminders,
-                          onChanged: viewModel.toggleShiftReminders,
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        SwitchRow(
-                          title: tr.clockOutReminderTitle,
-                          subtitle: tr.after6Hours,
-                          value: settings.clockOutReminder,
-                          onChanged: viewModel.toggleClockOutReminder,
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        SwitchRow(
-                          title: tr.billsDueTitle,
-                          subtitle: tr.oneDayBefore,
-                          value: settings.billsDue,
-                          onChanged: viewModel.toggleBillsDue,
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        SwitchRow(
-                          title: tr.goalNudgesTitle,
-                          subtitle: tr.weekly,
-                          value: settings.goalNudges,
-                          onChanged: viewModel.toggleGoalNudges,
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        SwitchRow(
-                          title: tr.weeklySummaryTitle,
-                          subtitle: tr.sundayEvening,
-                          value: settings.weeklySummary,
-                          onChanged: viewModel.toggleWeeklySummary,
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        SwitchRow(
-                          title: tr.quietHoursTitle,
-                          subtitle: tr.quietHoursTimeRange,
-                          value: settings.quietHours,
-                          onChanged: viewModel.toggleQuietHours,
-                        ),
-                        const SizedBox(height: AppSpace.xl),
+                SwitchRow(
+                  title: tr.shiftRemindersTitle,
+                  subtitle: tr.oneHourBefore,
+                  value: settings.shiftReminders,
+                  onChanged: viewModel.toggleShiftReminders,
+                ),
+                const SizedBox(height: AppSpace.sm),
+                SwitchRow(
+                  title: tr.clockOutReminderTitle,
+                  subtitle: tr.after6Hours,
+                  value: settings.clockOutReminder,
+                  onChanged: viewModel.toggleClockOutReminder,
+                ),
+                const SizedBox(height: AppSpace.sm),
+                SwitchRow(
+                  title: tr.billsDueTitle,
+                  subtitle: tr.oneDayBefore,
+                  value: settings.billsDue,
+                  onChanged: viewModel.toggleBillsDue,
+                ),
+                const SizedBox(height: AppSpace.sm),
+                SwitchRow(
+                  title: tr.goalNudgesTitle,
+                  subtitle: tr.weekly,
+                  value: settings.goalNudges,
+                  onChanged: viewModel.toggleGoalNudges,
+                ),
+                const SizedBox(height: AppSpace.sm),
+                SwitchRow(
+                  title: tr.weeklySummaryTitle,
+                  subtitle: tr.sundayEvening,
+                  value: settings.weeklySummary,
+                  onChanged: viewModel.toggleWeeklySummary,
+                ),
+                const SizedBox(height: AppSpace.sm),
+                SwitchRow(
+                  title: tr.quietHoursTitle,
+                  subtitle: tr.quietHoursTimeRange,
+                  value: settings.quietHours,
+                  onChanged: viewModel.toggleQuietHours,
+                ),
+                const SizedBox(height: AppSpace.xl),
 
-                        // Flexible Reminder Ruleset Section
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tr.reminderRulesSection,
-                                    style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    tr.reminderRulesSubtitle,
-                                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: AppSpace.sm),
-                            TextButton.icon(
-                              onPressed: () => _showRuleSheet(context, viewModel),
-                              icon: const Icon(Icons.add, size: 18),
-                              label: Text(tr.add),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-
-                        for (final rule in rules) ...[
-                          Builder(
-                            builder: (context) {
-                              final rType = ReminderType.fromValue(rule.type);
-                              final titleText = rType == ReminderType.custom && rule.title.isNotEmpty
-                                  ? rule.title
-                                  : _ruleTypeLabel(rType, tr);
-                              final subtitleParts = <String>[];
-                              if (rType != ReminderType.custom) {
-                                subtitleParts.add(tr.reminderOffsetLabel(rule.offsetMinutes));
-                              }
-                              if (rType != ReminderType.shift && rule.timeOfDayMinutes != null) {
-                                subtitleParts.add(_formatTimeMinutes(context, rule.timeOfDayMinutes!));
-                              }
-                              if (rType == ReminderType.shift || rType == ReminderType.custom) {
-                                subtitleParts.add(_repeatDaysSummary(rule.repeatDays, tr));
-                              }
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                                child: AppCard(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpace.md,
-                                    vertical: AppSpace.sm,
-                                  ),
-                                  onTap: () => _showRuleSheet(context, viewModel, existing: rule),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          color: colors.brand.withValues(alpha: 0.14),
-                                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: HugeIcon(
-                                          icon: _ruleTypeIcon(rType),
-                                          color: colors.brand,
-                                          size: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(width: AppSpace.sm),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              titleText,
-                                              style: text.bodyMedium?.copyWith(
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              subtitleParts.join(' · '),
-                                              style: text.bodySmall?.copyWith(
-                                                color: scheme.onSurfaceVariant,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Switch(
-                                        value: rule.isEnabled,
-                                        onChanged: (val) => viewModel.toggleRule(rule.id, val),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.delete_outline,
-                                          size: 18,
-                                          color: scheme.onSurfaceVariant,
-                                        ),
-                                        visualDensity: VisualDensity.compact,
-                                        onPressed: () => viewModel.deleteRule(rule.id),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                // Flexible Reminder Ruleset Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr.reminderRulesSection,
+                            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            tr.reminderRulesSubtitle,
+                            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ],
-                        const SizedBox(height: AppSpace.md),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: AppSpace.sm),
+                    TextButton.icon(
+                      onPressed: () => _showRuleSheet(context, viewModel),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(tr.add),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpace.sm),
 
-                  AppButton(
-                    tr.done,
-                    onPressed: () => context.pop(),
+                for (final rule in rules) ...[
+                  Builder(
+                    builder: (context) {
+                      final rType = ReminderType.fromValue(rule.type);
+                      final titleText = rType == ReminderType.custom && rule.title.isNotEmpty
+                          ? rule.title
+                          : _ruleTypeLabel(rType, tr);
+                      final subtitleParts = <String>[];
+                      if (rType != ReminderType.custom) {
+                        subtitleParts.add(tr.reminderOffsetLabel(rule.offsetMinutes));
+                      }
+                      if (rType != ReminderType.shift && rule.timeOfDayMinutes != null) {
+                        subtitleParts.add(_formatTimeMinutes(context, rule.timeOfDayMinutes!));
+                      }
+                      if (rType == ReminderType.shift || rType == ReminderType.custom) {
+                        subtitleParts.add(_repeatDaysSummary(rule.repeatDays, tr));
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                        child: AppCard(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpace.md,
+                            vertical: AppSpace.sm,
+                          ),
+                          onTap: () => _showRuleSheet(context, viewModel, existing: rule),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: colors.brand.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                                ),
+                                alignment: Alignment.center,
+                                child: HugeIcon(
+                                  icon: _ruleTypeIcon(rType),
+                                  color: colors.brand,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpace.sm),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      titleText,
+                                      style: text.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subtitleParts.join(' · '),
+                                      style: text.bodySmall?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: rule.isEnabled,
+                                onChanged: (val) => viewModel.toggleRule(rule.id, val),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => viewModel.deleteRule(rule.id),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
-              ),
+                const SizedBox(height: AppSpace.lg),
+                AppButton(
+                  tr.done,
+                  onPressed: () => context.pop(),
+                ),
+                const SizedBox(height: AppSpace.md),
+              ],
             ),
           ),
         );

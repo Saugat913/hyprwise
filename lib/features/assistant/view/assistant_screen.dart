@@ -52,39 +52,50 @@ class _AssistantScreenState extends State<AssistantScreen> {
     });
   }
 
-  int _queriesSentThisSession = 0;
+  void _showLimitSheet() {
+    showProUpgradeSheet(
+      context,
+      title: context.strings.dailyAiLimitReached,
+      message: context.strings.freeAiLimitReachedMessage,
+      featureHighlight: 'ai',
+    );
+  }
 
   void _send([String? query]) {
     final text = query ?? _inputController.text;
     if (text.trim().isEmpty) return;
 
     final subService = getIt<SubscriptionService>();
-    if (!subService.isPro && _queriesSentThisSession >= 5) {
-      showProUpgradeSheet(
-        context,
-        title: context.strings.dailyAiLimitReached,
-        message: context.strings.freeAiLimitReachedMessage,
-        featureHighlight: 'ai',
-      );
+    if (_viewModel.isLimitReached(isPro: subService.isPro)) {
+      _showLimitSheet();
       return;
     }
 
-    _queriesSentThisSession++;
-    _viewModel.sendMessage(text);
+    _viewModel.sendMessage(text, isPro: subService.isPro);
     _inputController.clear();
   }
 
   Future<void> _pickBillImage(BuildContext context) async {
+    final subService = getIt<SubscriptionService>();
+    if (_viewModel.isLimitReached(isPro: subService.isPro)) {
+      _showLimitSheet();
+      return;
+    }
+
     final tr = context.strings;
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       builder: (ctx) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              top: AppSpace.md,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpace.md,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -108,6 +119,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
     );
 
     if (source != null) {
+      if (_viewModel.isLimitReached(isPro: subService.isPro)) {
+        if (mounted) _showLimitSheet();
+        return;
+      }
       try {
         final picker = ImagePicker();
         final picked = await picker.pickImage(
@@ -117,7 +132,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
           imageQuality: 85,
         );
         if (picked != null) {
-          await _viewModel.scanBillImage(picked);
+          await _viewModel.scanBillImage(picked, isPro: subService.isPro);
         }
       } catch (e) {
         debugPrint('Error picking bill image: $e');
