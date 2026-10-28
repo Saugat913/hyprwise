@@ -158,517 +158,538 @@ class _AssistantScreenState extends State<AssistantScreen> {
     final tr = context.strings;
     final isPro = getIt<SubscriptionService>().isPro;
 
-    return Scaffold(
-      appBar: AppTopBar(
-        title: tr.assistantTitle,
-        subtitle: isPro ? tr.unlimitedAiPro : tr.asksBeforeChanges,
-        actions: [
-          if (!isPro)
-            IconButton(
-              icon: const ProCrownBadge(isCompact: true),
-              tooltip: tr.upgradeToPro,
-              onPressed:
-                  () => showProUpgradeSheet(
-                    context,
-                    title: tr.unlimitedAiAssistantTitle,
-                    message: tr.unlimitedAiAssistantDesc,
-                    featureHighlight: 'ai',
+    return ListenableBuilder(
+      listenable: _viewModel,
+      builder:
+          (context, _) => Scaffold(
+            appBar: AppTopBar(
+              title: tr.assistantTitle,
+              subtitle:
+                  _viewModel.messages.isEmpty
+                      ? null
+                      : (isPro ? tr.unlimitedAiPro : tr.asksBeforeChanges),
+              actions: [
+                if (!isPro)
+                  IconButton(
+                    icon: const ProCrownBadge(isCompact: true),
+                    tooltip: tr.upgradeToPro,
+                    onPressed:
+                        () => showProUpgradeSheet(
+                          context,
+                          title: tr.unlimitedAiAssistantTitle,
+                          message: tr.unlimitedAiAssistantDesc,
+                          featureHighlight: 'ai',
+                        ),
                   ),
+                TopBarAction(
+                  HugeIcons.strokeRoundedRefresh,
+                  onPressed: _viewModel.clear,
+                ),
+              ],
             ),
-          TopBarAction(
-            HugeIcons.strokeRoundedRefresh,
-            onPressed: _viewModel.clear,
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListenableBuilder(
-                listenable: _viewModel,
-                builder: (context, _) {
-                  if (_viewModel.messages.isEmpty) {
-                    return ListView(
-                      padding: const EdgeInsets.all(AppSpace.page),
-                      children: [
-                        ChatEntrance(
-                          child: Container(
-                            width: 52,
-                            height: 52,
-                            margin: const EdgeInsets.only(bottom: AppSpace.md),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: colors.brandBg,
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                            ),
-                            child: AppIcon(
-                              HugeIcons.strokeRoundedChatBot,
-                              size: 28,
-                              color: colors.brand,
-                            ),
-                          ),
-                        ),
-                        Text(tr.whatCanIDoForYou, style: text.headlineSmall),
-                        const SizedBox(height: 4),
-                        Text(
-                          tr.assistantIntroSubtitle,
-                          style: text.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpace.xxl),
-
-                        Text(
-                          tr.doSection,
-                          style: text.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        _PromptCard(
-                          title: tr.addExpense,
-                          subtitle: tr.spentLunchSubtitle,
-                          icon: HugeIcons.strokeRoundedCoins01,
-                          onTap: () => _send(tr.spentLunchPrompt),
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        _PromptCard(
-                          title: tr.scheduleShift,
-                          subtitle: tr.cafeFridaySubtitle,
-                          icon: HugeIcons.strokeRoundedCalendar03,
-                          onTap: () => _send(tr.cafeFridayPrompt),
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        _PromptCard(
-                          title: tr.moveMoneyToGoal,
-                          subtitle: tr.emergencyFundMoveSubtitle,
-                          icon: HugeIcons.strokeRoundedTarget02,
-                          onTap: () => _send(tr.emergencyFundMovePrompt),
-                        ),
-                        const SizedBox(height: AppSpace.xl),
-
-                        Text(
-                          tr.askSection,
-                          style: text.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        _PromptCard(
-                          title: tr.howMuchSpendFoodTitle,
-                          subtitle: tr.thisMonthSoFarSubtitle,
-                          icon: HugeIcons.strokeRoundedChartHistogram,
-                          onTap: () => _send(tr.howMuchFoodPrompt),
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        _PromptCard(
-                          title: tr.canIAffordTitle,
-                          subtitle: tr.basedOnForecastSubtitle,
-                          icon: HugeIcons.strokeRoundedShieldCheck,
-                          onTap: () => _send(tr.canIAffordPrompt),
-                        ),
-                      ],
-                    );
-                  }
-
-                  final count =
-                      _viewModel.messages.length +
-                      (_viewModel.isTyping ? 1 : 0);
-                  if (count != _lastCount) {
-                    _lastCount = count;
-                    _scrollToEnd();
-                  }
-                  return ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(AppSpace.page),
-                    itemCount: count,
-                    itemBuilder: (context, i) {
-                      if (i == _viewModel.messages.length) {
-                        return const TypingIndicator();
-                      }
-                      final msg = _viewModel.messages[i];
-                      if (msg.isUser) {
-                        return ChatEntrance(
-                          fromRight: true,
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: Container(
-                              margin: const EdgeInsets.only(
-                                bottom: AppSpace.md,
-                                left: 48,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListenableBuilder(
+                      listenable: _viewModel,
+                      builder: (context, _) {
+                        if (_viewModel.messages.isEmpty) {
+                          return ListView(
+                            padding: const EdgeInsets.all(AppSpace.page),
+                            children: [
+                              Text(
+                                tr.whatCanIDoForYou,
+                                style: text.headlineSmall,
                               ),
-                              padding: const EdgeInsets.all(AppSpace.sm),
-                              decoration: BoxDecoration(
-                                color: colors.hero,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.lg,
+                              const SizedBox(height: 4),
+                              Text(
+                                tr.assistantIntroSubtitle,
+                                style: text.bodyMedium?.copyWith(
+                                  color: scheme.onSurfaceVariant,
                                 ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (msg.imageBytes != null) ...[
-                                    ClipRRect(
+                              const SizedBox(height: AppSpace.xxl),
+
+                              Text(
+                                tr.doSection,
+                                style: text.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpace.sm),
+                              _PromptCard(
+                                title: tr.addExpense,
+                                subtitle: tr.spentLunchSubtitle,
+                                icon: HugeIcons.strokeRoundedCoins01,
+                                onTap: () => _send(tr.spentLunchPrompt),
+                              ),
+                              const SizedBox(height: AppSpace.sm),
+                              _PromptCard(
+                                title: tr.scheduleShift,
+                                subtitle: tr.cafeFridaySubtitle,
+                                icon: HugeIcons.strokeRoundedCalendar03,
+                                onTap: () => _send(tr.cafeFridayPrompt),
+                              ),
+                              const SizedBox(height: AppSpace.sm),
+                              _PromptCard(
+                                title: tr.moveMoneyToGoal,
+                                subtitle: tr.emergencyFundMoveSubtitle,
+                                icon: HugeIcons.strokeRoundedTarget02,
+                                onTap: () => _send(tr.emergencyFundMovePrompt),
+                              ),
+                              const SizedBox(height: AppSpace.xl),
+
+                              Text(
+                                tr.askSection,
+                                style: text.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpace.sm),
+                              _PromptCard(
+                                title: tr.howMuchSpendFoodTitle,
+                                subtitle: tr.thisMonthSoFarSubtitle,
+                                icon: HugeIcons.strokeRoundedChartHistogram,
+                                onTap: () => _send(tr.howMuchFoodPrompt),
+                              ),
+                              const SizedBox(height: AppSpace.sm),
+                              _PromptCard(
+                                title: tr.canIAffordTitle,
+                                subtitle: tr.basedOnForecastSubtitle,
+                                icon: HugeIcons.strokeRoundedShieldCheck,
+                                onTap: () => _send(tr.canIAffordPrompt),
+                              ),
+                            ],
+                          );
+                        }
+
+                        final count =
+                            _viewModel.messages.length +
+                            (_viewModel.isTyping ? 1 : 0);
+                        if (count != _lastCount) {
+                          _lastCount = count;
+                          _scrollToEnd();
+                        }
+                        return ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(AppSpace.page),
+                          itemCount: count,
+                          itemBuilder: (context, i) {
+                            if (i == _viewModel.messages.length) {
+                              return const TypingIndicator();
+                            }
+                            final msg = _viewModel.messages[i];
+                            if (msg.isUser) {
+                              return ChatEntrance(
+                                fromRight: true,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Container(
+                                    margin: const EdgeInsets.only(
+                                      bottom: AppSpace.md,
+                                      left: 48,
+                                    ),
+                                    padding: const EdgeInsets.all(AppSpace.sm),
+                                    decoration: BoxDecoration(
+                                      color: colors.hero,
                                       borderRadius: BorderRadius.circular(
-                                        AppRadius.md,
-                                      ),
-                                      child: Image.memory(
-                                        msg.imageBytes!,
-                                        width: 220,
-                                        height: 160,
-                                        fit: BoxFit.cover,
+                                        AppRadius.lg,
                                       ),
                                     ),
-                                    const SizedBox(height: AppSpace.xs),
-                                  ],
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpace.sm,
-                                      vertical: 4,
-                                    ),
-                                    child: Text(
-                                      msg.text,
-                                      style: text.bodyMedium?.copyWith(
-                                        color: colors.onHero,
-                                      ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        if (msg.imageBytes != null) ...[
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              AppRadius.md,
+                                            ),
+                                            child: Image.memory(
+                                              msg.imageBytes!,
+                                              width: 220,
+                                              height: 160,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                          const SizedBox(height: AppSpace.xs),
+                                        ],
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: AppSpace.sm,
+                                            vertical: 4,
+                                          ),
+                                          child: Text(
+                                            msg.text,
+                                            style: text.bodyMedium?.copyWith(
+                                              color: colors.onHero,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }
+                                ),
+                              );
+                            }
 
-                      // Assistant message
-                      final prevUser =
-                          i > 0 && _viewModel.messages[i - 1].isUser
-                              ? _viewModel.messages[i - 1].text
-                              : null;
-                      final chartKind =
-                          prevUser == null ||
-                                  msg.pendingAction != null ||
-                                  msg.isConfirmed
-                              ? null
-                              : chartKindForQuery(prevUser);
-                      final isLast = i == _viewModel.messages.length - 1;
-                      return ChatEntrance(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(
-                                bottom: AppSpace.md,
-                                right: 32,
-                              ),
-                              padding: const EdgeInsets.all(AppSpace.lg),
-                              decoration: BoxDecoration(
-                                color: scheme.surface,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.lg,
-                                ),
-                                border: Border.all(
-                                  color: scheme.outlineVariant,
-                                ),
-                              ),
+                            // Assistant message
+                            final prevUser =
+                                i > 0 && _viewModel.messages[i - 1].isUser
+                                    ? _viewModel.messages[i - 1].text
+                                    : null;
+                            final chartKind =
+                                prevUser == null ||
+                                        msg.pendingAction != null ||
+                                        msg.isConfirmed
+                                    ? null
+                                    : chartKindForQuery(prevUser);
+                            final isLast = i == _viewModel.messages.length - 1;
+                            return ChatEntrance(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if (msg.headline != null &&
-                                      msg.headline!.isNotEmpty) ...[
-                                    Text(
-                                      msg.headline!,
-                                      style: text.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w700,
+                                  Container(
+                                    margin: const EdgeInsets.only(
+                                      bottom: AppSpace.md,
+                                      right: 32,
+                                    ),
+                                    padding: const EdgeInsets.all(AppSpace.lg),
+                                    decoration: BoxDecoration(
+                                      color: scheme.surface,
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.lg,
+                                      ),
+                                      border: Border.all(
+                                        color: scheme.outlineVariant,
                                       ),
                                     ),
-                                    const SizedBox(height: AppSpace.xs),
-                                  ],
-                                  MarkdownBody(
-                                    data: msg.text,
-                                    selectable: true,
-                                    styleSheet: MarkdownStyleSheet.fromTheme(
-                                      Theme.of(context),
-                                    ).copyWith(
-                                      p: text.bodyMedium?.copyWith(
-                                        height: 1.45,
-                                      ),
-                                      strong: text.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        height: 1.45,
-                                      ),
-                                      em: text.bodyMedium?.copyWith(
-                                        fontStyle: FontStyle.italic,
-                                        height: 1.45,
-                                      ),
-                                      listBullet: text.bodyMedium?.copyWith(
-                                        color: scheme.primary,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      h1: text.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                      h2: text.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      h3: text.bodyLarge?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      blockquote: text.bodySmall?.copyWith(
-                                        color: scheme.onSurfaceVariant,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                      code: text.bodySmall?.copyWith(
-                                        fontFamily: 'monospace',
-                                        backgroundColor: scheme
-                                            .surfaceContainerHighest
-                                            .withValues(alpha: 0.5),
-                                      ),
-                                      codeblockDecoration: BoxDecoration(
-                                        color: scheme.surfaceContainerHighest
-                                            .withValues(alpha: 0.5),
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadius.sm,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (msg.headline != null &&
+                                            msg.headline!.isNotEmpty) ...[
+                                          Text(
+                                            msg.headline!,
+                                            style: text.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: AppSpace.xs),
+                                        ],
+                                        MarkdownBody(
+                                          data: msg.text,
+                                          selectable: true,
+                                          styleSheet:
+                                              MarkdownStyleSheet.fromTheme(
+                                                Theme.of(context),
+                                              ).copyWith(
+                                                p: text.bodyMedium?.copyWith(
+                                                  height: 1.45,
+                                                ),
+                                                strong: text.bodyMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      height: 1.45,
+                                                    ),
+                                                em: text.bodyMedium?.copyWith(
+                                                  fontStyle: FontStyle.italic,
+                                                  height: 1.45,
+                                                ),
+                                                listBullet: text.bodyMedium
+                                                    ?.copyWith(
+                                                      color: scheme.primary,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                h1: text.titleMedium?.copyWith(
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                                h2: text.titleSmall?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                h3: text.bodyLarge?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                blockquote: text.bodySmall
+                                                    ?.copyWith(
+                                                      color:
+                                                          scheme
+                                                              .onSurfaceVariant,
+                                                      fontStyle:
+                                                          FontStyle.italic,
+                                                    ),
+                                                code: text.bodySmall?.copyWith(
+                                                  fontFamily: 'monospace',
+                                                  backgroundColor: scheme
+                                                      .surfaceContainerHighest
+                                                      .withValues(alpha: 0.5),
+                                                ),
+                                                codeblockDecoration:
+                                                    BoxDecoration(
+                                                      color: scheme
+                                                          .surfaceContainerHighest
+                                                          .withValues(
+                                                            alpha: 0.5,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            AppRadius.sm,
+                                                          ),
+                                                    ),
+                                              ),
                                         ),
-                                      ),
+                                        if (msg.explanation != null) ...[
+                                          const SizedBox(height: AppSpace.sm),
+                                          Text(
+                                            msg.explanation!,
+                                            style: text.bodySmall?.copyWith(
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
-                                  if (msg.explanation != null) ...[
-                                    const SizedBox(height: AppSpace.sm),
-                                    Text(
-                                      msg.explanation!,
-                                      style: text.bodySmall?.copyWith(
-                                        color: scheme.onSurfaceVariant,
+
+                                  if (chartKind != null)
+                                    ChatChartCard(
+                                      kind: chartKind,
+                                      snapshot:
+                                          _viewModel.financeStore.snapshot,
+                                      currency: _viewModel.baseCurrency,
+                                    ),
+
+                                  if (isLast &&
+                                      msg.suggestions.isNotEmpty &&
+                                      !_viewModel.isTyping)
+                                    AnimatedSuggestionChips(
+                                      suggestions: msg.suggestions,
+                                      onTap: _send,
+                                    ),
+
+                                  // Interactive editable confirmation card
+                                  if (msg.pendingAction != null &&
+                                      !msg.isConfirmed) ...[
+                                    _InteractiveActionCard(
+                                      msg: msg,
+                                      viewModel: _viewModel,
+                                    ),
+                                    const SizedBox(height: AppSpace.md),
+                                  ],
+
+                                  // Confirmed status card
+                                  if (msg.isConfirmed) ...[
+                                    AppCard(
+                                      child: Row(
+                                        children: [
+                                          IconTile(
+                                            HugeIcons
+                                                .strokeRoundedCheckmarkCircle02,
+                                            size: 36,
+                                          ),
+                                          const SizedBox(width: AppSpace.md),
+                                          Expanded(
+                                            child: Text(
+                                              msg.confirmedSummary ??
+                                                  tr.t(
+                                                    'Action completed',
+                                                    ne: 'कार्य सम्पन्न भयो',
+                                                    es: 'Acción completada',
+                                                    fr: 'Action terminée',
+                                                    de: 'Aktion abgeschlossen',
+                                                    ja: '操作が完了しました',
+                                                    zh: '操作已完成',
+                                                    it: 'Azione completata',
+                                                  ),
+                                              style: text.titleSmall?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                          if (msg.createdTransactionId !=
+                                              null) ...[
+                                            const SizedBox(width: AppSpace.sm),
+                                            OutlinedButton(
+                                              style: OutlinedButton.styleFrom(
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 0,
+                                                    ),
+                                              ),
+                                              onPressed:
+                                                  () => _viewModel
+                                                      .undoTransaction(msg),
+                                              child: Text(tr.undo),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ),
+                                    const SizedBox(height: AppSpace.md),
+                                    if (i ==
+                                        _viewModel.messages.length - 1) ...[
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            tr.whatNextTitle,
+                                            style: text.titleSmall?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: _viewModel.clear,
+                                            child: Text(tr.startFresh),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: AppSpace.sm),
+                                      _PromptCard(
+                                        title: tr.addExpense,
+                                        subtitle: tr.spentLunchSubtitle,
+                                        icon: HugeIcons.strokeRoundedCoins01,
+                                        onTap: () => _send(tr.spentLunchPrompt),
+                                      ),
+                                      const SizedBox(height: AppSpace.sm),
+                                      _PromptCard(
+                                        title: tr.scheduleShift,
+                                        subtitle: tr.cafeFridaySubtitle,
+                                        icon: HugeIcons.strokeRoundedCalendar03,
+                                        onTap: () => _send(tr.cafeFridayPrompt),
+                                      ),
+                                      const SizedBox(height: AppSpace.sm),
+                                      _PromptCard(
+                                        title: tr.moveMoneyToGoal,
+                                        subtitle: tr.emergencyFundMoveSubtitle,
+                                        icon: HugeIcons.strokeRoundedTarget02,
+                                        onTap:
+                                            () => _send(
+                                              tr.emergencyFundMovePrompt,
+                                            ),
+                                      ),
+                                      const SizedBox(height: AppSpace.lg),
+                                    ],
                                   ],
                                 ],
                               ),
-                            ),
-
-                            if (chartKind != null)
-                              ChatChartCard(
-                                kind: chartKind,
-                                snapshot: _viewModel.financeStore.snapshot,
-                                currency: _viewModel.baseCurrency,
-                              ),
-
-                            if (isLast &&
-                                msg.suggestions.isNotEmpty &&
-                                !_viewModel.isTyping)
-                              AnimatedSuggestionChips(
-                                suggestions: msg.suggestions,
-                                onTap: _send,
-                              ),
-
-                            // Interactive editable confirmation card
-                            if (msg.pendingAction != null &&
-                                !msg.isConfirmed) ...[
-                              _InteractiveActionCard(
-                                msg: msg,
-                                viewModel: _viewModel,
-                              ),
-                              const SizedBox(height: AppSpace.md),
-                            ],
-
-                            // Confirmed status card
-                            if (msg.isConfirmed) ...[
-                              AppCard(
-                                child: Row(
-                                  children: [
-                                    IconTile(
-                                      HugeIcons.strokeRoundedCheckmarkCircle02,
-                                      size: 36,
-                                    ),
-                                    const SizedBox(width: AppSpace.md),
-                                    Expanded(
-                                      child: Text(
-                                        msg.confirmedSummary ??
-                                            tr.t(
-                                              'Action completed',
-                                              ne: 'कार्य सम्पन्न भयो',
-                                              es: 'Acción completada',
-                                              fr: 'Action terminée',
-                                              de: 'Aktion abgeschlossen',
-                                              ja: '操作が完了しました',
-                                              zh: '操作已完成',
-                                              it: 'Azione completata',
-                                            ),
-                                        style: text.titleSmall?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    if (msg.createdTransactionId != null) ...[
-                                      const SizedBox(width: AppSpace.sm),
-                                      OutlinedButton(
-                                        style: OutlinedButton.styleFrom(
-                                          visualDensity: VisualDensity.compact,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 0,
-                                          ),
-                                        ),
-                                        onPressed:
-                                            () =>
-                                                _viewModel.undoTransaction(msg),
-                                        child: Text(tr.undo),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: AppSpace.md),
-                              if (i == _viewModel.messages.length - 1) ...[
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      tr.whatNextTitle,
-                                      style: text.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: _viewModel.clear,
-                                      child: Text(tr.startFresh),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpace.sm),
-                                _PromptCard(
-                                  title: tr.addExpense,
-                                  subtitle: tr.spentLunchSubtitle,
-                                  icon: HugeIcons.strokeRoundedCoins01,
-                                  onTap: () => _send(tr.spentLunchPrompt),
-                                ),
-                                const SizedBox(height: AppSpace.sm),
-                                _PromptCard(
-                                  title: tr.scheduleShift,
-                                  subtitle: tr.cafeFridaySubtitle,
-                                  icon: HugeIcons.strokeRoundedCalendar03,
-                                  onTap: () => _send(tr.cafeFridayPrompt),
-                                ),
-                                const SizedBox(height: AppSpace.sm),
-                                _PromptCard(
-                                  title: tr.moveMoneyToGoal,
-                                  subtitle: tr.emergencyFundMoveSubtitle,
-                                  icon: HugeIcons.strokeRoundedTarget02,
-                                  onTap:
-                                      () => _send(tr.emergencyFundMovePrompt),
-                                ),
-                                const SizedBox(height: AppSpace.lg),
-                              ],
-                            ],
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-
-            // Input bar with rounded inbox, camera bill scanner, and highlighted outlined send button
-            Container(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.md,
-                AppSpace.sm,
-                AppSpace.md,
-                AppSpace.md,
-              ),
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                border: Border(top: BorderSide(color: scheme.outlineVariant)),
-              ),
-              child: Row(
-                children: [
-                  // Camera / Bill Scanner button
-                  IconButton.outlined(
-                    style: IconButton.styleFrom(
-                      foregroundColor: scheme.onSurfaceVariant,
-                      side: BorderSide(color: scheme.outlineVariant),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      minimumSize: const Size(44, 44),
-                    ),
-                    icon: const AppIcon(
-                      HugeIcons.strokeRoundedCamera01,
-                      size: 20,
-                    ),
-                    tooltip: tr.scanBillTooltip,
-                    onPressed: () => _pickBillImage(context),
-                  ),
-                  const SizedBox(width: AppSpace.sm),
-
-                  // Proper rounded inbox container
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpace.md,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHighest.withValues(
-                          alpha: 0.45,
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(color: scheme.outlineVariant),
-                      ),
-                      child: TextField(
-                        controller: _inputController,
-                        style: text.bodyMedium,
-                        decoration: InputDecoration(
-                          hintText: tr.askOrTypeNotesHint,
-                          hintStyle: text.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant.withValues(
-                              alpha: 0.7,
-                            ),
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                          ),
-                        ),
-                        onSubmitted: (_) => _send(),
-                      ),
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: AppSpace.sm),
 
-                  // Highlighted outlined send button
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: scheme.primary,
-                      backgroundColor: scheme.primary.withValues(alpha: 0.1),
-                      side: BorderSide(color: scheme.primary, width: 1.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      minimumSize: const Size(44, 44),
+                  // Input bar with rounded inbox, camera bill scanner, and highlighted outlined send button
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpace.md,
+                      AppSpace.sm,
+                      AppSpace.md,
+                      AppSpace.md,
                     ),
-                    onPressed: () => _send(),
-                    child: Icon(
-                      Icons.arrow_upward_rounded,
-                      size: 20,
-                      color: scheme.primary,
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      border: Border(
+                        top: BorderSide(color: scheme.outlineVariant),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Camera / Bill Scanner button
+                        IconButton.outlined(
+                          style: IconButton.styleFrom(
+                            foregroundColor: scheme.onSurfaceVariant,
+                            side: BorderSide(color: scheme.outlineVariant),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                            ),
+                            padding: const EdgeInsets.all(10),
+                            minimumSize: const Size(44, 44),
+                          ),
+                          icon: const AppIcon(
+                            HugeIcons.strokeRoundedCamera01,
+                            size: 20,
+                          ),
+                          tooltip: tr.scanBillTooltip,
+                          onPressed: () => _pickBillImage(context),
+                        ),
+                        const SizedBox(width: AppSpace.sm),
+
+                        // Proper rounded inbox container
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpace.md,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: scheme.surfaceContainerHighest.withValues(
+                                alpha: 0.45,
+                              ),
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                              border: Border.all(color: scheme.outlineVariant),
+                            ),
+                            child: TextField(
+                              controller: _inputController,
+                              style: text.bodyMedium,
+                              decoration: InputDecoration(
+                                hintText: tr.askOrTypeNotesHint,
+                                hintStyle: text.bodyMedium?.copyWith(
+                                  color: scheme.onSurfaceVariant.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                              ),
+                              onSubmitted: (_) => _send(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpace.sm),
+
+                        // Highlighted outlined send button
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: scheme.primary,
+                            backgroundColor: scheme.primary.withValues(
+                              alpha: 0.1,
+                            ),
+                            side: BorderSide(color: scheme.primary, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            minimumSize: const Size(44, 44),
+                          ),
+                          onPressed: () => _send(),
+                          child: Icon(
+                            Icons.arrow_upward_rounded,
+                            size: 20,
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
