@@ -56,6 +56,7 @@ class SubscriptionService extends ChangeNotifier {
 
   bool _isPro = false;
   bool _isSupporter = false;
+  bool _everSupported = false;
   bool _hasActiveRevenueCatEntitlement = false;
   DateTime? _proExpiryDate;
   bool _isConfigured = false;
@@ -65,8 +66,13 @@ class SubscriptionService extends ChangeNotifier {
   List<Package> _supporterPackages = const [];
   CustomerInfo? _customerInfo;
 
+  final ValueNotifier<bool> isProNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> isSupporterNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> everSupportedNotifier = ValueNotifier<bool>(false);
+
   bool get isPro => _isPro || _isSupporter || (authService.currentUser?.isPro ?? false);
   bool get isSupporter => _isSupporter;
+  bool get everSupported => _everSupported;
   DateTime? get proExpiryDate => _proExpiryDate;
   Offerings? get offerings => _offerings;
   Package? get proMonthlyPackage => _proMonthlyPackage;
@@ -84,6 +90,7 @@ class SubscriptionService extends ChangeNotifier {
 
   static const _proKey = 'subscription_is_pro';
   static const _supporterKey = 'subscription_is_supporter';
+  static const _everSupportedKey = 'subscription_ever_supported';
   static const _proExpiryKey = 'subscription_pro_expiry';
 
   /// Entitlement identifiers configured in RevenueCat dashboard
@@ -94,6 +101,10 @@ class SubscriptionService extends ChangeNotifier {
   static const String offeringPro = 'default';
   static const String offeringSupporter = 'supporter';
 
+  /// RevenueCat keys: Test Store for debug/previews, Google Play for release
+  static const String testStoreKey = 'test_gyjflYZzhqICSKhjUzpGpbmhnJu';
+  static const String playStoreKey = 'goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy';
+
   /// RevenueCat API key provided for Hyprwise (loaded via .env / --dart-define)
   static const String defaultApiKey = AppConfig.defaultRevenueCatKey;
   static String get googleApiKey => AppConfig.revenueCatGoogleKey.isNotEmpty
@@ -102,6 +113,19 @@ class SubscriptionService extends ChangeNotifier {
   static String get appleApiKey => AppConfig.revenueCatAppleKey.isNotEmpty
       ? AppConfig.revenueCatAppleKey
       : defaultApiKey;
+
+  /// Active API key: Test Store key in debug mode, store key in release mode
+  static String get apiKey {
+    if (kDebugMode) return testStoreKey;
+    final configured = Platform.isAndroid ? googleApiKey : appleApiKey;
+    return configured.isNotEmpty ? configured : playStoreKey;
+  }
+
+  void _syncNotifiers() {
+    isProNotifier.value = isPro;
+    isSupporterNotifier.value = _isSupporter;
+    everSupportedNotifier.value = _everSupported;
+  }
 
   /// Fallback static plans used only before store offerings load
   static const defaultAvailablePlans = [
@@ -157,10 +181,13 @@ class SubscriptionService extends ChangeNotifier {
       _isPro = rawPro == 'true';
       final rawSupporter = await _storage.read(key: _supporterKey);
       _isSupporter = rawSupporter == 'true';
+      final rawEverSupported = await _storage.read(key: _everSupportedKey);
+      _everSupported = rawEverSupported == 'true';
       final rawExpiry = await _storage.read(key: _proExpiryKey);
       if (rawExpiry != null) {
         _proExpiryDate = DateTime.tryParse(rawExpiry);
       }
+      _syncNotifiers();
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading subscription cache: $e');
@@ -171,8 +198,8 @@ class SubscriptionService extends ChangeNotifier {
   Future<void> initRevenueCat() async {
     try {
       if (kIsWeb) return;
-      final apiKey = Platform.isAndroid ? googleApiKey : appleApiKey;
-      if (apiKey.isEmpty) {
+      final activeKey = apiKey;
+      if (activeKey.isEmpty) {
         debugPrint('[RevenueCat] No API key configured; operating in local mode.');
         return;
       }
@@ -183,7 +210,7 @@ class SubscriptionService extends ChangeNotifier {
         await Purchases.setLogLevel(LogLevel.info);
       }
 
-      final config = PurchasesConfiguration(apiKey);
+      final config = PurchasesConfiguration(activeKey);
       final userId = authService.currentUser?.id;
       if (userId != null && userId.isNotEmpty && !authService.isGuest) {
         config.appUserID = userId;
@@ -274,6 +301,14 @@ class SubscriptionService extends ChangeNotifier {
     _isPro = active;
     _isSupporter = hasSupporter;
 
+    final tippedEver = info.allPurchasedProductIdentifiers.any(
+      (id) => id.startsWith('supporter_') || id.startsWith('hyprwise_supporter'),
+    );
+    if (hasSupporter || tippedEver) {
+      _everSupported = true;
+      _storage.write(key: _everSupportedKey, value: 'true');
+    }
+
     if (proEntitlement?.expirationDate != null) {
       _proExpiryDate = DateTime.tryParse(proEntitlement!.expirationDate!);
     } else if (active) {
@@ -289,6 +324,7 @@ class SubscriptionService extends ChangeNotifier {
     }
 
     authService.updateProStatus(_isPro);
+    _syncNotifiers();
     notifyListeners();
 
     // Ensure active RevenueCat entitlement is synced to the Hyprwise server
@@ -352,6 +388,7 @@ class SubscriptionService extends ChangeNotifier {
             _isPro = serverPro;
             await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
             authService.updateProStatus(_isPro);
+            _syncNotifiers();
             notifyListeners();
           }
           return isPro;
@@ -368,6 +405,7 @@ class SubscriptionService extends ChangeNotifier {
     _isPro = pro;
     await _storage.write(key: _proKey, value: pro ? 'true' : 'false');
     authService.updateProStatus(pro);
+    _syncNotifiers();
     notifyListeners();
   }
 
@@ -388,6 +426,7 @@ class SubscriptionService extends ChangeNotifier {
       _isPro = serverPro;
       await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
       authService.updateProStatus(_isPro);
+      _syncNotifiers();
       notifyListeners();
     }
   }
@@ -406,11 +445,14 @@ class SubscriptionService extends ChangeNotifier {
     }
     _isPro = false;
     _isSupporter = false;
+    _everSupported = false;
     _hasActiveRevenueCatEntitlement = false;
     _proExpiryDate = null;
     await _storage.delete(key: _proKey);
     await _storage.delete(key: _supporterKey);
+    await _storage.delete(key: _everSupportedKey);
     await _storage.delete(key: _proExpiryKey);
+    _syncNotifiers();
     notifyListeners();
   }
 

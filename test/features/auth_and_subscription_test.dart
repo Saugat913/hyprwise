@@ -106,4 +106,28 @@ void main() {
     );
     expect(secondLogin.id, equals(firstId));
   });
+
+  test('RevenueCat dual-key configuration exposes Test Store key for debug', () {
+    expect(SubscriptionService.testStoreKey, equals('test_gyjflYZzhqICSKhjUzpGpbmhnJu'));
+    expect(SubscriptionService.playStoreKey, equals('goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy'));
+    expect(SubscriptionService.apiKey, isNotEmpty);
+  });
+
+  test('Supporter status updates notifiers and persists everSupported badge', () async {
+    expect(subService.isSupporter, isFalse);
+    expect(subService.everSupported, isFalse);
+    expect(subService.isSupporterNotifier.value, isFalse);
+    expect(subService.everSupportedNotifier.value, isFalse);
+
+    // Simulate saved supporter in storage
+    await storage.write(key: 'subscription_ever_supported', value: 'true');
+    await subService.load();
+
+    expect(subService.everSupported, isTrue);
+    expect(subService.everSupportedNotifier.value, isTrue);
+
+    await subService.resetOnLogout();
+    expect(subService.everSupported, isFalse);
+    expect(subService.everSupportedNotifier.value, isFalse);
+  });
 }

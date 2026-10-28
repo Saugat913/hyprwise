@@ -11,6 +11,7 @@ import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/settings/viewmodels/settings_view_model.dart';
 import 'package:finance_tracker/features/shared/data/currency.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
+import 'package:finance_tracker/features/subscription/data/paywalls.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:finance_tracker/features/subscription/view/subscription_auth_guard_sheet.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
@@ -39,6 +40,8 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 // Hyprwise Pro & Account Section
                 const _SubscriptionBanner(),
+                const SizedBox(height: AppSpace.sm),
+                const _SupporterBanner(),
                 const SizedBox(height: AppSpace.md),
                 const _AccountAuthCard(),
                 const SizedBox(height: AppSpace.xl),
@@ -174,6 +177,31 @@ class SettingsScreen extends StatelessWidget {
                         leading: const IconTile(HugeIcons.strokeRoundedNote01),
                         trailing: const Chevron(),
                         onTap: () => showAppTermsDialog(context),
+                      ),
+                      const RowDivider(),
+                      ListRow(
+                        title: tr.restorePurchases,
+                        subtitle: tr.t(
+                          'Restore Pro or supporter purchases on this device',
+                          ne: 'यो उपकरणमा Pro वा समर्थक खरिदहरू पुनर्स्थापना गर्नुहोस्',
+                          es: 'Restaurar compras Pro o de apoyo en este dispositivo',
+                          fr: 'Restaurer les achats Pro ou de soutien sur cet appareil',
+                          de: 'Pro- oder Unterstützer-Käufe auf diesem Gerät wiederherstellen',
+                          ja: 'この端末でProまたはサポーターの購入を復元',
+                          zh: '在此设备上恢复 Pro 或支持者购买',
+                          it: 'Ripristina gli acquisti Pro o supporter su questo dispositivo',
+                        ),
+                        leading: const IconTile(HugeIcons.strokeRoundedRefresh),
+                        trailing: const Chevron(),
+                        onTap: () async {
+                          final access = await getIt<SubscriptionService>().restorePurchases();
+                          if (context.mounted) {
+                            showToast(
+                              context,
+                              access.isPro ? tr.purchasesRestored : tr.noPurchasesFound,
+                            );
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -423,12 +451,129 @@ class _SubscriptionBanner extends StatelessWidget {
   }
 }
 
+class _SupporterBanner extends StatelessWidget {
+  const _SupporterBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final subService = getIt<SubscriptionService>();
+    final theme = Theme.of(context);
+    final text = theme.textTheme;
+    final tr = context.strings;
+
+    return ListenableBuilder(
+      listenable: subService,
+      builder: (context, _) {
+        final everSupported = subService.everSupported;
+        return InkWell(
+          onTap: () => Paywalls.showTipJar(),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.lg,
+              vertical: AppSpace.md,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(
+                color: everSupported
+                    ? const Color(0xFFE11D48).withValues(alpha: 0.4)
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE11D48).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const AppIcon(
+                    HugeIcons.strokeRoundedFavourite,
+                    size: 20,
+                    color: Color(0xFFE11D48),
+                  ),
+                ),
+                const SizedBox(width: AppSpace.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              tr.supportHyprwise,
+                              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (everSupported) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE11D48).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const AppIcon(
+                                    HugeIcons.strokeRoundedFavourite,
+                                    size: 11,
+                                    color: Color(0xFFE11D48),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    tr.supporterBadge,
+                                    style: text.labelSmall?.copyWith(
+                                      color: const Color(0xFFE11D48),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        tr.supportHyprwiseSubtitle,
+                        style: text.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _AccountAuthCard extends StatelessWidget {
   const _AccountAuthCard();
 
   @override
   Widget build(BuildContext context) {
     final authService = getIt<AuthService>();
+    final subService = getIt<SubscriptionService>();
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final tr = context.strings;
@@ -454,7 +599,52 @@ class _AccountAuthCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(user.displayName, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              user.displayName,
+                              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          ListenableBuilder(
+                            listenable: subService,
+                            builder: (context, _) {
+                              if (!subService.everSupported) return const SizedBox.shrink();
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE11D48).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const AppIcon(
+                                        HugeIcons.strokeRoundedFavourite,
+                                        size: 11,
+                                        color: Color(0xFFE11D48),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        tr.supporterBadge,
+                                        style: text.labelSmall?.copyWith(
+                                          color: const Color(0xFFE11D48),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                       Text(user.email, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                     ],
                   ),
