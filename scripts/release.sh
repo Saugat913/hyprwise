@@ -45,6 +45,7 @@ fi
 # Parse CLI flags
 RELEASE_TYPE=""
 DO_PUSH=false
+DO_UPLOAD=false
 DRY_RUN=false
 SKIP_TESTS=false
 AUTO_CONFIRM=false
@@ -56,6 +57,9 @@ for arg in "$@"; do
       ;;
     --push)
       DO_PUSH=true
+      ;;
+    --upload|--upload-playstore)
+      DO_UPLOAD=true
       ;;
     --dry-run)
       DRY_RUN=true
@@ -74,6 +78,7 @@ for arg in "$@"; do
       echo "  --type=production   Production Release (v1.x.x, targets main/production)"
       echo "  --type=patch        Production Hotfix/Patch (v1.0.x, targets 'patch' branch, syncs with main)"
       echo "  --push              Automatically push git commit and tags to origin"
+      echo "  --upload            Build and deploy release .aab directly to Google Play Store"
       echo "  --yes, -y           Automatically confirm and proceed without interactive prompt"
       echo "  --dry-run           Preview calculated versions without making changes"
       echo "  --skip-tests        Skip flutter analyze and test verification"
@@ -242,4 +247,23 @@ else
   echo -e "\n${YELLOW}To push manually later, run:${NC}"
   echo -e "  git push origin $CURRENT_BRANCH"
   echo -e "  git push origin ${TAG_NAME}"
+fi
+
+# Google Play Publishing Option
+PLAY_TRACK="internal"
+if [ "$RELEASE_TYPE" = "production" ]; then
+  PLAY_TRACK="production"
+fi
+
+if [ "$DO_UPLOAD" = false ] && [ -f "$ROOT_DIR/android/hyprwise-play-service-account.json" ]; then
+  echo ""
+  read -rp "Deploy release bundle (.aab) directly to Google Play Store ($PLAY_TRACK track)? [y/N]: " upload_confirm
+  if [[ "$upload_confirm" =~ ^[Yy]$ ]]; then
+    DO_UPLOAD=true
+  fi
+fi
+
+if [ "$DO_UPLOAD" = true ]; then
+  echo -e "\n${CYAN}${BOLD}Deploying to Google Play Store (${PLAY_TRACK} track)...${NC}"
+  node "$ROOT_DIR/scripts/upload_to_playstore.js" --track="$PLAY_TRACK" --build
 fi

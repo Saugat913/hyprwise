@@ -52,10 +52,13 @@ app.*.map.json
 .env.*
 !.env.example
 *firebase-adminsdk*.json
+*play-service-account*.json
+*service_account*.json
 server/.env
 server/.env.*
 *.key
 *.pem
+*.jks
 firepit-log.txt
 android/build/
 scratch_cmp/
