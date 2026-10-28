@@ -6,17 +6,24 @@ import 'package:finance_tracker/features/shared/widgets/app_icon.dart';
 
 /// "This week" ........ "See calendar >"
 class SectionHeader extends StatelessWidget {
-  const SectionHeader(this.title, {super.key, this.actionLabel, this.onAction});
+  const SectionHeader(
+    this.title, {
+    super.key,
+    this.actionLabel,
+    this.onAction,
+    this.padding,
+  });
 
   final String title;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.md),
+      padding: padding ?? const EdgeInsets.fromLTRB(0, AppSpace.xl, 0, AppSpace.sm),
       child: Row(
         children: [
           Expanded(child: Text(title, style: text.titleMedium)),

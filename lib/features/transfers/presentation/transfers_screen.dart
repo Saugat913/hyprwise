@@ -343,40 +343,159 @@ class _TransferFormState extends State<_TransferForm> {
                 ),
               ),
               const SizedBox(height: 18),
-              DropdownButtonFormField<int>(
-                initialValue: _sourceId,
-                decoration: const InputDecoration(labelText: 'From account'),
-                items: _sourceOptions
-                    .map((account) => DropdownMenuItem(
-                          value: account.id,
-                          child: Text('${account.name} · ${account.currencyCode}'),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _sourceId = value;
-                    final destinations = _destinations;
-                    if (destinations.isNotEmpty &&
-                        !destinations.any((account) => account.id == _destinationId)) {
-                      _destinationId = destinations.first.id;
-                    }
-                  });
-                },
+              Text(
+                'From account',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 58,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _sourceOptions.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final acc = _sourceOptions[index];
+                    final isSelected = acc.id == _sourceId;
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          setState(() {
+                            _sourceId = acc.id;
+                            final destinations = _destinations;
+                            if (destinations.isNotEmpty &&
+                                !destinations.any((account) => account.id == _destinationId)) {
+                              _destinationId = destinations.first.id;
+                            }
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                                : theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outlineVariant,
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.account_balance_wallet_outlined,
+                                size: 18,
+                                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    acc.name,
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  Text(
+                                    acc.currencyCode,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 10,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<int>(
-                key: ValueKey('destination-$_sourceId'),
-                initialValue: _destinationId,
-                decoration: const InputDecoration(labelText: 'To account'),
-                items: destinations
-                    .map((account) => DropdownMenuItem(
-                          value: account.id,
-                          child: Text('${account.name} · ${account.currencyCode}'),
-                        ))
-                    .toList(),
-                onChanged: (value) =>
-                    setState(() => _destinationId = value ?? _destinationId),
+              Text(
+                'To account',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 58,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: destinations.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final acc = destinations[index];
+                    final isSelected = acc.id == _destinationId;
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => setState(() => _destinationId = acc.id),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                                : theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outlineVariant,
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.move_to_inbox_outlined,
+                                size: 18,
+                                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    acc.name,
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  Text(
+                                    acc.currencyCode,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 10,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 14),
               TextFormField(

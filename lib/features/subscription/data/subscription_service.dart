@@ -75,6 +75,13 @@ class SubscriptionService extends ChangeNotifier {
   CustomerInfo? get customerInfo => _customerInfo;
   bool get isConfigured => _isConfigured;
 
+  /// Whether RevenueCat has valid offering packages ready to display in native UI
+  bool get hasValidOfferings {
+    if (!_isConfigured || _offerings == null) return false;
+    final current = _offerings?.current ?? _offerings?.getOffering(offeringPro);
+    return current != null && current.availablePackages.isNotEmpty;
+  }
+
   static const _proKey = 'subscription_is_pro';
   static const _supporterKey = 'subscription_is_supporter';
   static const _proExpiryKey = 'subscription_pro_expiry';
@@ -356,6 +363,14 @@ class SubscriptionService extends ChangeNotifier {
     return isPro;
   }
 
+  /// Sets pro status for debugging / local testing
+  Future<void> setDebugPro(bool pro) async {
+    _isPro = pro;
+    await _storage.write(key: _proKey, value: pro ? 'true' : 'false');
+    authService.updateProStatus(pro);
+    notifyListeners();
+  }
+
   /// Updates pro state from canonical user authentication response and links RevenueCat appUserID
   Future<void> setServerProStatus(bool serverPro) async {
     if (_isConfigured && !authService.isGuest) {
@@ -402,6 +417,13 @@ class SubscriptionService extends ChangeNotifier {
   /// Presents the native RevenueCat Paywall
   Future<PaywallResult> presentPaywall({Offering? offering}) async {
     if (!_isConfigured) return PaywallResult.error;
+    // If offerings aren't available yet or products aren't registered, avoid triggering
+    // native RevenueCat error activity (which shows Error 23 / ConfigurationError dialog).
+    // Return PaywallResult.error so callers gracefully fall back to the Flutter paywall screen.
+    if (!hasValidOfferings && offering == null) {
+      debugPrint('[RevenueCatUI] No valid offerings/products registered yet. Falling back to Flutter paywall.');
+      return PaywallResult.error;
+    }
     try {
       TelemetryService.instance.trackEvent('paywall_presented', {'trigger': 'direct'});
       final result = await RevenueCatUI.presentPaywall(
@@ -421,6 +443,10 @@ class SubscriptionService extends ChangeNotifier {
   /// Presents the native RevenueCat Paywall only if user does NOT already have pro_access
   Future<PaywallResult> presentPaywallIfNeeded({Offering? offering}) async {
     if (!_isConfigured) return PaywallResult.notPresented;
+    if (!hasValidOfferings && offering == null) {
+      debugPrint('[RevenueCatUI] No valid offerings/products registered yet. Falling back to Flutter paywall.');
+      return PaywallResult.error;
+    }
     try {
       TelemetryService.instance.trackEvent('paywall_presented', {'trigger': 'if_needed'});
       final result = await RevenueCatUI.presentPaywallIfNeeded(

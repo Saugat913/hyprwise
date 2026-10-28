@@ -403,22 +403,93 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
               if (viewModel.accounts.length > 1) ...[
                 Text(
                   tr.t('Account', ne: 'खाता', es: 'Cuenta', fr: 'Compte', de: 'Konto', ja: '口座', zh: '账户', it: 'Conto'),
-                  style: text.bodyMedium?.copyWith(
+                  style: text.labelMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: AppSpace.sm),
-                Wrap(
-                  spacing: AppSpace.sm,
-                  runSpacing: AppSpace.sm,
-                  children: [
-                    for (final acc in viewModel.accounts)
-                      ChoicePill(
-                        '${tr.accountDisplayName(acc.name)} (${MoneyFormatter.format(viewModel.snapshot.balanceOf(acc.id), acc.currencyCode)})',
-                        selected: (_selectedAccountId ?? viewModel.accounts.first.id) == acc.id,
-                        onTap: () => setState(() => _selectedAccountId = acc.id),
-                      ),
-                  ],
+                SizedBox(
+                  height: 64,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: viewModel.accounts.length,
+                    separatorBuilder: (context, index) => const SizedBox(width: AppSpace.sm),
+                    itemBuilder: (context, index) {
+                      final acc = viewModel.accounts[index];
+                      final isSelected = (_selectedAccountId ?? viewModel.accounts.first.id) == acc.id;
+                      final balance = viewModel.snapshot.balanceOf(acc.id);
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => setState(() => _selectedAccountId = acc.id),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpace.md,
+                              vertical: AppSpace.sm,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? scheme.primary.withValues(alpha: 0.08)
+                                  : scheme.surface,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(
+                                color: isSelected ? scheme.primary : scheme.outlineVariant,
+                                width: isSelected ? 1.5 : 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? scheme.primary
+                                        : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                                  ),
+                                  child: Center(
+                                    child: AppIcon(
+                                      HugeIcons.strokeRoundedSafe,
+                                      size: 18,
+                                      color: isSelected ? scheme.onPrimary : scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpace.sm),
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tr.accountDisplayName(acc.name),
+                                      style: text.labelMedium?.copyWith(
+                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                        color: isSelected ? scheme.primary : scheme.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      MoneyFormatter.format(balance, acc.currencyCode),
+                                      style: text.bodySmall?.copyWith(
+                                        fontFamily: 'RedditMono',
+                                        fontSize: 11,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
                 const SizedBox(height: AppSpace.xl),
               ],

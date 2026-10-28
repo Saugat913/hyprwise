@@ -605,34 +605,36 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
 
               Text(tr.breakDuration, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: AppSpace.sm),
-              GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: AppSpace.xs + 2,
-                crossAxisSpacing: AppSpace.xs + 2,
-                childAspectRatio: 2.2,
-                children: [
-                  for (final b in [0, 15, 30, 45, 60])
-                    _OptionGridCard(
-                      label: b == 0 ? tr.noBreak : tr.minsBreak(b),
-                      isSelected: !_useCustomBreak && _breakMinutes == b,
+              SizedBox(
+                height: 48,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final b in [0, 15, 30, 45, 60]) ...[
+                      _OptionHorizontalCard(
+                        label: b == 0 ? tr.noBreak : tr.minsBreak(b),
+                        isSelected: !_useCustomBreak && _breakMinutes == b,
+                        icon: b == 0 ? HugeIcons.strokeRoundedCoffee02 : HugeIcons.strokeRoundedCoffee01,
+                        onTap: () => setState(() {
+                          _useCustomBreak = false;
+                          _breakMinutes = b;
+                        }),
+                      ),
+                      const SizedBox(width: AppSpace.sm),
+                    ],
+                    _OptionHorizontalCard(
+                      label: tr.customOption,
+                      isSelected: _useCustomBreak,
+                      icon: HugeIcons.strokeRoundedEdit02,
                       onTap: () => setState(() {
-                        _useCustomBreak = false;
-                        _breakMinutes = b;
+                        _useCustomBreak = true;
+                        if (_customBreakController.text.isEmpty) {
+                          _customBreakController.text = _breakMinutes.toString();
+                        }
                       }),
                     ),
-                  _OptionGridCard(
-                    label: tr.customOption,
-                    isSelected: _useCustomBreak,
-                    onTap: () => setState(() {
-                      _useCustomBreak = true;
-                      if (_customBreakController.text.isEmpty) {
-                        _customBreakController.text = _breakMinutes.toString();
-                      }
-                    }),
-                  ),
-                ],
+                  ],
+                ),
               ),
               if (_useCustomBreak) ...[
                 const SizedBox(height: AppSpace.sm),
@@ -654,44 +656,48 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
               // Selectable Long-Shift Notification Threshold
               Text(tr.longShiftNotificationLabel, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: AppSpace.sm),
-              GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: AppSpace.xs + 2,
-                crossAxisSpacing: AppSpace.xs + 2,
-                childAspectRatio: 2.2,
-                children: [
-                  _OptionGridCard(
-                    label: tr.offOption,
-                    isSelected: !_useCustomAlertHours && _longShiftAlertMinutes == 0,
-                    onTap: () => setState(() {
-                      _useCustomAlertHours = false;
-                      _longShiftAlertMinutes = 0;
-                    }),
-                  ),
-                  for (final h in [4, 6, 8, 10, 12])
-                    _OptionGridCard(
-                      label: tr.notifyAfterHours(h),
-                      isSelected: !_useCustomAlertHours && _longShiftAlertMinutes == h * 60,
+              SizedBox(
+                height: 48,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    _OptionHorizontalCard(
+                      label: tr.offOption,
+                      isSelected: !_useCustomAlertHours && _longShiftAlertMinutes == 0,
+                      icon: HugeIcons.strokeRoundedNotification02,
                       onTap: () => setState(() {
                         _useCustomAlertHours = false;
-                        _longShiftAlertMinutes = h * 60;
+                        _longShiftAlertMinutes = 0;
                       }),
                     ),
-                  _OptionGridCard(
-                    label: tr.customOption,
-                    isSelected: _useCustomAlertHours,
-                    onTap: () => setState(() {
-                      _useCustomAlertHours = true;
-                      if (_customAlertHoursController.text.isEmpty) {
-                        final curH = _longShiftAlertMinutes > 0 ? (_longShiftAlertMinutes / 60).round() : 6;
-                        _customAlertHoursController.text = curH.toString();
-                        _longShiftAlertMinutes = curH * 60;
-                      }
-                    }),
-                  ),
-                ],
+                    const SizedBox(width: AppSpace.sm),
+                    for (final h in [4, 6, 8, 10, 12]) ...[
+                      _OptionHorizontalCard(
+                        label: tr.notifyAfterHours(h),
+                        isSelected: !_useCustomAlertHours && _longShiftAlertMinutes == h * 60,
+                        icon: HugeIcons.strokeRoundedClock01,
+                        onTap: () => setState(() {
+                          _useCustomAlertHours = false;
+                          _longShiftAlertMinutes = h * 60;
+                        }),
+                      ),
+                      const SizedBox(width: AppSpace.sm),
+                    ],
+                    _OptionHorizontalCard(
+                      label: tr.customOption,
+                      isSelected: _useCustomAlertHours,
+                      icon: HugeIcons.strokeRoundedEdit02,
+                      onTap: () => setState(() {
+                        _useCustomAlertHours = true;
+                        if (_customAlertHoursController.text.isEmpty) {
+                          final curH = _longShiftAlertMinutes > 0 ? (_longShiftAlertMinutes / 60).round() : 6;
+                          _customAlertHoursController.text = curH.toString();
+                          _longShiftAlertMinutes = curH * 60;
+                        }
+                      }),
+                    ),
+                  ],
+                ),
               ),
               if (_useCustomAlertHours) ...[
                 const SizedBox(height: AppSpace.sm),
@@ -1050,6 +1056,67 @@ class _OptionGridCard extends StatelessWidget {
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
               color: isSelected ? scheme.primary : scheme.onSurface,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OptionHorizontalCard extends StatelessWidget {
+  const _OptionHorizontalCard({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final IconGlyph? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs + 2),
+          decoration: BoxDecoration(
+            color: isSelected ? scheme.primary.withValues(alpha: 0.1) : scheme.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: isSelected ? scheme.primary : scheme.outlineVariant,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                AppIcon(
+                  icon!,
+                  size: 16,
+                  color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: AppSpace.xs + 2),
+              ],
+              Text(
+                label,
+                style: text.labelMedium?.copyWith(
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: isSelected ? scheme.primary : scheme.onSurface,
+                ),
+              ),
+            ],
           ),
         ),
       ),

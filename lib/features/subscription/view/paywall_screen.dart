@@ -382,9 +382,33 @@ class _PaywallScreenState extends State<PaywallScreen> {
               AppButton(
                 tr.upgradeToPro,
                 onPressed: () async {
-                  final result = await subService.presentPaywallIfNeeded();
-                  if (result == PaywallResult.purchased || result == PaywallResult.restored) {
-                    if (context.mounted) context.pop();
+                  if (subService.hasValidOfferings) {
+                    final result = await subService.presentPaywallIfNeeded();
+                    if (result == PaywallResult.purchased || result == PaywallResult.restored) {
+                      if (context.mounted) context.pop();
+                    }
+                  } else {
+                    if (kDebugMode) {
+                      await subService.setDebugPro(true);
+                      if (context.mounted) {
+                        showToast(context, 'Pro unlocked for testing (Dev mode)');
+                        context.pop();
+                      }
+                    } else {
+                      showToast(
+                        context,
+                        tr.t(
+                          'Subscriptions are being activated on the Play Store. Please check back shortly.',
+                          ne: 'प्ले स्टोरमा सदस्यता सक्रिय गरिँदैछ। कृपया केही समयपछि पुन: प्रयास गर्नुहोस्।',
+                          es: 'Las suscripciones se están activando en Play Store. Vuelve a consultar en breve.',
+                          fr: 'Les abonnements sont en cours d\'activation sur le Play Store. Veuillez réessayer sous peu.',
+                          de: 'Abonnements werden im Play Store aktiviert. Bitte versuchen Sie es in Kürze erneut.',
+                          ja: 'Playストアでサブスクリプションが有効化されています。しばらくしてからもう一度お試しください。',
+                          zh: 'Play 商店正在激活订阅。请稍后重试。',
+                          it: 'Gli abbonamenti sono in fase di attivazione su Play Store. Riprova a breve.',
+                        ),
+                      );
+                    }
                   }
                 },
               ),

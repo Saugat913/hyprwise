@@ -487,16 +487,77 @@ class _TransactionFormState extends State<_TransactionForm> {
                 },
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<int>(
-                initialValue: _accountId,
-                decoration: const InputDecoration(labelText: 'Account'),
-                items: widget.accounts
-                    .map((account) => DropdownMenuItem(
-                          value: account.id,
-                          child: Text('${account.name} · ${account.currencyCode}'),
-                        ))
-                    .toList(),
-                onChanged: (value) => setState(() => _accountId = value ?? _accountId),
+              Text(
+                'Account',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 58,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: widget.accounts.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final acc = widget.accounts[index];
+                    final isSelected = acc.id == _accountId;
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => setState(() => _accountId = acc.id),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                                : theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outlineVariant,
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.account_balance_wallet_outlined,
+                                size: 18,
+                                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    acc.name,
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  Text(
+                                    acc.currencyCode,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 10,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
