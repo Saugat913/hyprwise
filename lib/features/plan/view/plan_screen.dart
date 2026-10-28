@@ -90,24 +90,17 @@ class PlanScreen extends StatelessWidget {
                             deltaMinor,
                             viewModel.baseCurrency,
                           );
+                          final heroIsDark = colors.hero.computeLuminance() < 0.5;
+                          final tone = _heroTone(isUp, heroIsDark);
                           return Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpace.sm + 2,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color:
-                                  isUp
-                                      ? colors.incomeBg.withValues(alpha: 0.35)
-                                      : colors.expense.withValues(alpha: 0.15),
+                              color: tone.bg,
                               borderRadius: BorderRadius.circular(
                                 AppRadius.pill,
-                              ),
-                              border: Border.all(
-                                color:
-                                    isUp
-                                        ? colors.income.withValues(alpha: 0.6)
-                                        : colors.expense.withValues(alpha: 0.6),
                               ),
                             ),
                             child: Row(
@@ -118,15 +111,14 @@ class PlanScreen extends StatelessWidget {
                                       ? Icons.trending_up_rounded
                                       : Icons.trending_down_rounded,
                                   size: 14,
-                                  color: isUp ? colors.income : colors.expense,
+                                  color: tone.fg,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${isUp ? "+" : "−"}$deltaFormatted ${tr.perMonth}',
                                   style: text.labelSmall?.copyWith(
                                     fontWeight: FontWeight.w700,
-                                    color:
-                                        isUp ? colors.income : colors.expense,
+                                    color: tone.fg,
                                     fontFamily: 'RedditMono',
                                   ),
                                 ),
@@ -151,10 +143,7 @@ class PlanScreen extends StatelessWidget {
                       Text(
                         '${viewModel.threeMonthNetChangeMinor >= 0 ? "+" : ""}${MoneyFormatter.format(viewModel.threeMonthNetChangeMinor, viewModel.baseCurrency)} (90d)',
                         style: text.bodySmall?.copyWith(
-                          color:
-                              viewModel.threeMonthNetChangeMinor >= 0
-                                  ? colors.income
-                                  : colors.expense,
+                          color: _heroTone(viewModel.threeMonthNetChangeMinor >= 0, colors.hero.computeLuminance() < 0.5).fg,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'RedditMono',
                         ),
@@ -987,3 +976,16 @@ class _PlanTrajectoryChart extends StatelessWidget {
   }
 }
 
+
+
+/// Readable positive/negative tones that contrast with the hero card in both themes.
+({Color bg, Color fg}) _heroTone(bool positive, bool heroIsDark) {
+  if (positive) {
+    return heroIsDark
+        ? (bg: const Color(0xFF22C55E).withValues(alpha: 0.2), fg: const Color(0xFF4ADE80))
+        : (bg: const Color(0xFFDCFCE7), fg: const Color(0xFF15803D));
+  }
+  return heroIsDark
+      ? (bg: const Color(0xFFEF4444).withValues(alpha: 0.2), fg: const Color(0xFFF87171))
+      : (bg: const Color(0xFFFEE2E2), fg: const Color(0xFFB91C1C));
+}
