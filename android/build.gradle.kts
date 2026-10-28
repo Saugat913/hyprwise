@@ -68,7 +68,11 @@ subprojects {
             val getKotlinOptions = this.javaClass.getMethod("getKotlinOptions")
             val kotlinOptions = getKotlinOptions.invoke(this)
             val setLanguageVersion = kotlinOptions.javaClass.getMethod("setLanguageVersion", String::class.java)
-            setLanguageVersion.invoke(kotlinOptions, "2.0")
+            try {
+                setLanguageVersion.invoke(kotlinOptions, "2.1")
+            } catch (_: Throwable) {
+                setLanguageVersion.invoke(kotlinOptions, "2.0")
+            }
             try {
                 val setJvmTarget = kotlinOptions.javaClass.getMethod("setJvmTarget", String::class.java)
                 setJvmTarget.invoke(kotlinOptions, "17")
@@ -81,9 +85,13 @@ subprojects {
             val getLanguageVersion = compilerOptions.javaClass.getMethod("getLanguageVersion")
             val prop = getLanguageVersion.invoke(compilerOptions) as org.gradle.api.provider.Property<*>
             val kotlinVersionEnum = Class.forName("org.jetbrains.kotlin.gradle.dsl.KotlinVersion")
-            val kotlin20 = kotlinVersionEnum.getField("KOTLIN_2_0").get(null)
+            val targetKotlin = try {
+                kotlinVersionEnum.getField("KOTLIN_2_1").get(null)
+            } catch (_: Throwable) {
+                kotlinVersionEnum.getField("KOTLIN_2_0").get(null)
+            }
             val setMethod = prop.javaClass.getMethod("set", Object::class.java)
-            setMethod.invoke(prop, kotlin20)
+            setMethod.invoke(prop, targetKotlin)
 
             try {
                 val getJvmTarget = compilerOptions.javaClass.getMethod("getJvmTarget")
