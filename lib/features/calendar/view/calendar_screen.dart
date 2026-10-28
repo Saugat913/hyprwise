@@ -924,7 +924,10 @@ class _TimelineEventBlock extends StatelessWidget {
               left: BorderSide(color: strongBorderColor, width: 5.0), // Left border only
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm + 2, vertical: 6),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpace.sm + 2,
+            vertical: blockHeight < 56 ? 2 : 6,
+          ),
           child: LayoutBuilder(
             builder: (context, constraints) {
               return ClipRect(
@@ -942,6 +945,7 @@ class _TimelineEventBlock extends StatelessWidget {
                   statusBadge: statusBadge,
                   statusBadgeColor: statusBadgeColor,
                   maxWidth: constraints.maxWidth,
+                  maxHeight: constraints.maxHeight,
                 ),
               );
             },
@@ -965,152 +969,217 @@ class _TimelineEventBlock extends StatelessWidget {
     required String? statusBadge,
     required Color statusBadgeColor,
     required double maxWidth,
+    required double maxHeight,
   }) {
-    // 0. Narrow column responsive layout (< 160px)
-    if (maxWidth < 160) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+    // 0. Ultra-compact single row if height is very tight (< 38px)
+    if (maxHeight < 38) {
+      return Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-                color: strongBorderColor,
-                child: Text(
-                  typeTag.toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 8.5),
-                ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            color: strongBorderColor,
+            child: Text(
+              typeTag.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 8,
               ),
-              const Spacer(),
-              if (!isShift) _buildAmountText(text, scheme),
-            ],
+            ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            displayTitle,
-            style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700, fontSize: 11),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Row(
-            children: [
-              AppIcon(HugeIcons.strokeRoundedClock01, size: 9, color: strongBorderColor),
-              const SizedBox(width: 3),
-              Expanded(
-                child: Text(
-                  timeStr,
-                  style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant, fontSize: 9.5, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              displayTitle,
+              style: text.labelSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurface,
+                fontSize: 10.5,
               ),
-            ],
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          if (!isShift) ...[
+            const SizedBox(width: 4),
+            _buildAmountText(text, scheme),
+          ] else ...[
+            const SizedBox(width: 4),
+            Text(
+              timeStr,
+              style: text.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                fontSize: 9,
+              ),
+              maxLines: 1,
+            ),
+          ],
         ],
       );
     }
 
-    // 1. Standard event layout (< 105px, including 56px transaction blocks)
-    if (blockHeight < 105) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
+    // 1. Narrow column responsive layout (< 160px)
+    if (maxWidth < 160) {
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: maxWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color: strongBorderColor,
-                  borderRadius: BorderRadius.zero,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AppIcon(typeIcon, size: 10, color: Colors.white),
-                    const SizedBox(width: 3.5),
-                    Text(
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                    color: strongBorderColor,
+                    child: Text(
                       typeTag.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 9,
-                        letterSpacing: 0.4,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 8.5),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (!isShift) _buildAmountText(text, scheme),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                displayTitle,
+                style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700, fontSize: 11),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Row(
+                children: [
+                  AppIcon(HugeIcons.strokeRoundedClock01, size: 9, color: strongBorderColor),
+                  const SizedBox(width: 3),
+                  Expanded(
+                    child: Text(
+                      timeStr,
+                      style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant, fontSize: 9.5, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 2. Standard event layout (< 105px, including 56px transaction blocks)
+    if (blockHeight < 105) {
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: maxWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: strongBorderColor,
+                      borderRadius: BorderRadius.zero,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AppIcon(typeIcon, size: 10, color: Colors.white),
+                        const SizedBox(width: 3.5),
+                        Text(
+                          typeTag.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 9,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      displayTitle,
+                      style: text.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
+                        fontSize: 12.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (!isShift) ...[
+                    const SizedBox(width: 6),
+                    _buildAmountText(text, scheme),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  AppIcon(
+                    HugeIcons.strokeRoundedClock01,
+                    size: 11,
+                    color: strongBorderColor,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    timeStr,
+                    style: text.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                  if (isShift && item.durationMinutes > 0) ...[
+                    const SizedBox(width: 5),
+                    Text(
+                      '(${tr.localizeDigits((item.durationMinutes / 60).toStringAsFixed(1))}${tr.hourAbbr})',
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 10.5,
                       ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  displayTitle,
-                  style: text.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
-                    fontSize: 12.5,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (!isShift) ...[
-                const SizedBox(width: 6),
-                _buildAmountText(text, scheme),
-              ],
-            ],
-          ),
-          const SizedBox(height: 3),
-          Row(
-            children: [
-              AppIcon(
-                HugeIcons.strokeRoundedClock01,
-                size: 11,
-                color: strongBorderColor,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                timeStr,
-                style: text.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 10.5,
-                ),
-              ),
-              if (isShift && item.durationMinutes > 0) ...[
-                const SizedBox(width: 5),
-                Text(
-                  '(${tr.localizeDigits((item.durationMinutes / 60).toStringAsFixed(1))}${tr.hourAbbr})',
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 10.5,
-                  ),
-                ),
-              ],
-              if (statusBadge != null) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: statusBadgeColor.withValues(alpha: 0.15),
-                    border: Border.all(color: statusBadgeColor.withValues(alpha: 0.4), width: 0.8),
-                    borderRadius: BorderRadius.zero,
-                  ),
-                  child: Text(
-                    statusBadge,
-                    style: text.labelSmall?.copyWith(
-                      color: statusBadgeColor,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 9,
+                  if (statusBadge != null) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: statusBadgeColor.withValues(alpha: 0.15),
+                        border: Border.all(color: statusBadgeColor.withValues(alpha: 0.4), width: 0.8),
+                        borderRadius: BorderRadius.zero,
+                      ),
+                      child: Text(
+                        statusBadge,
+                        style: text.labelSmall?.copyWith(
+                          color: statusBadgeColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 9,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       );
     }
 

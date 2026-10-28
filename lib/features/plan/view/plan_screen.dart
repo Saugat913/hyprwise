@@ -48,29 +48,38 @@ class PlanScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tr.projectedBalanceIn3Months,
-                            style: text.bodyMedium?.copyWith(
-                              color: colors.onHeroSecondary,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tr.projectedBalanceIn3Months,
+                              style: text.bodyMedium?.copyWith(
+                                color: colors.onHeroSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(height: AppSpace.xs),
-                          Text(
-                            MoneyFormatter.format(
-                              viewModel.projectedBalanceIn3Months,
-                              viewModel.baseCurrency,
+                            const SizedBox(height: AppSpace.xs),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                MoneyFormatter.format(
+                                  viewModel.projectedBalanceIn3Months,
+                                  viewModel.baseCurrency,
+                                ),
+                                style: text.headlineMedium?.copyWith(
+                                  color: colors.onHero,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'RedditMono',
+                                ),
+                              ),
                             ),
-                            style: text.headlineMedium?.copyWith(
-                              color: colors.onHero,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'RedditMono',
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: AppSpace.sm),
                       // Up / Down trajectory badge
                       Builder(
                         builder: (context) {
