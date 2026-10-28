@@ -264,9 +264,7 @@ class SettingsScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       SvgPicture.asset(
-                        Theme.of(context).brightness == Brightness.dark
-                            ? 'assets/brand/logo/hyprwise-logo-dark.svg'
-                            : 'assets/brand/logo/hyprwise-logo-primary.svg',
+                        'assets/brand/logo/hyprwise-logo.svg',
                         height: 22,
                       ),
                       const SizedBox(height: AppSpace.xs),
@@ -638,19 +636,8 @@ class _LanguageSelector extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: AppSpace.sm),
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: scheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.page, AppSpace.sm, AppSpace.page, AppSpace.xs),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, AppSpace.xs),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

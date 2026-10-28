@@ -55,7 +55,7 @@ class LoginScreen extends StatelessWidget {
                   // Single Centered Hyprwise Mark
                   Center(
                     child: SvgPicture.asset(
-                      isDark ? 'assets/brand/logo/hyprwise-mark-mono-white.svg' : 'assets/brand/logo/hyprwise-mark.svg',
+                      isDark ? 'assets/brand/logo/hyprwise-mark-white.svg' : 'assets/brand/logo/hyprwise-mark.svg',
                       width: 72,
                       height: 72,
                     ),

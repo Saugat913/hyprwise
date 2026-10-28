@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,14 @@ import 'package:finance_tracker/core/network/api_client.dart';
 
 enum SubscriptionTier { free, pro }
 
+/// Access state returned from RevenueCat entitlements.
+/// A Supporter purchase unlocks both `pro_access` and `supporter`.
+class Access {
+  final bool isPro;
+  final bool isSupporter;
+  const Access(this.isPro, this.isSupporter);
+}
+
 class SubscriptionPlan {
   const SubscriptionPlan({
     required this.id,
@@ -23,6 +32,7 @@ class SubscriptionPlan {
     this.badge,
     this.savingsPercent,
     this.isLifetime = false,
+    this.package,
   });
 
   final String id;
@@ -32,6 +42,7 @@ class SubscriptionPlan {
   final String? badge;
   final int? savingsPercent;
   final bool isLifetime;
+  final Package? package;
 }
 
 class SubscriptionService extends ChangeNotifier {
@@ -44,22 +55,37 @@ class SubscriptionService extends ChangeNotifier {
   final FlutterSecureStorage _storage;
 
   bool _isPro = false;
+  bool _isSupporter = false;
+  bool _hasActiveRevenueCatEntitlement = false;
   DateTime? _proExpiryDate;
   bool _isConfigured = false;
   Offerings? _offerings;
+  Package? _proMonthlyPackage;
+  Package? _proYearlyPackage;
+  List<Package> _supporterPackages = const [];
   CustomerInfo? _customerInfo;
 
-  bool get isPro => _isPro || (authService.currentUser?.isPro ?? false);
+  bool get isPro => _isPro || _isSupporter || (authService.currentUser?.isPro ?? false);
+  bool get isSupporter => _isSupporter;
   DateTime? get proExpiryDate => _proExpiryDate;
   Offerings? get offerings => _offerings;
+  Package? get proMonthlyPackage => _proMonthlyPackage;
+  Package? get proYearlyPackage => _proYearlyPackage;
+  List<Package> get supporterPackages => _supporterPackages;
   CustomerInfo? get customerInfo => _customerInfo;
   bool get isConfigured => _isConfigured;
 
   static const _proKey = 'subscription_is_pro';
+  static const _supporterKey = 'subscription_is_supporter';
   static const _proExpiryKey = 'subscription_pro_expiry';
 
-  /// Primary entitlement identifier configured in RevenueCat dashboard
+  /// Entitlement identifiers configured in RevenueCat dashboard
   static const String entitlementPro = 'pro_access';
+  static const String entitlementSupporter = 'supporter';
+
+  /// Offering identifiers configured in RevenueCat dashboard
+  static const String offeringPro = 'default';
+  static const String offeringSupporter = 'supporter';
 
   /// RevenueCat API key provided for Hyprwise (loaded via .env / --dart-define)
   static const String defaultApiKey = AppConfig.defaultRevenueCatKey;
@@ -70,39 +96,60 @@ class SubscriptionService extends ChangeNotifier {
       ? AppConfig.revenueCatAppleKey
       : defaultApiKey;
 
-  /// Configured products for Hyprwise Pro:
-  /// - Monthly (monthly) - Monthly subscription
-  /// - Yearly (yearly) - Yearly subscription
-  /// - Lifetime (lifetime) - One-time purchase
-  static const availablePlans = [
+  /// Fallback static plans used only before store offerings load
+  static const defaultAvailablePlans = [
     SubscriptionPlan(
       id: 'monthly',
       title: 'Monthly Plan',
-      priceString: r'$3.99',
+      priceString: r'$2.99',
       period: 'month',
     ),
     SubscriptionPlan(
       id: 'yearly',
       title: 'Yearly Plan',
-      priceString: r'$29.99',
+      priceString: r'$12.99',
       period: 'year',
       badge: 'Best Value',
-      savingsPercent: 37,
-    ),
-    SubscriptionPlan(
-      id: 'lifetime',
-      title: 'Lifetime Access',
-      priceString: r'$79.99',
-      period: 'one-time',
-      badge: 'Pay Once, Keep Forever',
-      isLifetime: true,
+      savingsPercent: 64,
     ),
   ];
+
+  /// Dynamic plans using live `package.storeProduct.priceString` when available
+  List<SubscriptionPlan> get activePlans {
+    final monthlyPkg = _proMonthlyPackage;
+    final yearlyPkg = _proYearlyPackage;
+    return [
+      SubscriptionPlan(
+        id: 'monthly',
+        title: monthlyPkg?.storeProduct.title.isNotEmpty == true
+            ? monthlyPkg!.storeProduct.title
+            : 'Monthly Plan',
+        priceString: monthlyPkg?.storeProduct.priceString ?? r'$2.99',
+        period: 'month',
+        package: monthlyPkg,
+      ),
+      SubscriptionPlan(
+        id: 'yearly',
+        title: yearlyPkg?.storeProduct.title.isNotEmpty == true
+            ? yearlyPkg!.storeProduct.title
+            : 'Yearly Plan',
+        priceString: yearlyPkg?.storeProduct.priceString ?? r'$12.99',
+        period: 'year',
+        badge: 'Best Value',
+        savingsPercent: 64,
+        package: yearlyPkg,
+      ),
+    ];
+  }
+
+  static List<SubscriptionPlan> get availablePlans => defaultAvailablePlans;
 
   Future<void> load() async {
     try {
       final rawPro = await _storage.read(key: _proKey);
       _isPro = rawPro == 'true';
+      final rawSupporter = await _storage.read(key: _supporterKey);
+      _isSupporter = rawSupporter == 'true';
       final rawExpiry = await _storage.read(key: _proExpiryKey);
       if (rawExpiry != null) {
         _proExpiryDate = DateTime.tryParse(rawExpiry);
@@ -113,7 +160,7 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
-  /// Initializes the RevenueCat SDK with official PurchasesConfiguration
+  /// Initializes the RevenueCat v11 SDK at startup
   Future<void> initRevenueCat() async {
     try {
       if (kIsWeb) return;
@@ -123,12 +170,21 @@ class SubscriptionService extends ChangeNotifier {
         return;
       }
 
-      await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.info);
+      if (kDebugMode) {
+        await Purchases.setLogLevel(LogLevel.debug);
+      } else {
+        await Purchases.setLogLevel(LogLevel.info);
+      }
+
       final config = PurchasesConfiguration(apiKey);
+      final userId = authService.currentUser?.id;
+      if (userId != null && userId.isNotEmpty && !authService.isGuest) {
+        config.appUserID = userId;
+      }
       await Purchases.configure(config);
       _isConfigured = true;
 
-      // Real-time listener for customer entitlement updates across devices
+      // Stay updated when a purchase, renewal or expiry happens
       Purchases.addCustomerInfoUpdateListener((customerInfo) {
         _handleCustomerInfo(customerInfo);
       });
@@ -137,30 +193,88 @@ class SubscriptionService extends ChangeNotifier {
       final info = await Purchases.getCustomerInfo();
       _handleCustomerInfo(info);
 
-      // Load products and offerings from RevenueCat dashboard
-      _offerings = await Purchases.getOfferings();
-      notifyListeners();
-      debugPrint('[RevenueCat] Initialized successfully with entitlement: $entitlementPro');
+      // Load Pro ('default') and Supporter ('supporter') offerings
+      await loadPlans();
+      debugPrint(
+        '[RevenueCat] Initialized v11 with entitlements: $entitlementPro, $entitlementSupporter',
+      );
     } catch (e) {
       debugPrint('[RevenueCat] Initialization notice: $e');
+    }
+  }
+
+  /// Checks `pro_access` and `supporter` entitlements directly from RevenueCat
+  Future<Access> getAccess() async {
+    if (!_isConfigured) {
+      return Access(isPro, isSupporter);
+    }
+    final info = await Purchases.getCustomerInfo();
+    _handleCustomerInfo(info);
+    final active = info.entitlements.active;
+    return Access(
+      active.containsKey(entitlementPro) || active.containsKey(entitlementSupporter),
+      active.containsKey(entitlementSupporter),
+    );
+  }
+
+  /// Registers a listener for live CustomerInfo entitlement updates
+  void listenForChanges(void Function(Access) onChange) {
+    if (!_isConfigured) return;
+    Purchases.addCustomerInfoUpdateListener((info) {
+      _handleCustomerInfo(info);
+      final a = info.entitlements.active;
+      onChange(
+        Access(
+          a.containsKey(entitlementPro) || a.containsKey(entitlementSupporter),
+          a.containsKey(entitlementSupporter),
+        ),
+      );
+    });
+  }
+
+  /// Loads `default` (Pro monthly/annual) and `supporter` offerings from RevenueCat
+  Future<void> loadPlans() async {
+    if (!_isConfigured) return;
+    try {
+      final offerings = await Purchases.getOfferings();
+      _offerings = offerings;
+
+      // Pro: default offering
+      final pro = offerings.current ?? offerings.getOffering(offeringPro);
+      _proMonthlyPackage = pro?.monthly;
+      _proYearlyPackage = pro?.annual;
+
+      // Supporter tiers
+      final supporter = offerings.getOffering(offeringSupporter);
+      _supporterPackages = supporter?.availablePackages ?? [];
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[RevenueCat] Error loading offerings: $e');
     }
   }
 
   /// Internal handler for CustomerInfo updates
   void _handleCustomerInfo(CustomerInfo info) {
     _customerInfo = info;
-    final proEntitlement = info.entitlements.all[entitlementPro];
-    final active = proEntitlement?.isActive ?? false;
+    final activeEntitlements = info.entitlements.active;
+    final proEntitlement = activeEntitlements[entitlementPro] ??
+        activeEntitlements[entitlementSupporter] ??
+        info.entitlements.all[entitlementPro];
+    final hasSupporter = activeEntitlements.containsKey(entitlementSupporter);
+    final active = activeEntitlements.containsKey(entitlementPro) || hasSupporter;
+
+    _hasActiveRevenueCatEntitlement = active;
     _isPro = active;
+    _isSupporter = hasSupporter;
 
     if (proEntitlement?.expirationDate != null) {
       _proExpiryDate = DateTime.tryParse(proEntitlement!.expirationDate!);
     } else if (active) {
-      // Lifetime or non-expiring purchase
       _proExpiryDate = null;
     }
 
     _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+    _storage.write(key: _supporterKey, value: _isSupporter ? 'true' : 'false');
     if (_proExpiryDate != null) {
       _storage.write(key: _proExpiryKey, value: _proExpiryDate!.toIso8601String());
     } else {
@@ -169,6 +283,19 @@ class SubscriptionService extends ChangeNotifier {
 
     authService.updateProStatus(_isPro);
     notifyListeners();
+
+    // Ensure active RevenueCat entitlement is synced to the Hyprwise server
+    if (active) {
+      final userId = authService.currentUser?.id ?? info.originalAppUserId;
+      unawaited(
+        ApiClient.instance
+            .verifySubscription(
+              appUserId: userId,
+              planId: hasSupporter ? entitlementSupporter : entitlementPro,
+            )
+            .catchError((_) => null),
+      );
+    }
   }
 
   /// Checks entitlement directly from RevenueCat and validates with Hyprwise server
@@ -202,13 +329,25 @@ class SubscriptionService extends ChangeNotifier {
         }
         if (status['isPro'] != null) {
           final serverPro = status['isPro'] as bool;
+          // If RevenueCat reports an active entitlement locally, never downgrade to false;
+          // instead push verification to the server.
+          if (_hasActiveRevenueCatEntitlement && !serverPro) {
+            final userId = authService.currentUser?.id ??
+                _customerInfo?.originalAppUserId ??
+                'default_user';
+            await ApiClient.instance.verifySubscription(
+              appUserId: userId,
+              planId: _isSupporter ? entitlementSupporter : entitlementPro,
+            );
+            return true;
+          }
           if (serverPro != _isPro) {
             _isPro = serverPro;
             await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
             authService.updateProStatus(_isPro);
             notifyListeners();
           }
-          return _isPro;
+          return isPro;
         }
       }
     } catch (e) {
@@ -217,19 +356,45 @@ class SubscriptionService extends ChangeNotifier {
     return isPro;
   }
 
-  /// Updates pro state from canonical user authentication response
+  /// Updates pro state from canonical user authentication response and links RevenueCat appUserID
   Future<void> setServerProStatus(bool serverPro) async {
-    _isPro = serverPro;
-    await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
-    authService.updateProStatus(_isPro);
-    notifyListeners();
+    if (_isConfigured && !authService.isGuest) {
+      final userId = authService.currentUser?.id;
+      if (userId != null && userId.isNotEmpty) {
+        try {
+          final logInResult = await Purchases.logIn(userId);
+          _handleCustomerInfo(logInResult.customerInfo);
+        } catch (e) {
+          debugPrint('[RevenueCat] logIn notice: $e');
+        }
+      }
+    }
+    if (!_hasActiveRevenueCatEntitlement) {
+      _isPro = serverPro;
+      await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+      authService.updateProStatus(_isPro);
+      notifyListeners();
+    }
   }
 
   /// Resets local cached subscription state on sign-out
   Future<void> resetOnLogout() async {
+    if (_isConfigured) {
+      try {
+        final isAnon = await Purchases.isAnonymous;
+        if (!isAnon) {
+          await Purchases.logOut();
+        }
+      } catch (e) {
+        debugPrint('[RevenueCat] logOut notice: $e');
+      }
+    }
     _isPro = false;
+    _isSupporter = false;
+    _hasActiveRevenueCatEntitlement = false;
     _proExpiryDate = null;
     await _storage.delete(key: _proKey);
+    await _storage.delete(key: _supporterKey);
     await _storage.delete(key: _proExpiryKey);
     notifyListeners();
   }
@@ -285,75 +450,110 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
-  /// Purchases a specific subscription or one-time lifetime plan
+  /// Purchases a specific RevenueCat [Package] using v11 `Purchases.purchase(PurchaseParams.package(package))`
+  Future<Access> buy(Package package) async {
+    try {
+      TelemetryService.instance.trackEvent(
+        'subscription_purchase_attempt',
+        {'package_id': package.identifier},
+      );
+      final purchaseResult = await Purchases.purchase(PurchaseParams.package(package));
+      final customerInfo = purchaseResult.customerInfo;
+      _handleCustomerInfo(customerInfo);
+
+      final access = await getAccess();
+      if (access.isPro) {
+        await TelemetryService.instance.logPurchase(
+          currency: package.storeProduct.currencyCode,
+          value: package.storeProduct.price,
+          transactionId: customerInfo.originalAppUserId,
+          items: [
+            AnalyticsEventItem(
+              itemId: package.storeProduct.identifier,
+              itemName: package.storeProduct.title,
+              price: package.storeProduct.price,
+            ),
+          ],
+        );
+        await TelemetryService.instance.setUserProperty(name: 'is_pro', value: 'true');
+
+        final userId = authService.currentUser?.id ?? customerInfo.originalAppUserId;
+        try {
+          await ApiClient.instance.verifySubscription(
+            appUserId: userId,
+            planId: package.identifier,
+          );
+          await syncWithServer();
+        } catch (_) {}
+      }
+      return access;
+    } on PlatformException catch (e) {
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.purchaseCancelledError) {
+        debugPrint('[RevenueCat] User cancelled purchase.');
+        return Access(isPro, isSupporter);
+      }
+      debugPrint('[RevenueCat] Purchase PlatformException: $e (code: $code)');
+      rethrow;
+    }
+  }
+
+  /// Purchases a specific subscription plan by matching its RevenueCat package
   Future<bool> subscribe(SubscriptionPlan plan) async {
     TelemetryService.instance.trackEvent('subscription_purchase_attempt', {'plan_id': plan.id});
-    if (_isConfigured && _offerings != null) {
-      try {
-        final currentOffering = _offerings?.current;
-        final targetId = plan.id.toLowerCase();
+    if (_isConfigured) {
+      if (_offerings == null) {
+        await loadPlans();
+      }
+      final pkg = plan.package ??
+          (() {
+            final currentOffering = _offerings?.current;
+            final targetId = plan.id.toLowerCase();
+            if (targetId == 'yearly' || targetId.contains('annual')) {
+              return _proYearlyPackage ??
+                  currentOffering?.annual ??
+                  currentOffering?.availablePackages.where((p) {
+                    final pId = p.identifier.toLowerCase();
+                    final prodId = p.storeProduct.identifier.toLowerCase();
+                    return pId.contains('annual') ||
+                        pId.contains('yearly') ||
+                        prodId.contains('yearly') ||
+                        prodId.contains('annual');
+                  }).firstOrNull;
+            }
+            return _proMonthlyPackage ??
+                currentOffering?.monthly ??
+                currentOffering?.availablePackages.where((p) {
+                  final pId = p.identifier.toLowerCase();
+                  final prodId = p.storeProduct.identifier.toLowerCase();
+                  return pId.contains('monthly') ||
+                      pId.contains('month') ||
+                      prodId.contains('monthly');
+                }).firstOrNull;
+          })();
 
-        // Find package matching either lifetime, yearly, or monthly
-        final pkg = currentOffering?.availablePackages.where((p) {
-          final pId = p.identifier.toLowerCase();
-          final prodId = p.storeProduct.identifier.toLowerCase();
-          if (targetId == 'lifetime') {
-            return pId.contains('lifetime') || prodId.contains('lifetime');
-          } else if (targetId == 'yearly' || targetId.contains('annual')) {
-            return pId.contains('annual') || pId.contains('yearly') || prodId.contains('yearly') || prodId.contains('annual');
-          } else {
-            return pId.contains('monthly') || pId.contains('month') || prodId.contains('monthly');
-          }
-        }).firstOrNull;
-
-        if (pkg != null) {
-          final customerInfo = await Purchases.purchasePackage(pkg);
-          _handleCustomerInfo(customerInfo);
-
-          // Firebase Analytics Purchase tracking
-          await TelemetryService.instance.logPurchase(
-            currency: pkg.storeProduct.currencyCode,
-            value: pkg.storeProduct.price,
-            transactionId: customerInfo.originalAppUserId,
-            items: [
-              AnalyticsEventItem(
-                itemId: pkg.storeProduct.identifier,
-                itemName: pkg.storeProduct.title,
-                price: pkg.storeProduct.price,
-              ),
-            ],
-          );
-          await TelemetryService.instance.setUserProperty(name: 'is_pro', value: 'true');
-
-          final userId = authService.currentUser?.id ?? customerInfo.originalAppUserId;
-          try {
-            await ApiClient.instance.verifySubscription(
-              appUserId: userId,
-              planId: pkg.identifier,
-            );
-            await syncWithServer();
-          } catch (_) {}
-
-          return isPro;
-        }
-      } on PlatformException catch (e) {
-        final errorCode = PurchasesErrorHelper.getErrorCode(e);
-        if (errorCode == PurchasesErrorCode.purchaseCancelledError) {
-          debugPrint('[RevenueCat] User cancelled purchase.');
+      if (pkg != null) {
+        try {
+          final access = await buy(pkg);
+          return access.isPro;
+        } on PlatformException catch (_) {
+          return false;
+        } catch (e) {
+          debugPrint('[RevenueCat] Native purchase error: $e');
           return false;
         }
-        debugPrint('[RevenueCat] Native purchase PlatformException: $e (code: $errorCode)');
-      } catch (e) {
-        debugPrint('[RevenueCat] Native purchase error: $e');
       }
+      return isPro;
     }
 
-    // Fallback sandbox / dev activation
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+    // Offline / unit test environment fallback when RevenueCat is not configured
+    await Future<void>.delayed(const Duration(milliseconds: 200));
     _isPro = true;
     _proExpiryDate = plan.isLifetime
         ? null
-        : DateTime.now().add(plan.id.contains('year') ? const Duration(days: 365) : const Duration(days: 30));
+        : DateTime.now().add(
+            plan.id.contains('year') ? const Duration(days: 365) : const Duration(days: 30),
+          );
 
     await _storage.write(key: _proKey, value: 'true');
     if (_proExpiryDate != null) {
@@ -369,7 +569,6 @@ class SubscriptionService extends ChangeNotifier {
     });
     await TelemetryService.instance.setUserProperty(name: 'is_pro', value: 'true');
 
-    // Sync Pro activation to Hyprwise server
     final userId = authService.currentUser?.id ?? 'default_user';
     try {
       await ApiClient.instance.verifySubscription(
@@ -382,19 +581,30 @@ class SubscriptionService extends ChangeNotifier {
     return true;
   }
 
-  /// Restores previous purchases
-  Future<void> restorePurchases() async {
+  /// Restores previous purchases from Play Store / App Store
+  Future<Access> restorePurchases() async {
     TelemetryService.instance.trackEvent('purchases_restore_attempt');
     if (_isConfigured) {
       try {
         final customerInfo = await Purchases.restorePurchases();
         _handleCustomerInfo(customerInfo);
+        if (isPro) {
+          final userId = authService.currentUser?.id ?? customerInfo.originalAppUserId;
+          try {
+            await ApiClient.instance.verifySubscription(
+              appUserId: userId,
+              planId: _isSupporter ? entitlementSupporter : entitlementPro,
+            );
+            await syncWithServer();
+          } catch (_) {}
+        }
         TelemetryService.instance.trackEvent('purchases_restored_success');
-        return;
+        return Access(isPro, isSupporter);
       } catch (e) {
         debugPrint('[RevenueCat] Restore error: $e');
       }
     }
     await load();
+    return Access(isPro, isSupporter);
   }
 }

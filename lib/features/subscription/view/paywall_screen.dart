@@ -23,7 +23,17 @@ class PaywallScreen extends StatefulWidget {
 
 class _PaywallScreenState extends State<PaywallScreen> {
   bool _isLoadingAuth = false;
+  bool _isRestoring = false;
   String? _authError;
+
+  @override
+  void initState() {
+    super.initState();
+    final subService = getIt<SubscriptionService>();
+    if (subService.isConfigured) {
+      subService.loadPlans();
+    }
+  }
 
   Future<void> _handleGoogleSignIn() async {
     setState(() {
@@ -285,6 +295,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     if (subService.isConfigured) {
       return Scaffold(
         body: PaywallView(
+          offering: subService.offerings?.current,
           displayCloseButton: true,
           onDismiss: () {
             if (context.mounted) context.pop();
@@ -299,8 +310,29 @@ class _PaywallScreenState extends State<PaywallScreen> {
           onRestoreCompleted: (customerInfo) async {
             await subService.checkEntitlement();
             if (context.mounted) {
-              showToast(context, tr.proActive);
-              context.pop();
+              if (subService.isPro) {
+                showToast(context, tr.proActive);
+                context.pop();
+              } else {
+                showToast(
+                  context,
+                  tr.t(
+                    'No active subscription found.',
+                    ne: 'कुनै सक्रिय सदस्यता फेला परेन।',
+                    es: 'No se encontró ninguna suscripción activa.',
+                    fr: 'Aucun abonnement actif trouvé.',
+                    de: 'Kein aktives Abonnement gefunden.',
+                    ja: '有効なサブスクリプションが見つかりませんでした。',
+                    zh: '未找到有效的订阅。',
+                    it: 'Nessun abbonamento attivo trovato.',
+                  ),
+                );
+              }
+            }
+          },
+          onPurchaseError: (error) {
+            if (context.mounted) {
+              showToast(context, error.message);
             }
           },
         ),
@@ -350,11 +382,53 @@ class _PaywallScreenState extends State<PaywallScreen> {
               AppButton(
                 tr.upgradeToPro,
                 onPressed: () async {
-                  final result = await subService.presentPaywall();
+                  final result = await subService.presentPaywallIfNeeded();
                   if (result == PaywallResult.purchased || result == PaywallResult.restored) {
                     if (context.mounted) context.pop();
                   }
                 },
+              ),
+              const SizedBox(height: AppSpace.sm),
+              TextButton(
+                onPressed: _isRestoring
+                    ? null
+                    : () async {
+                        setState(() => _isRestoring = true);
+                        final access = await subService.restorePurchases();
+                        if (context.mounted) {
+                          setState(() => _isRestoring = false);
+                          if (access.isPro) {
+                            showToast(context, tr.proActive);
+                            context.pop();
+                          } else {
+                            showToast(
+                              context,
+                              tr.t(
+                                'No active subscription found.',
+                                ne: 'कुनै सक्रिय सदस्यता फेला परेन।',
+                                es: 'No se encontró ninguna suscripción activa.',
+                                fr: 'Aucun abonnement actif trouvé.',
+                                de: 'Kein aktives Abonnement gefunden.',
+                                ja: '有効なサブスクリプションが見つかりませんでした。',
+                                zh: '未找到有效的订阅。',
+                                it: 'Nessun abbonamento attivo trovato.',
+                              ),
+                            );
+                          }
+                        }
+                      },
+                child: Text(
+                  tr.t(
+                    'Restore Purchases',
+                    ne: 'खरिदहरू पुनर्स्थापना गर्नुहोस्',
+                    es: 'Restaurar compras',
+                    fr: 'Restaurer les achats',
+                    de: 'Käufe wiederherstellen',
+                    ja: '購入を復元',
+                    zh: '恢复购买',
+                    it: 'Ripristina acquisti',
+                  ),
+                ),
               ),
             ],
           ),

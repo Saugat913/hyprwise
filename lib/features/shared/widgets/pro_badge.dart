@@ -83,24 +83,13 @@ Future<void> showProUpgradeSheet(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpace.page,
-            AppSpace.lg,
+            AppSpace.xs,
             AppSpace.page,
             AppSpace.xl,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Pull handle
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: scheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: AppSpace.xl),
-
               // Glowing Gold Crown Avatar
               Container(
                 width: 60,

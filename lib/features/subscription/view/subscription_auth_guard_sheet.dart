@@ -106,7 +106,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           AppSpace.xl,
-          AppSpace.md,
+          AppSpace.xs,
           AppSpace.xl,
           AppSpace.xl + MediaQuery.of(context).viewInsets.bottom,
         ),
@@ -115,19 +115,6 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Pull handle
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: scheme.outlineVariant.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpace.xl),
-
               // Icon Header with Green Shield & Pro Crown
               Center(
                 child: Container(

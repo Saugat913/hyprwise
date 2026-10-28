@@ -30,12 +30,12 @@ dependencies:
   firebase_analytics: ^12.6.0
   firebase_auth: ^6.7.0
   google_sign_in: ^6.2.2
-  purchases_flutter: ^8.5.0
+  purchases_flutter: ^11.0.0
   file_picker: ^10.2.4
   pdf: ^3.13.1
   http: ^1.6.0
   flutter_markdown: ^0.7.7+1
-  purchases_ui_flutter: ^8.11.0
+  purchases_ui_flutter: ^11.0.0
   image_picker: ^1.2.4
 
 dev_dependencies:

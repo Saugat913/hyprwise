@@ -24,7 +24,6 @@ class WelcomeScreen extends StatelessWidget {
         final text = Theme.of(context).textTheme;
         final scheme = Theme.of(context).colorScheme;
         final colors = context.colors;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
         final tr = context.strings;
 
         return Scaffold(
@@ -40,9 +39,7 @@ class WelcomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SvgPicture.asset(
-                    isDark
-                        ? 'assets/brand/logo/hyprwise-logo-dark.svg'
-                        : 'assets/brand/logo/hyprwise-logo-primary.svg',
+                    'assets/brand/logo/hyprwise-logo.svg',
                     height: 26,
                   ),
                   const SizedBox(height: AppSpace.md),

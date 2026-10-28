@@ -19,13 +19,19 @@ class AppConfig {
   );
 
   /// RevenueCat Google Play API Key
-  static const String revenueCatGoogleKey = String.fromEnvironment('REVENUECAT_GOOGLE_KEY');
+  static const String revenueCatGoogleKey = String.fromEnvironment(
+    'REVENUECAT_GOOGLE_KEY',
+    defaultValue: 'goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy',
+  );
 
   /// RevenueCat Apple App Store API Key
-  static const String revenueCatAppleKey = String.fromEnvironment('REVENUECAT_APPLE_KEY');
+  static const String revenueCatAppleKey = String.fromEnvironment(
+    'REVENUECAT_APPLE_KEY',
+    defaultValue: 'goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy',
+  );
 
-  /// Fallback demo/test key for offline or unit tests
-  static const String defaultRevenueCatKey = 'test_gyjflYZzhqICSKhjUzpGpbmhnJu';
+  /// Default Play Store public API key for Hyprwise
+  static const String defaultRevenueCatKey = 'goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy';
 
   /// Whether the required build-time variables have been supplied
   static bool get isConfigured => serverUrl.isNotEmpty;

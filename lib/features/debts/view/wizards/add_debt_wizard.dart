@@ -197,7 +197,10 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
       builder: (sheetContext) => _CurrencyConverterSheet(
         baseCurrency: baseCode,
         rates: rates,
