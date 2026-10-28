@@ -98,7 +98,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
     final text = theme.textTheme;
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    const brandGreen = Color(0xFF28A050);
+    const brandOrange = Color(0xFFFF6500);
 
     return SafeArea(
       child: Padding(
@@ -132,10 +132,10 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: brandGreen.withValues(alpha: isDark ? 0.2 : 0.1),
+                    color: brandOrange.withValues(alpha: isDark ? 0.2 : 0.1),
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(
-                      color: brandGreen.withValues(alpha: 0.25),
+                      color: brandOrange.withValues(alpha: 0.25),
                       width: 1.5,
                     ),
                   ),
@@ -143,7 +143,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                     child: AppIcon(
                       HugeIcons.strokeRoundedShieldUser,
                       size: 32,
-                      color: brandGreen,
+                      color: brandOrange,
                     ),
                   ),
                 ),
@@ -176,10 +176,10 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
               Container(
                 padding: const EdgeInsets.all(AppSpace.md),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF131A17) : const Color(0xFFF1F6F3),
+                  color: isDark ? const Color(0xFF131A17) : const Color(0xFFFFF0E6),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(
-                    color: brandGreen.withValues(alpha: 0.2),
+                    color: brandOrange.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(
@@ -187,7 +187,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                     const Icon(
                       Icons.check_circle_rounded,
                       size: 20,
-                      color: brandGreen,
+                      color: brandOrange,
                     ),
                     const SizedBox(width: AppSpace.sm),
                     Expanded(
@@ -225,7 +225,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: AppSpace.md),
-                    child: CircularProgressIndicator(color: brandGreen),
+                    child: CircularProgressIndicator(color: brandOrange),
                   ),
                 ),
               ] else ...[
@@ -234,7 +234,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                   height: AppSize.button,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: brandGreen,
+                      backgroundColor: brandOrange,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(

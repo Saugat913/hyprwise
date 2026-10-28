@@ -36,7 +36,7 @@ abstract final class AnalyticsPdfService {
     } catch (_) {}
 
     // Colors matching Hyprwise branding
-    final primaryColor = PdfColor.fromHex('#28A050'); // Hyprwise Green
+    final primaryColor = PdfColor.fromHex('#FF6500'); // Hyprwise Brand Orange
     final darkColor = PdfColor.fromHex('#1F2726'); // Hyprwise Ink
     final secondaryTextColor = PdfColor.fromHex('#64748B');
     final surfaceColor = PdfColor.fromHex('#F8FAFC');

@@ -24,6 +24,13 @@ abstract final class AppPalette {
   static const lightHero = Color(0xFF121816);
   static const darkHero = Color(0xFF18181C);
 
+  // Brand Primary & Accent (Official Hyprwise Orange #FF6500)
+  static const brandOrange = Color(0xFFFF6500);
+  static const brandOrangeLight = Color(0xFFFF8533);
+  static const brandOrangeDark = Color(0xFFE05800);
+  static const brandOrangeBgLight = Color(0xFFFFF0E6);
+  static const brandOrangeBgDark = Color(0xFF2E1303);
+
   // Semantic
   static const lightGreen = Color(0xFF1F7A45);
   static const darkGreen = Color(0xFF4CC38A);
@@ -35,5 +42,5 @@ abstract final class AppPalette {
   static const darkAmberBg = Color(0xFF3A2C10);
   static const lightGreenBg = Color(0xFFE3F3EA);
   static const darkGreenBg = Color(0xFF16301F);
-  static const sparkline = Color(0xFF5EE6A0);
+  static const sparkline = Color(0xFFFF6500);
 }

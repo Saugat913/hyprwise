@@ -89,7 +89,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const brandGreen = Color(0xFF28A050);
+    const brandOrange = Color(0xFFFF6500);
 
     // 1. Guard for Anonymous / Guest users: prompt login to protect and link local data
     if (authService.isGuest) {
@@ -116,10 +116,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: brandGreen.withValues(alpha: isDark ? 0.2 : 0.1),
+                          color: brandOrange.withValues(alpha: isDark ? 0.2 : 0.1),
                           borderRadius: BorderRadius.circular(AppRadius.md),
                           border: Border.all(
-                            color: brandGreen.withValues(alpha: 0.3),
+                            color: brandOrange.withValues(alpha: 0.3),
                             width: 1.5,
                           ),
                         ),
@@ -127,7 +127,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           child: AppIcon(
                             HugeIcons.strokeRoundedShieldUser,
                             size: 38,
-                            color: brandGreen,
+                            color: brandOrange,
                           ),
                         ),
                       ),
@@ -157,10 +157,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     Container(
                       padding: const EdgeInsets.all(AppSpace.md),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF131A17) : const Color(0xFFF1F6F3),
+                        color: isDark ? const Color(0xFF131A17) : const Color(0xFFFFF0E6),
                         borderRadius: BorderRadius.circular(AppRadius.md),
                         border: Border.all(
-                          color: brandGreen.withValues(alpha: 0.25),
+                          color: brandOrange.withValues(alpha: 0.25),
                         ),
                       ),
                       child: Row(
@@ -168,7 +168,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           const Icon(
                             Icons.check_circle_rounded,
                             size: 20,
-                            color: brandGreen,
+                            color: brandOrange,
                           ),
                           const SizedBox(width: AppSpace.sm),
                           Expanded(
@@ -206,7 +206,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: AppSpace.md),
-                          child: CircularProgressIndicator(color: brandGreen),
+                          child: CircularProgressIndicator(color: brandOrange),
                         ),
                       ),
                     ] else ...[
@@ -214,7 +214,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         height: AppSize.button,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: brandGreen,
+                            backgroundColor: brandOrange,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(

@@ -60,9 +60,9 @@ function wrapHtml({
       --surface-elevated: #F0F4F2;
       --surface-hover: #E6ECE8;
       --border: #DDE4E0;
-      --border-focus: #28A050;
-      --primary: #28A050;
-      --primary-hover: #228A44;
+      --border-focus: #FF6500;
+      --primary: #FF6500;
+      --primary-hover: #E05800;
       --primary-ink: #FFFFFF;
       --accent-green: #28A050;
       --accent-red: #D93829;

@@ -17,6 +17,8 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.onHeroMuted,
     required this.heroAccent,
     required this.fill,
+    required this.brand,
+    required this.brandBg,
   });
 
   final Color income;
@@ -30,6 +32,10 @@ class AppColors extends ThemeExtension<AppColors> {
   Color get onHeroSecondary => onHeroMuted;
   final Color heroAccent;
 
+  /// Brand Orange Accent (#FF6500)
+  final Color brand;
+  final Color brandBg;
+
   /// Track behind segmented tabs, progress bars and filled inputs.
   final Color fill;
 
@@ -42,8 +48,10 @@ class AppColors extends ThemeExtension<AppColors> {
     hero: AppPalette.lightHero,
     onHero: Color(0xFFFFFFFF),
     onHeroMuted: Color(0xFF9AA5A0),
-    heroAccent: AppPalette.sparkline,
+    heroAccent: AppPalette.brandOrange,
     fill: AppPalette.lightFill,
+    brand: AppPalette.brandOrange,
+    brandBg: AppPalette.brandOrangeBgLight,
   );
 
   static const dark = AppColors(
@@ -55,8 +63,10 @@ class AppColors extends ThemeExtension<AppColors> {
     hero: AppPalette.darkHero,
     onHero: AppPalette.darkInk,
     onHeroMuted: AppPalette.darkMuted,
-    heroAccent: AppPalette.sparkline,
+    heroAccent: AppPalette.brandOrange,
     fill: AppPalette.darkFill,
+    brand: AppPalette.brandOrange,
+    brandBg: AppPalette.brandOrangeBgDark,
   );
 
   @override
@@ -76,9 +86,9 @@ extension AppColorsContext on BuildContext {
 abstract final class AppColorScheme {
   static const light = ColorScheme(
     brightness: Brightness.light,
-    primary: AppPalette.lightInk,
+    primary: AppPalette.brandOrange,
     onPrimary: Color(0xFFFFFFFF),
-    secondary: AppPalette.lightGreen,
+    secondary: AppPalette.brandOrangeDark,
     onSecondary: Color(0xFFFFFFFF),
     error: AppPalette.lightRed,
     onError: Color(0xFFFFFFFF),
@@ -92,10 +102,10 @@ abstract final class AppColorScheme {
 
   static const dark = ColorScheme(
     brightness: Brightness.dark,
-    primary: AppPalette.darkInk,
-    onPrimary: AppPalette.darkPage,
-    secondary: AppPalette.darkGreen,
-    onSecondary: AppPalette.darkPage,
+    primary: AppPalette.brandOrange,
+    onPrimary: Color(0xFFFFFFFF),
+    secondary: AppPalette.brandOrangeLight,
+    onSecondary: Color(0xFFFFFFFF),
     error: AppPalette.darkRed,
     onError: AppPalette.darkPage,
     surface: AppPalette.darkCard,
