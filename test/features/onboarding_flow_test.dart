@@ -112,8 +112,8 @@ void main() {
     expect(find.text('तपाईं कुन मुद्रा\nप्रयोग गर्नुहुन्छ?'), findsOneWidget);
     expect(find.text('सेटअप पूरा गर्नुहोस्'), findsOneWidget);
 
-    // Select AUD
-    await tester.tap(find.text('A\$ · Australian dollar'));
+    // Select AUD (localized in Nepali)
+    await tester.tap(find.text('A\$ · अस्ट्रेलियन डलर'));
     await tester.pumpAndSettle();
 
     // Complete setup

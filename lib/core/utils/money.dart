@@ -1,12 +1,22 @@
 import 'package:intl/intl.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/shared/data/currency.dart';
 
 /// Centralized money formatting. Amounts are stored as integer minor units to
 /// avoid floating point drift; formatting and parsing happen only at the edges.
 abstract final class MoneyFormatter {
+  static String _normalizeWesternDigits(String input) {
+    const nepaliDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+    var res = input;
+    for (var i = 0; i < nepaliDigits.length; i++) {
+      res = res.replaceAll(nepaliDigits[i], i.toString());
+    }
+    return res;
+  }
+
   /// Display symbol, padded with a space when it ends in a letter or script (`Rs `, `रु `, `CHF `).
   static String symbolFor(String currencyCode, {String? locale}) {
     final activeLocale = locale ??
@@ -36,7 +46,8 @@ abstract final class MoneyFormatter {
       decimalDigits: isJpy && (minorUnits % 100 == 0) ? 0 : 2,
     );
     final value = minorUnits / 100;
-    final text = formatter.format(value.abs());
+    final rawText = formatter.format(value.abs());
+    final text = AppStrings.localizeDigitsForLocale(rawText, activeLocale);
     if (minorUnits < 0) return '−$text';
     if (signed) return '+$text';
     return text;
@@ -58,13 +69,17 @@ abstract final class MoneyFormatter {
       symbol: symbolFor(currencyCode, locale: activeLocale),
       decimalDigits: isJpy && (minorUnits % 100 == 0) ? 0 : 1,
     );
-    final text = formatter.format(minorUnits / 100);
+    final rawText = formatter.format(minorUnits / 100);
+    final text = AppStrings.localizeDigitsForLocale(rawText, activeLocale);
     return minorUnits < 0 ? '−$text' : text;
   }
 
   /// Parses a user-typed major amount into minor units, or null when invalid.
   static int? tryParseToMinor(String input) {
-    final normalized = input.trim().replaceAll(',', '').replaceAll('−', '-');
+    final normalized = _normalizeWesternDigits(input)
+        .trim()
+        .replaceAll(',', '')
+        .replaceAll('−', '-');
     if (normalized.isEmpty) return null;
     final value = double.tryParse(normalized);
     if (value == null || !value.isFinite) return null;
@@ -87,11 +102,15 @@ abstract final class MoneyFormatter {
   }
 
   /// Plain number with grouping, without currency symbol, e.g. `6,240.50` or `4,180`.
-  static String formatRaw(int minorUnits) {
+  static String formatRaw(int minorUnits, {String? locale}) {
+    final activeLocale = locale ??
+        (getIt.isRegistered<SettingsRepository>()
+            ? getIt<SettingsRepository>().localeCode
+            : 'en');
     final major = minorUnits / 100.0;
-    if (minorUnits % 100 == 0) {
-      return NumberFormat('#,##0').format(major);
-    }
-    return NumberFormat('#,##0.00').format(major);
+    final raw = minorUnits % 100 == 0
+        ? NumberFormat('#,##0').format(major)
+        : NumberFormat('#,##0.00').format(major);
+    return AppStrings.localizeDigitsForLocale(raw, activeLocale);
   }
 }

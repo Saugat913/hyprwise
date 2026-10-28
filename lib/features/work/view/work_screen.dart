@@ -60,7 +60,7 @@ class WorkScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpace.md),
                     Text(
-                      _formatDuration(viewModel.activeShiftElapsed),
+                      tr.localizeDigits(_formatDuration(viewModel.activeShiftElapsed)),
                       style: text.displaySmall?.copyWith(
                         fontFamily: 'RedditMono',
                         fontWeight: FontWeight.w700,
@@ -144,7 +144,7 @@ class WorkScreen extends StatelessWidget {
                           Text(tr.hoursThisWeek, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                           const SizedBox(height: 4),
                           Text(
-                            '${viewModel.hoursThisWeek.toStringAsFixed(1)} h',
+                            '${tr.localizeDigits(viewModel.hoursThisWeek.toStringAsFixed(1))} ${tr.hourAbbr}',
                             style: text.headlineSmall?.copyWith(
                               fontFamily: 'RedditMono',
                               fontWeight: FontWeight.w700,
@@ -160,7 +160,7 @@ class WorkScreen extends StatelessWidget {
                           Text(tr.shiftsLeft, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                           const SizedBox(height: 4),
                           Text(
-                            '${viewModel.shiftsLeftThisWeek}',
+                            tr.formatNumber(viewModel.shiftsLeftThisWeek),
                             style: text.headlineSmall?.copyWith(
                               fontFamily: 'RedditMono',
                               fontWeight: FontWeight.w700,
@@ -187,7 +187,7 @@ class WorkScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
                     child: Text(
-                      '${viewModel.todayTotalCount}',
+                      tr.formatNumber(viewModel.todayTotalCount),
                       style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -212,7 +212,7 @@ class WorkScreen extends StatelessWidget {
                   child: Row(
                     children: [
                       _ShiftFilterPill(
-                        label: '${tr.allEvents} (${viewModel.todayTotalCount})',
+                        label: '${tr.allEvents} (${tr.formatNumber(viewModel.todayTotalCount)})',
                         isSelected: viewModel.filterStatus == null && viewModel.filterJobId == null,
                         onTap: () {
                           viewModel.setFilterStatus(null);
@@ -221,7 +221,7 @@ class WorkScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: AppSpace.sm),
                       _ShiftFilterPill(
-                        label: '${tr.scheduled} (${viewModel.todayScheduledCount})',
+                        label: '${tr.scheduled} (${tr.formatNumber(viewModel.todayScheduledCount)})',
                         isSelected: viewModel.filterStatus == ShiftStatus.scheduled.value,
                         onTap: () => viewModel.setFilterStatus(
                           viewModel.filterStatus == ShiftStatus.scheduled.value ? null : ShiftStatus.scheduled.value,
@@ -229,7 +229,7 @@ class WorkScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: AppSpace.sm),
                       _ShiftFilterPill(
-                        label: '${tr.completed} (${viewModel.todayCompletedCount})',
+                        label: '${tr.completed} (${tr.formatNumber(viewModel.todayCompletedCount)})',
                         isSelected: viewModel.filterStatus == ShiftStatus.completed.value,
                         onTap: () => viewModel.setFilterStatus(
                           viewModel.filterStatus == ShiftStatus.completed.value ? null : ShiftStatus.completed.value,
@@ -394,6 +394,7 @@ class _ShiftRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final tr = context.strings;
 
     final start = DateTime.fromMillisecondsSinceEpoch(shift.startAt);
     final end = shift.endAt != null ? DateTime.fromMillisecondsSinceEpoch(shift.endAt!) : null;
@@ -404,7 +405,7 @@ class _ShiftRow extends StatelessWidget {
 
     final rateMinor = shift.rateOverrideMinor ?? job?.hourlyRateMinor;
     final rateStr = rateMinor != null
-        ? '${MoneyFormatter.format(rateMinor, job?.currencyCode ?? baseCurrency)}/h'
+        ? '${MoneyFormatter.format(rateMinor, job?.currencyCode ?? baseCurrency)}/${tr.hourAbbr}'
         : null;
 
     final durationHours = earnings?.workedMinutes != null
@@ -426,15 +427,15 @@ class _ShiftRow extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        job?.name ?? 'Shift',
+                        job?.name ?? tr.shiftLabel,
                         style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       if (shift.status == ShiftStatus.inProgress.value) ...[
                         const SizedBox(width: AppSpace.xs),
-                        const StatusChip('Active', tone: ChipTone.warning),
+                        StatusChip(tr.activeBadge, tone: ChipTone.warning),
                       ] else if (isCompleted) ...[
                         const SizedBox(width: AppSpace.xs),
-                        const StatusChip('Completed', tone: ChipTone.success),
+                        StatusChip(tr.statusCompleted, tone: ChipTone.success),
                       ],
                     ],
                   ),
@@ -453,7 +454,7 @@ class _ShiftRow extends StatelessWidget {
               children: [
                 if (durationHours > 0)
                   Text(
-                    '${durationHours.toStringAsFixed(1)} hrs',
+                    '${tr.localizeDigits(durationHours.toStringAsFixed(1))} ${tr.hrsUnit}',
                     style: text.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: scheme.onSurface,
@@ -469,9 +470,9 @@ class _ShiftRow extends StatelessWidget {
                   ),
                 if (isCompleted) ...[
                   const SizedBox(height: 2),
-                  const Text(
-                    'Done',
-                    style: TextStyle(
+                  Text(
+                    tr.done,
+                    style: const TextStyle(
                       color: Color(0xFF16A34A),
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
@@ -479,9 +480,9 @@ class _ShiftRow extends StatelessWidget {
                   ),
                 ] else if (shift.status == ShiftStatus.inProgress.value) ...[
                   const SizedBox(height: 2),
-                  const Text(
-                    'Live',
-                    style: TextStyle(
+                  Text(
+                    tr.liveBadge,
+                    style: const TextStyle(
                       color: Color(0xFFEAB308),
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
@@ -564,7 +565,7 @@ void _showShiftActionsSheet(BuildContext context, Shift shift, Job? job, WorkVie
                     children: [
                       Text(tr.duration, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                       Text(
-                        '${earnings?.workedMinutes != null ? (earnings!.workedMinutes / 60).toStringAsFixed(1) : (end != null ? (end.difference(start).inMinutes / 60).toStringAsFixed(1) : "—")} ${tr.hoursUnit}',
+                        '${tr.localizeDigits(earnings?.workedMinutes != null ? (earnings!.workedMinutes / 60).toStringAsFixed(1) : (end != null ? (end.difference(start).inMinutes / 60).toStringAsFixed(1) : "—"))} ${tr.hoursUnit}',
                         style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -574,7 +575,7 @@ void _showShiftActionsSheet(BuildContext context, Shift shift, Job? job, WorkVie
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(tr.breakTime, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-                      Text('${shift.breakMinutes} ${tr.minsUnit}', style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                      Text('${tr.formatNumber(shift.breakMinutes)} ${tr.minsUnit}', style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                     ],
                   ),
                   const SizedBox(height: AppSpace.xs),
@@ -809,7 +810,7 @@ void _showEditShiftDialog(BuildContext context, Shift shift, Job? job, WorkViewM
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.access_time),
                       title: Text(tr.starts),
-                      subtitle: Text(startTime.format(ctx)),
+                      subtitle: Text(AppDate.timeOnly(DateTime(2000, 1, 1, startTime.hour, startTime.minute))),
                       onTap: () async {
                         final t = await showTimePicker(context: ctx, initialTime: startTime);
                         if (t != null) setDialogState(() => startTime = t);
@@ -821,7 +822,7 @@ void _showEditShiftDialog(BuildContext context, Shift shift, Job? job, WorkViewM
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.access_time_filled),
                       title: Text(tr.ends),
-                      subtitle: Text(endTime.format(ctx)),
+                      subtitle: Text(AppDate.timeOnly(DateTime(2000, 1, 1, endTime.hour, endTime.minute))),
                       onTap: () async {
                         final t = await showTimePicker(context: ctx, initialTime: endTime);
                         if (t != null) setDialogState(() => endTime = t);

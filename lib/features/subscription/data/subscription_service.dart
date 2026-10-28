@@ -5,8 +5,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import 'package:firebase_analytics/firebase_analytics.dart' show AnalyticsEventItem;
+import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/config/app_config.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
+import 'package:finance_tracker/features/assistant/viewmodels/assistant_view_model.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
 
@@ -183,24 +185,53 @@ class SubscriptionService extends ChangeNotifier {
     return isPro;
   }
 
-  /// Synchronizes Pro subscription status directly from the Hyprwise backend server
+  /// Synchronizes Pro subscription status and AI quota directly from the Hyprwise backend server
   Future<bool> syncWithServer() async {
     try {
       final status = await ApiClient.instance.getSubscriptionStatus();
-      if (status != null && status['isPro'] != null) {
-        final serverPro = status['isPro'] as bool;
-        if (serverPro != _isPro) {
-          _isPro = serverPro;
-          await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
-          authService.updateProStatus(_isPro);
-          notifyListeners();
+      if (status != null) {
+        if (status['dailyAiQueriesUsed'] is int && getIt.isRegistered<AssistantViewModel>()) {
+          getIt<AssistantViewModel>().updateQuotaFromServer(
+            used: status['dailyAiQueriesUsed'] as int,
+            left: status['dailyAiQueriesLeft'] as int?,
+          );
+        } else if (status['dailyAiQueriesLeft'] is int && getIt.isRegistered<AssistantViewModel>()) {
+          final left = status['dailyAiQueriesLeft'] as int;
+          final used = (5 - left).clamp(0, 5);
+          getIt<AssistantViewModel>().updateQuotaFromServer(used: used, left: left);
         }
-        return _isPro;
+        if (status['isPro'] != null) {
+          final serverPro = status['isPro'] as bool;
+          if (serverPro != _isPro) {
+            _isPro = serverPro;
+            await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+            authService.updateProStatus(_isPro);
+            notifyListeners();
+          }
+          return _isPro;
+        }
       }
     } catch (e) {
       debugPrint('[Subscription] Server status sync notice: $e');
     }
     return isPro;
+  }
+
+  /// Updates pro state from canonical user authentication response
+  Future<void> setServerProStatus(bool serverPro) async {
+    _isPro = serverPro;
+    await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+    authService.updateProStatus(_isPro);
+    notifyListeners();
+  }
+
+  /// Resets local cached subscription state on sign-out
+  Future<void> resetOnLogout() async {
+    _isPro = false;
+    _proExpiryDate = null;
+    await _storage.delete(key: _proKey);
+    await _storage.delete(key: _proExpiryKey);
+    notifyListeners();
   }
 
   /// Presents the native RevenueCat Paywall

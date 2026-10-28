@@ -255,22 +255,22 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
               runSpacing: AppSpace.xs,
               children: [
                 _PresetChip(
-                  label: '1.0x ${tr.t("Base", ne: "आधार", es: "Base", fr: "Base", de: "Basis", ja: "基本", zh: "基础", it: "Base")}',
+                  label: '${tr.localizeDigits("1.0x")} ${tr.t("Base", ne: "आधार", es: "Base", fr: "Base", de: "Basis", ja: "基本", zh: "基础", it: "Base")}',
                   isSelected: (_customHourlyRate - _baseRateDouble).abs() < 0.05,
                   onTap: () => _setMultiplier(1.0),
                 ),
                 _PresetChip(
-                  label: '1.25x ${tr.t("Night", ne: "रात्रि", es: "Noche", fr: "Nuit", de: "Nacht", ja: "夜間", zh: "夜班", it: "Notturno")}',
+                  label: '${tr.localizeDigits("1.25x")} ${tr.t("Night", ne: "रात्रि", es: "Noche", fr: "Nuit", de: "Nacht", ja: "夜間", zh: "夜班", it: "Notturno")}',
                   isSelected: (_customHourlyRate - (_baseRateDouble * 1.25)).abs() < 0.05,
                   onTap: () => _setMultiplier(1.25),
                 ),
                 _PresetChip(
-                  label: '1.5x ${tr.t("Overtime", ne: "ओभरटाइम", es: "Horas extras", fr: "Heures sup", de: "Überstunden", ja: "残業", zh: "加班", it: "Straordinari")}',
+                  label: '${tr.localizeDigits("1.5x")} ${tr.t("Overtime", ne: "ओभरटाइम", es: "Horas extras", fr: "Heures sup", de: "Überstunden", ja: "残業", zh: "加班", it: "Straordinari")}',
                   isSelected: (_customHourlyRate - (_baseRateDouble * 1.5)).abs() < 0.05,
                   onTap: () => _setMultiplier(1.5),
                 ),
                 _PresetChip(
-                  label: '2.0x ${tr.t("Holiday", ne: "बिदा", es: "Festivo", fr: "Férié", de: "Feiertag", ja: "休日", zh: "假日", it: "Festivo")}',
+                  label: '${tr.localizeDigits("2.0x")} ${tr.t("Holiday", ne: "बिदा", es: "Festivo", fr: "Férié", de: "Feiertag", ja: "休日", zh: "假日", it: "Festivo")}',
                   isSelected: (_customHourlyRate - (_baseRateDouble * 2.0)).abs() < 0.05,
                   onTap: () => _setMultiplier(2.0),
                 ),
@@ -294,7 +294,7 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                     border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
                   ),
                   child: Text(
-                    '${MoneyFormatter.format((_customHourlyRate * 100).round(), widget.currencyCode)} / hr',
+                    '${MoneyFormatter.format((_customHourlyRate * 100).round(), widget.currencyCode)} ${tr.perHourSuffix}',
                     style: text.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: scheme.primary,
@@ -439,7 +439,7 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                           style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                         ),
                         Text(
-                          '${_overtimeThreshold.toStringAsFixed(1)} ${tr.hoursUnit}',
+                          '${tr.localizeDigits(_overtimeThreshold.toStringAsFixed(1))} ${tr.hoursUnit}',
                           style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ],
@@ -465,7 +465,7 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                             style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                           Text(
-                            '${_overtimeMultiplier.toStringAsFixed(2)}x (${MoneyFormatter.format((_customHourlyRate * _overtimeMultiplier * 100).round(), widget.currencyCode)}/hr)',
+                            '${tr.localizeDigits(_overtimeMultiplier.toStringAsFixed(2))}x (${MoneyFormatter.format((_customHourlyRate * _overtimeMultiplier * 100).round(), widget.currencyCode)} ${tr.perHourSuffix})',
                             style: text.labelSmall?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: scheme.primary,
@@ -499,7 +499,7 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                               borderRadius: BorderRadius.circular(AppRadius.xs),
                             ),
                             child: Text(
-                              '${MoneyFormatter.format((_overtimeFixedRate * 100).round(), widget.currencyCode)} / hr',
+                              '${MoneyFormatter.format((_overtimeFixedRate * 100).round(), widget.currencyCode)} ${tr.perHourSuffix}',
                               style: text.labelSmall?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: scheme.primary,
@@ -585,8 +585,8 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                           Expanded(
                             child: Text(
                               duration > _overtimeThreshold
-                                  ? '${_overtimeThreshold.toStringAsFixed(1)}h reg + ${(duration - _overtimeThreshold).toStringAsFixed(1)}h OT @ ${MoneyFormatter.format((effectiveOtRate * 100).round(), widget.currencyCode)}/h → avg ${MoneyFormatter.format(effectiveRateMinor, widget.currencyCode)}/h'
-                                  : 'Regular: ${MoneyFormatter.format((_customHourlyRate * 100).round(), widget.currencyCode)}/h · OT: ${MoneyFormatter.format((effectiveOtRate * 100).round(), widget.currencyCode)}/h after ${_overtimeThreshold.toStringAsFixed(1)}h',
+                                  ? '${tr.localizeDigits(_overtimeThreshold.toStringAsFixed(1))}${tr.hourAbbr} ${tr.regularRateShort} + ${tr.localizeDigits((duration - _overtimeThreshold).toStringAsFixed(1))}${tr.hourAbbr} ${tr.overtimeShort} @ ${MoneyFormatter.format((effectiveOtRate * 100).round(), widget.currencyCode)}/${tr.hourAbbr} → ${tr.avgShort} ${MoneyFormatter.format(effectiveRateMinor, widget.currencyCode)}/${tr.hourAbbr}'
+                                  : '${tr.regularHoursSummary(MoneyFormatter.format((_customHourlyRate * 100).round(), widget.currencyCode))}/${tr.hourAbbr} · ${tr.overtimeSummary("${MoneyFormatter.format((effectiveOtRate * 100).round(), widget.currencyCode)}/${tr.hourAbbr}", tr.localizeDigits(_overtimeThreshold.toStringAsFixed(1)))}',
                               style: text.labelSmall?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600),
                             ),
                           ),

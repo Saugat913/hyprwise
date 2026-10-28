@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/export/analytics_pdf_service.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/analytics/viewmodels/analytics_view_model.dart';
@@ -17,25 +18,57 @@ import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 
 enum ExportFormat {
-  csv('CSV Spreadsheet (.csv)', 'csv', 'Transactions and work shifts in tabular format, compatible with Microsoft Excel and Google Sheets.'),
-  json('Full System Backup (.json)', 'json', 'Complete database backup including accounts, shifts, jobs, goals, and exchange rates.'),
-  report('Financial Summary Report (.txt)', 'txt', 'Formatted human-readable financial summary report of balances, income, and goals.'),
-  analytics('Analytics Report (.csv)', 'csv', 'Period category breakdowns, top merchants, and spending/income trends.'),
-  analyticsReport('Analytics Summary Report (.txt)', 'txt', 'Human-readable summary of spending/income trends and category statistics.');
+  csv('csv'),
+  json('json'),
+  report('txt'),
+  analytics('csv'),
+  analyticsReport('txt');
 
-  const ExportFormat(this.label, this.extension, this.description);
-  final String label;
+  const ExportFormat(this.extension);
   final String extension;
-  final String description;
+
+  String get label {
+    final tr = AppStrings.current();
+    return switch (this) {
+      ExportFormat.csv => tr.csvFormatTitle,
+      ExportFormat.json => tr.jsonFormatTitle,
+      ExportFormat.report => tr.t('Financial Summary Report (.txt)', ne: 'वित्तीय सारांश रिपोर्ट (.txt)', es: 'Informe de resumen financiero (.txt)', fr: 'Rapport financier (.txt)', de: 'Finanzzusammenfassung (.txt)', ja: '財務サマリーレポート (.txt)', zh: '财务摘要报告 (.txt)', it: 'Riepilogo finanziario (.txt)'),
+      ExportFormat.analytics => tr.t('Analytics Report (.csv)', ne: 'विश्लेषण रिपोर्ट (.csv)', es: 'Informe de analíticas (.csv)', fr: 'Rapport d\'analyse (.csv)', de: 'Analysereport (.csv)', ja: '分析レポート (.csv)', zh: '分析报告 (.csv)', it: 'Report analitico (.csv)'),
+      ExportFormat.analyticsReport => tr.t('Analytics Summary Report (.txt)', ne: 'विश्लेषण सारांश रिपोर्ट (.txt)', es: 'Resumen de analíticas (.txt)', fr: 'Résumé d\'analyse (.txt)', de: 'Analysezusammenfassung (.txt)', ja: '分析サマリー (.txt)', zh: '分析摘要 (.txt)', it: 'Riepilogo analitico (.txt)'),
+    };
+  }
+
+  String get description {
+    final tr = AppStrings.current();
+    return switch (this) {
+      ExportFormat.csv => tr.csvFormatDesc,
+      ExportFormat.json => tr.jsonFormatDesc,
+      ExportFormat.report => tr.t('Formatted human-readable financial summary report of balances, income, and goals.', ne: 'मौज्दात, आम्दानी र लक्ष्यहरूको पठनीय वित्तीय सारांश रिपोर्ट।', es: 'Informe legible de saldos, ingresos y metas.', fr: 'Rapport financier lisible des soldes, revenus et objectifs.', de: 'Lesbarer Finanzbericht über Salden, Einnahmen und Ziele.', ja: '残高・収支・目標の読みやすい財務サマリー。', zh: '易读的余额、收支与储蓄目标汇总报告。', it: 'Report leggibile di saldi, entrate e obiettivi.'),
+      ExportFormat.analytics => tr.t('Period category breakdowns, top merchants, and spending/income trends.', ne: 'श्रेणीगत विवरण, मुख्य पसलहरू र खर्च/आम्दानी प्रवृति।', es: 'Desglose por categorías, comercios principales y tendencias.', fr: 'Répartition par catégorie, principaux commerçants et tendances.', de: 'Kategorienaufschlüsselung, Top-Händler und Trends.', ja: '期間別のカテゴリ内訳、主な取引先、収支トレンド。', zh: '周期分类明细、主要商户与收支趋势。', it: 'Dettaglio categorie, esercenti principali e trend.'),
+      ExportFormat.analyticsReport => tr.t('Human-readable summary of spending/income trends and category statistics.', ne: 'खर्च/आम्दानी प्रवृति र श्रेणी तथ्याङ्कको सारांश रिपोर्ट।', es: 'Resumen legible de tendencias de gastos/ingresos y estadísticas.', fr: 'Résumé lisible des tendances et statistiques par catégorie.', de: 'Lesbare Zusammenfassung von Trends und Kategoriestatistiken.', ja: '収支トレンドとカテゴリ統計のサマリーレポート。', zh: '收支趋势与分类统计的文本摘要报告。', it: 'Riepilogo leggibile dei trend e statistiche per categoria.'),
+    };
+  }
 }
 
 enum ExportDestination {
-  downloads('Save to Public Downloads', 'Saves directly to your device Downloads folder for easy file access.'),
-  share('Share to App', 'Send via WhatsApp, Email, Google Drive, or Save to Files.');
+  downloads,
+  share;
 
-  const ExportDestination(this.label, this.description);
-  final String label;
-  final String description;
+  String get label {
+    final tr = AppStrings.current();
+    return switch (this) {
+      ExportDestination.downloads => tr.saveToDownloadsTitle,
+      ExportDestination.share => tr.shareToAppsTitle,
+    };
+  }
+
+  String get description {
+    final tr = AppStrings.current();
+    return switch (this) {
+      ExportDestination.downloads => tr.saveToDownloadsDesc,
+      ExportDestination.share => tr.shareToAppsDesc,
+    };
+  }
 }
 
 class ExportResult {
@@ -77,7 +110,7 @@ abstract final class ExportService {
   }) async {
     final dataRepo = getIt<DataRepository>();
     final store = getIt<FinanceStore>();
-    final dateStr = DateFormatter.numeric(DateTime.now()).replaceAll('/', '-');
+    final dateStr = DateFormatter.numeric(DateTime.now(), locale: 'en').replaceAll('/', '-');
     final fileName = 'hyprwise_export_$dateStr.${format.extension}';
 
     String content;
@@ -137,6 +170,7 @@ abstract final class ExportService {
           builder: (ctx, setState) {
             final text = Theme.of(ctx).textTheme;
             final scheme = Theme.of(ctx).colorScheme;
+            final tr = ctx.strings;
 
             return SafeArea(
               child: ConstrainedBox(
@@ -152,10 +186,10 @@ abstract final class ExportService {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Export Financial Data', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                          Text(tr.exportFinancialData, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                           const SizedBox(height: 4),
                           Text(
-                            'Choose the format and where you would like to place the export.',
+                            tr.chooseExportFormatSub,
                             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ],
@@ -167,7 +201,7 @@ abstract final class ExportService {
                         padding: const EdgeInsets.symmetric(horizontal: AppSpace.page, vertical: AppSpace.md),
                         children: [
                           // Format Selection
-                          Text('1. Choose Format', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+                          Text(tr.chooseFormatLabel, style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
                           const SizedBox(height: AppSpace.sm),
                           for (final fmt in ExportFormat.values) ...[
                             OptionTile(
@@ -184,7 +218,7 @@ abstract final class ExportService {
                           const SizedBox(height: AppSpace.md),
 
                           // Destination Selection
-                          Text('2. Choose Destination', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+                          Text(tr.deliveryMethodLabel, style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
                           const SizedBox(height: AppSpace.sm),
                           for (final dest in ExportDestination.values) ...[
                             OptionTile(
@@ -206,7 +240,7 @@ abstract final class ExportService {
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Cancel'),
+                              child: Text(tr.cancel),
                             ),
                           ),
                           const SizedBox(width: AppSpace.md),
@@ -217,7 +251,7 @@ abstract final class ExportService {
                                 _handleExportExecution(context, selectedFormat, selectedDestination);
                               },
                               icon: const Icon(Icons.download_rounded, size: 18),
-                              label: const Text('Export Now'),
+                              label: Text(tr.exportNowButton),
                             ),
                           ),
                         ],
@@ -261,6 +295,7 @@ abstract final class ExportService {
           builder: (ctx) {
             final text = Theme.of(ctx).textTheme;
             final scheme = Theme.of(ctx).colorScheme;
+            final tr = ctx.strings;
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
@@ -268,7 +303,7 @@ abstract final class ExportService {
                 children: [
                   const Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
                   const SizedBox(width: AppSpace.sm),
-                  Text('Export Complete', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(tr.exportCompleteTitle, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 ],
               ),
               content: Column(
@@ -276,11 +311,11 @@ abstract final class ExportService {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Your data was exported successfully (${(result.fileSizeBytes / 1024).toStringAsFixed(1)} KB).',
+                    tr.exportCompleteMsg(tr.localizeDigits((result.fileSizeBytes / 1024).toStringAsFixed(1))),
                     style: text.bodyMedium,
                   ),
                   const SizedBox(height: AppSpace.md),
-                  Text('File location:', style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(tr.fileLocationLabel, style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
                   Container(
                     width: double.infinity,
@@ -300,15 +335,15 @@ abstract final class ExportService {
               actions: [
                 TextButton.icon(
                   icon: const Icon(Icons.copy_rounded, size: 16),
-                  label: const Text('Copy path'),
+                  label: Text(tr.copyPathButton),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: result.filePath));
-                    showToast(context, 'Path copied to clipboard');
+                    showToast(context, tr.pathCopiedToast);
                   },
                 ),
                 FilledButton.icon(
                   icon: const Icon(Icons.share_rounded, size: 16),
-                  label: const Text('Share file'),
+                  label: Text(tr.shareFileButton),
                   onPressed: () {
                     Navigator.pop(ctx);
                     SharePlus.instance.share(ShareParams(files: [XFile(result.filePath)]));

@@ -7,8 +7,10 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
 import 'package:finance_tracker/core/export/export_service.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
+import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/analytics/viewmodels/analytics_view_model.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
@@ -369,7 +371,7 @@ abstract final class AnalyticsPdfService {
 
     // Save PDF to Public Downloads directory
     final targetDir = await ExportService.getPublicDownloadsDirectory();
-    final dateStr = DateFormatter.numeric(DateTime.now()).replaceAll('/', '-');
+    final dateStr = DateFormatter.numeric(DateTime.now(), locale: 'en').replaceAll('/', '-');
     final fileName = 'hyprwise_${typeName.toLowerCase()}_report_$dateStr.pdf';
     final file = File('${targetDir.path}/$fileName');
     await file.writeAsBytes(await pdf.save(), flush: true);
@@ -479,9 +481,8 @@ abstract final class AnalyticsPdfService {
   /// Interactive export sheet focused strictly on high-quality PDF export
   static Future<void> showPdfExportSheet(BuildContext context, AnalyticsViewModel viewModel) async {
     final isExpense = viewModel.activeType == TransactionType.expense;
-    final typeName = isExpense ? 'Spending' : 'Income';
     final currency = viewModel.baseCurrency;
-    final total = '$currency ${(viewModel.activeTotalMinor / 100).toStringAsFixed(2)}';
+    final total = MoneyFormatter.format(viewModel.activeTotalMinor, currency);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -492,6 +493,8 @@ abstract final class AnalyticsPdfService {
       builder: (ctx) {
         final text = Theme.of(ctx).textTheme;
         final scheme = Theme.of(ctx).colorScheme;
+        final tr = ctx.strings;
+        final typeLabel = isExpense ? tr.spending : tr.income;
 
         return SafeArea(
           child: Padding(
@@ -522,12 +525,12 @@ abstract final class AnalyticsPdfService {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Export Analytics PDF',
+                            tr.t('Export Analytics PDF', ne: 'विश्लेषण PDF निर्यात गर्नुहोस्', es: 'Exportar PDF de analíticas', fr: 'Exporter le PDF d\'analyse', de: 'Analyse-PDF exportieren', ja: '分析PDFを出力', zh: '导出分析 PDF', it: 'Esporta PDF analitico'),
                             style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Branded PDF report with charts & tables',
+                            tr.t('Branded PDF report with charts & tables', ne: 'चार्ट र तालिकाहरू सहितको PDF रिपोर्ट', es: 'Informe PDF con gráficos y tablas', fr: 'Rapport PDF avec graphiques et tableaux', de: 'PDF-Bericht mit Diagrammen und Tabellen', ja: 'グラフと表を含むPDFレポート', zh: '包含图表与表格的 PDF 报告', it: 'Report PDF con grafici e tabelle'),
                             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ],
@@ -545,9 +548,9 @@ abstract final class AnalyticsPdfService {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Report Type', style: text.bodySmall),
+                          Text(tr.t('Report Type', ne: 'रिपोर्टको प्रकार', es: 'Tipo de informe', fr: 'Type de rapport', de: 'Berichtstyp', ja: 'レポート種類', zh: '报告类型', it: 'Tipo di report'), style: text.bodySmall),
                           Text(
-                            '$typeName Analysis',
+                            '$typeLabel · ${tr.analytics}',
                             style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ],
@@ -556,7 +559,7 @@ abstract final class AnalyticsPdfService {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Period', style: text.bodySmall),
+                          Text(tr.periodLabel, style: text.bodySmall),
                           Text(
                             viewModel.dateFilter.label,
                             style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -567,7 +570,7 @@ abstract final class AnalyticsPdfService {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Total $typeName', style: text.bodySmall),
+                          Text('${tr.total} ($typeLabel)', style: text.bodySmall),
                           Text(
                             total,
                             style: text.titleSmall?.copyWith(
@@ -581,8 +584,8 @@ abstract final class AnalyticsPdfService {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Format', style: text.bodySmall),
-                          const StatusChip('PDF DOCUMENT', tone: ChipTone.success),
+                          Text(tr.t('Format', ne: 'ढाँचा', es: 'Formato', fr: 'Format', de: 'Format', ja: '形式', zh: '格式', it: 'Formato'), style: text.bodySmall),
+                          StatusChip(tr.t('PDF DOCUMENT', ne: 'PDF कागजात', es: 'DOCUMENTO PDF', fr: 'DOCUMENT PDF', de: 'PDF-DOKUMENT', ja: 'PDFドキュメント', zh: 'PDF 文档', it: 'DOCUMENTO PDF'), tone: ChipTone.success),
                         ],
                       ),
                     ],
@@ -593,7 +596,7 @@ abstract final class AnalyticsPdfService {
                 // Action Buttons
                 FilledButton.icon(
                   icon: const Icon(Icons.download_rounded, size: 20),
-                  label: const Text('Save PDF to Downloads'),
+                  label: Text(tr.saveToDownloadsTitle),
                   onPressed: () async {
                     Navigator.pop(ctx);
                     await _executePdfExport(context, viewModel, shareAfter: false);
@@ -602,7 +605,7 @@ abstract final class AnalyticsPdfService {
                 const SizedBox(height: AppSpace.sm),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.share_rounded, size: 18),
-                  label: const Text('Share PDF to App...'),
+                  label: Text(tr.shareToAppsTitle),
                   onPressed: () async {
                     Navigator.pop(ctx);
                     await _executePdfExport(context, viewModel, shareAfter: true);
@@ -623,7 +626,8 @@ abstract final class AnalyticsPdfService {
     required bool shareAfter,
   }) async {
     try {
-      showToast(context, 'Generating branded PDF report...');
+      final tr = context.strings;
+      showToast(context, tr.t('Generating branded PDF report...', ne: 'PDF रिपोर्ट तयार हुँदैछ...', es: 'Generando informe PDF...', fr: 'Génération du rapport PDF...', de: 'PDF-Bericht wird erstellt...', ja: 'PDFレポートを作成中...', zh: '正在生成 PDF 报告...', it: 'Generazione report PDF...'));
       final file = await generatePdf(viewModel);
 
       if (!context.mounted) return;
@@ -641,6 +645,7 @@ abstract final class AnalyticsPdfService {
           builder: (ctx) {
             final text = Theme.of(ctx).textTheme;
             final scheme = Theme.of(ctx).colorScheme;
+            final trCtx = ctx.strings;
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
@@ -648,16 +653,16 @@ abstract final class AnalyticsPdfService {
                 children: [
                   const Icon(Icons.check_circle_rounded, color: Colors.green, size: 26),
                   const SizedBox(width: AppSpace.sm),
-                  Text('PDF Generated', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(trCtx.exportCompleteTitle, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 ],
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Your analytics report was saved as a PDF.'),
+                  Text(trCtx.t('Your analytics report was saved as a PDF.', ne: 'तपाईंको विश्लेषण रिपोर्ट PDF को रूपमा सुरक्षित गरियो।', es: 'Tu informe de analíticas se guardó como PDF.', fr: 'Votre rapport d\'analyse a été enregistré en PDF.', de: 'Ihr Analysebericht wurde als PDF gespeichert.', ja: '分析レポートがPDFとして保存されました。', zh: '您的分析报告已保存为 PDF。', it: 'Il tuo report analitico è stato salvato come PDF.')),
                   const SizedBox(height: AppSpace.md),
-                  Text('Saved to:', style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(trCtx.fileLocationLabel, style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
                   Container(
                     width: double.infinity,
@@ -677,11 +682,11 @@ abstract final class AnalyticsPdfService {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Done'),
+                  child: Text(trCtx.done),
                 ),
                 FilledButton.icon(
                   icon: const Icon(Icons.share_rounded, size: 16),
-                  label: const Text('Share PDF'),
+                  label: Text(trCtx.shareFileButton),
                   onPressed: () {
                     Navigator.pop(ctx);
                     SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));

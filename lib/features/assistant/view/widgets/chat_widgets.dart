@@ -297,7 +297,7 @@ class ChatChartCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '${(slices[i].value * 100 / total).round()}%',
+                          '${tr.formatNumber((slices[i].value * 100 / total).round())}%',
                           style: text.bodySmall?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -367,8 +367,8 @@ class ChatChartCard extends StatelessWidget {
   }
 
   static String _label(String key) {
-    final words = key.replaceAll('_', ' ');
-    return words.isEmpty ? key : words[0].toUpperCase() + words.substring(1);
+    final tr = AppStrings.current();
+    return tr.categoryLabel(key, key.replaceAll('_', ' '));
   }
 }
 

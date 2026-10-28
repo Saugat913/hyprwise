@@ -1,21 +1,28 @@
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 
 class TransactionCategory {
   const TransactionCategory(
     this.value,
-    this.label,
+    this._defaultLabel,
     this.type, {
     this.isCustom = false,
   });
 
   final String value;
-  final String label;
+  final String _defaultLabel;
   final TransactionType type;
   final bool isCustom;
 
+  String get defaultLabel => _defaultLabel;
+
+  String get label => isCustom
+      ? _defaultLabel
+      : AppStrings.current().categoryLabel(value, _defaultLabel);
+
   Map<String, dynamic> toJson() => {
         'value': value,
-        'label': label,
+        'label': _defaultLabel,
         'type': type.value,
         'isCustom': isCustom,
       };
@@ -114,11 +121,25 @@ abstract final class TransactionCategories {
     for (final category in all) {
       if (category.type == type &&
           (category.value.toLowerCase() == needle ||
+              category.defaultLabel.toLowerCase() == needle ||
               category.label.toLowerCase() == needle)) {
         return category;
       }
     }
     return null;
+  }
+
+  /// Resolves any stored category key or English label into the active locale's display label.
+  static String localizedCategoryName(String raw) {
+    final needle = raw.trim().toLowerCase();
+    for (final category in all) {
+      if (category.value.toLowerCase() == needle ||
+          category.defaultLabel.toLowerCase() == needle ||
+          category.label.toLowerCase() == needle) {
+        return category.label;
+      }
+    }
+    return AppStrings.current().categoryLabel(raw, raw);
   }
 
   static TransactionCategory fromValue(String valueOrLabel, TransactionType type) =>

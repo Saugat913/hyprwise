@@ -21,7 +21,18 @@ class AiChatResult {
   final String? content;
   final List<AiFunctionCall> functionCalls;
   final bool isPro;
-  const AiChatResult({this.content, this.functionCalls = const [], this.isPro = false});
+  final bool limitReached;
+  final int? dailyAiQueriesUsed;
+  final int? dailyAiQueriesLeft;
+
+  const AiChatResult({
+    this.content,
+    this.functionCalls = const [],
+    this.isPro = false,
+    this.limitReached = false,
+    this.dailyAiQueriesUsed,
+    this.dailyAiQueriesLeft,
+  });
 }
 
 /// Client for connecting to the Hyprwise Hono Backend Server.
@@ -41,14 +52,38 @@ class ApiClient {
 
   String? _resolvedBaseUrl;
   String? _authToken;
+  String? _userId;
+  String? _userEmail;
+
+  String? get authToken => _authToken;
+  String? get userId => _userId;
+  String? get userEmail => _userEmail;
 
   void setAuthToken(String? token) {
     _authToken = token;
   }
 
+  void setAuthContext({
+    String? token,
+    String? userId,
+    String? email,
+  }) {
+    if (token != null) _authToken = token;
+    _userId = userId;
+    _userEmail = email;
+  }
+
+  void clearAuthContext() {
+    _authToken = null;
+    _userId = null;
+    _userEmail = null;
+  }
+
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
-        if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+        if (_authToken != null && _authToken!.isNotEmpty) 'Authorization': 'Bearer $_authToken',
+        if (_userId != null && _userId!.isNotEmpty) 'X-User-Id': _userId!,
+        if (_userEmail != null && _userEmail!.isNotEmpty) 'X-User-Email': _userEmail!,
       };
 
   /// Discovers the active server URL by pinging /health
@@ -122,9 +157,12 @@ class ApiClient {
 
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body) as Map<String, dynamic>;
-        if (body['token'] != null) {
-          setAuthToken(body['token'] as String);
-        }
+        final userMap = body['user'] as Map<String, dynamic>?;
+        setAuthContext(
+          token: body['token'] as String?,
+          userId: userMap?['id'] as String? ?? uid,
+          email: userMap?['email'] as String? ?? email,
+        );
         return body;
       }
     } catch (e) {
@@ -159,9 +197,12 @@ class ApiClient {
 
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body) as Map<String, dynamic>;
-        if (body['token'] != null) {
-          setAuthToken(body['token'] as String);
-        }
+        final userMap = body['user'] as Map<String, dynamic>?;
+        setAuthContext(
+          token: body['token'] as String?,
+          userId: userMap?['id'] as String?,
+          email: userMap?['email'] as String? ?? email,
+        );
         return body;
       }
     } catch (e) {
@@ -194,9 +235,12 @@ class ApiClient {
 
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body) as Map<String, dynamic>;
-        if (body['token'] != null) {
-          setAuthToken(body['token'] as String);
-        }
+        final userMap = body['user'] as Map<String, dynamic>?;
+        setAuthContext(
+          token: body['token'] as String?,
+          userId: userMap?['id'] as String?,
+          email: userMap?['email'] as String? ?? email,
+        );
         return body;
       }
     } catch (e) {
@@ -273,6 +317,51 @@ class ApiClient {
     return null;
   }
 
+  /// Fetch current server-side AI quota state
+  Future<Map<String, dynamic>?> getAiQuota() async {
+    try {
+      final host = await getBaseUrl();
+      if (host == null) return null;
+
+      final res = await http
+          .get(
+            Uri.parse('$host/api/ai/quota'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('Error fetching AI quota: $e');
+    }
+    return null;
+  }
+
+  /// Consume 1 server-side AI query quota unit before executing an AI/OCR/NLP action
+  Future<Map<String, dynamic>?> consumeAiQuota() async {
+    try {
+      final host = await getBaseUrl();
+      if (host == null) return null;
+
+      final res = await http
+          .post(
+            Uri.parse('$host/api/ai/quota/consume'),
+            headers: _headers,
+            body: jsonEncode({}),
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200 || res.statusCode == 403) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('Error consuming AI quota: $e');
+    }
+    return null;
+  }
+
   /// Send query to Gemini AI chat gateway with full MCP function calling support
   Future<AiChatResult?> chatWithAiDetailed(
     String message, {
@@ -281,6 +370,7 @@ class ApiClient {
     dynamic context,
     String? imageBase64,
     String? imageMimeType,
+    bool quotaAlreadyConsumed = false,
   }) async {
     try {
       final host = await getBaseUrl();
@@ -302,6 +392,7 @@ class ApiClient {
               if (systemInstruction != null) 'systemInstruction': systemInstruction,
               if (tools != null) 'tools': tools,
               if (context != null) 'context': context,
+              if (quotaAlreadyConsumed) 'quotaAlreadyConsumed': true,
             }),
           )
           .timeout(const Duration(seconds: 15));
@@ -316,12 +407,18 @@ class ApiClient {
           content: body['content'] as String?,
           functionCalls: calls,
           isPro: body['isPro'] as bool? ?? false,
+          limitReached: body['limitReached'] as bool? ?? false,
+          dailyAiQueriesUsed: body['dailyAiQueriesUsed'] as int?,
+          dailyAiQueriesLeft: body['dailyAiQueriesLeft'] as int?,
         );
       } else if (res.statusCode == 403) {
-        final body = jsonDecode(res.body);
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
         return AiChatResult(
           content: body['message'] as String? ?? 'This feature requires Hyprwise Pro.',
           isPro: false,
+          limitReached: true,
+          dailyAiQueriesUsed: (body['dailyAiQueriesUsed'] as int?) ?? 5,
+          dailyAiQueriesLeft: (body['dailyAiQueriesLeft'] as int?) ?? 0,
         );
       }
     } catch (e) {
@@ -337,6 +434,7 @@ class ApiClient {
     List<Map<String, dynamic>>? tools,
     String? imageBase64,
     String? imageMimeType,
+    bool quotaAlreadyConsumed = false,
   }) async {
     final result = await chatWithAiDetailed(
       message,
@@ -344,7 +442,9 @@ class ApiClient {
       tools: tools,
       imageBase64: imageBase64,
       imageMimeType: imageMimeType,
+      quotaAlreadyConsumed: quotaAlreadyConsumed,
     );
+    if (result?.limitReached == true) return null;
     return result?.content;
   }
 

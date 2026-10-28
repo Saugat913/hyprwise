@@ -69,7 +69,7 @@ class SettingsScreen extends StatelessWidget {
                       ListRow(
                         title: tr.accounts,
                         leading: const IconTile(HugeIcons.strokeRoundedWallet01),
-                        trailing: _Value('${viewModel.accountsCount}'),
+                        trailing: _Value(tr.formatNumber(viewModel.accountsCount)),
                         onTap: () => context.push(AppRoutes.accounts),
                       ),
                       const RowDivider(),
@@ -83,7 +83,7 @@ class SettingsScreen extends StatelessWidget {
                       ListRow(
                         title: tr.jobs,
                         leading: const IconTile(HugeIcons.strokeRoundedBriefcase01),
-                        trailing: _Value('${viewModel.jobsCount}'),
+                        trailing: _Value(tr.formatNumber(viewModel.jobsCount)),
                         onTap: () => context.push(AppRoutes.manageJobs),
                       ),
                       const RowDivider(),
@@ -249,7 +249,7 @@ class SettingsScreen extends StatelessWidget {
                               await viewModel.eraseAllData();
                               await authService.signOut();
                               if (context.mounted) {
-                                showToast(context, 'Account and data deleted');
+                                showToast(context, tr.accountAndDataDeleted);
                                 context.go(AppRoutes.home);
                               }
                             }
@@ -271,7 +271,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpace.xs),
                       Text(
-                        'v0.1.0 (preview) · personal finance & shift planner',
+                        tr.appVersionTagline,
                         style: text.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
                           fontSize: 11,
@@ -402,8 +402,8 @@ class _SubscriptionBanner extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         isPro
-                            ? 'Cloud sync & Hypr AI unlocked'
-                            : 'Cloud sync, Hypr AI, multi-currency & PDF export',
+                            ? tr.proUnlockedSubtitle
+                            : tr.proUpgradeSubtitle,
                         style: text.bodySmall?.copyWith(
                           color: Colors.white.withValues(alpha: 0.75),
                         ),
@@ -433,6 +433,7 @@ class _AccountAuthCard extends StatelessWidget {
     final authService = getIt<AuthService>();
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final tr = context.strings;
 
     return ListenableBuilder(
       listenable: authService,
@@ -462,7 +463,7 @@ class _AccountAuthCard extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () => authService.signOut(),
-                  child: const Text('Sign out'),
+                  child: Text(tr.signOut),
                 ),
               ],
             ),
@@ -474,10 +475,10 @@ class _AccountAuthCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Cloud Account', style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              Text(tr.cloudAccount, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(
-                'Sign in to synchronize your finances and backup to Google Drive.',
+                tr.signInToSyncSubtitle,
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: AppSpace.md),
@@ -492,7 +493,7 @@ class _AccountAuthCard extends StatelessWidget {
                       label: const Text('Google', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                       onPressed: () async {
                         await authService.signInWithGoogle();
-                        if (context.mounted) showToast(context, 'Signed in with Google');
+                        if (context.mounted) showToast(context, tr.signedInWithGoogle);
                       },
                     ),
                   ),
@@ -508,7 +509,7 @@ class _AccountAuthCard extends StatelessWidget {
                         label: const Text('Apple', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         onPressed: () async {
                           await authService.signInWithApple();
-                          if (context.mounted) showToast(context, 'Signed in with Apple');
+                          if (context.mounted) showToast(context, tr.signedInWithApple);
                         },
                       ),
                     ),

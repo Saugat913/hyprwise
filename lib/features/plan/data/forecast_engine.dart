@@ -1,6 +1,8 @@
 import 'package:finance_tracker/core/database/app_database.dart';
-import 'package:finance_tracker/features/shared/data/finance_snapshot.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
+import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/features/shared/data/finance_snapshot.dart';
 import 'package:finance_tracker/features/plan/data/model/goals.dart';
 import 'package:finance_tracker/features/money/data/model/recurring.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';
@@ -227,13 +229,14 @@ class ForecastEngine {
       if (end.isBefore(start) || end.isAfter(horizonEnd)) continue;
       final job = jobsById[shift.jobId];
       if (job == null) continue;
+      final tr = AppStrings.current();
       final earnings = ShiftEarnings.forShift(shift, job);
       final rateStr =
-          '${job.currencyCode} ${(job.hourlyRateMinor / 100).toStringAsFixed(job.hourlyRateMinor % 100 == 0 ? 0 : 2)}/h';
+          '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)}/${tr.hourAbbr}';
       events.add(
         ForecastEvent(
           date: AppDate.dateOnly(end),
-          label: '${job.name} shift',
+          label: tr.jobShiftTitle(job.name),
           deltaMinor: snapshot.convert(
             earnings.earningsMinor,
             job.currencyCode,

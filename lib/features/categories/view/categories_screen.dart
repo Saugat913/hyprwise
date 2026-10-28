@@ -60,9 +60,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
                 // Explanation
                 Text(
-                  tr.isNepali
-                      ? 'कुनै पनि वर्गमा ट्याप गरी नयाँ व्यापारी थप्न वा वर्ग सम्पादन गर्न सक्नुहुन्छ।'
-                      : 'Tap on any category to add custom merchant shortcuts or manage custom categories.',
+                  tr.t(
+                    'Tap on any category to add custom merchant shortcuts or manage custom categories.',
+                    ne: 'कुनै पनि वर्गमा ट्याप गरी नयाँ व्यापारी थप्न वा वर्ग सम्पादन गर्न सक्नुहुन्छ।',
+                    es: 'Toca cualquier categoría para añadir comercios rápidos o gestionar categorías.',
+                    fr: 'Appuyez sur une catégorie pour ajouter des commerçants ou gérer vos catégories.',
+                    de: 'Tippen Sie auf eine Kategorie, um Händler-Shortcuts hinzuzufügen.',
+                    ja: 'カテゴリをタップして店舗ショートカットの追加や管理ができます。',
+                    zh: '点击任意类别以添加常用商户快捷方式或管理自定义类别。',
+                    it: 'Tocca una categoria per aggiungere esercenti rapidi o gestire le categorie.',
+                  ),
                   style: text.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

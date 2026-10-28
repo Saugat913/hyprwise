@@ -92,7 +92,7 @@ class AccountsScreen extends StatelessWidget {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(accounts[i].name, style: text.titleSmall),
+                                        Text(tr.accountDisplayName(accounts[i].name), style: text.titleSmall),
                                         Text(
                                           '${AccountType.fromValue(accounts[i].type).localizedLabel(tr)} · ${accounts[i].currencyCode}',
                                           style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),

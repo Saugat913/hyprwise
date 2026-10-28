@@ -147,7 +147,7 @@ class LiveShiftScreen extends StatelessWidget {
                         const SizedBox(height: AppSpace.sm),
                       ],
                       Text(
-                        _formatTimer(elapsed),
+                        tr.localizeDigits(_formatTimer(elapsed)),
                         style: text.displayLarge?.copyWith(
                           fontFamily: 'RedditMono',
                           fontWeight: FontWeight.w700,
@@ -158,7 +158,7 @@ class LiveShiftScreen extends StatelessWidget {
                       const SizedBox(height: AppSpace.md),
                       if (viewModel.isOnBreak)
                         Text(
-                          '${tr.breakTime}: ${_formatTimer(viewModel.currentBreakDuration)}',
+                          '${tr.breakTime}: ${tr.localizeDigits(_formatTimer(viewModel.currentBreakDuration))}',
                           style: text.bodyMedium?.copyWith(
                             color: colors.warning,
                             fontWeight: FontWeight.w600,
@@ -191,7 +191,7 @@ class LiveShiftScreen extends StatelessWidget {
                     final confirmed = await showConfirmDialog(
                       context,
                       title: tr.endShiftNow,
-                      message: '${job?.name ?? "Shift"} · ${elapsed.inHours}h ${elapsed.inMinutes % 60}m (${viewModel.currentBreakMinutes}m).',
+                      message: '${job?.name ?? tr.shiftLabel} · ${tr.formatNumber(elapsed.inHours)}${tr.hourAbbr} ${tr.formatNumber(elapsed.inMinutes % 60)}${tr.minuteAbbr} (${tr.formatNumber(viewModel.currentBreakMinutes)}${tr.minuteAbbr}).',
                       confirmLabel: tr.endShift,
                       cancelLabel: tr.keepWorking,
                     );

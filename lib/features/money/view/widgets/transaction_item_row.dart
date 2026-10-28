@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
+import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
 class TransactionItemRow extends StatelessWidget {
@@ -19,9 +20,10 @@ class TransactionItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final isIncome = transaction.type == TransactionType.income.value;
+    final locCat = TransactionCategories.localizedCategoryName(transaction.category);
     final title = (transaction.note?.isNotEmpty ?? false)
         ? transaction.note!
-        : transaction.category;
+        : locCat;
 
     return Padding(
       padding: const EdgeInsets.all(AppSpace.lg),
@@ -34,7 +36,7 @@ class TransactionItemRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: text.titleSmall),
-                Text(transaction.category, style: text.bodySmall),
+                Text(locCat, style: text.bodySmall),
               ],
             ),
           ),

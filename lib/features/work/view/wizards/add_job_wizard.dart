@@ -267,7 +267,7 @@ class _AddJobWizardState extends State<AddJobWizard> {
               const SizedBox(height: AppSpace.xl),
               Text(
                 tr.t(
-                  '${_selectedDays.length} ${_selectedDays.length == 1 ? "day" : "days"} selected per week',
+                  '${tr.formatNumber(_selectedDays.length)} ${_selectedDays.length == 1 ? "day" : "days"} selected per week',
                   ne: 'हप्तामा ${_selectedDays.length} दिन छानिएका छन्',
                   es: '${_selectedDays.length} días seleccionados por semana',
                   fr: '${_selectedDays.length} jours sélectionnés par semaine',

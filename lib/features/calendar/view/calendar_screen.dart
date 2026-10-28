@@ -157,7 +157,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           const SizedBox(width: AppSpace.sm),
                         ],
                         Text(
-                          '${items.length} ${items.length == 1 ? "item" : "items"} scheduled',
+                          tr.itemsScheduledCount(items.length),
                           style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                         ),
                       ],
@@ -301,14 +301,13 @@ class _WeekDayPill extends StatelessWidget {
   final bool hasDot;
   final VoidCallback onTap;
 
-  static const _dayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
-    final dayLetter = _dayLetters[date.weekday - 1];
+    final tr = context.strings;
+    final dayLetter = tr.weekdayShort(date.weekday);
 
     return InkWell(
       onTap: onTap,
@@ -339,7 +338,7 @@ class _WeekDayPill extends StatelessWidget {
                     : null,
               ),
               child: Text(
-                '${date.day}',
+                tr.formatNumber(date.day),
                 style: text.titleSmall?.copyWith(
                   color: isSelected ? scheme.onPrimary : scheme.onSurface,
                   fontWeight: (isSelected || isToday) ? FontWeight.w700 : FontWeight.w500,
@@ -794,10 +793,7 @@ class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
   }
 
   String _formatHourLabel(int hour) {
-    if (hour == 0) return '12 AM';
-    if (hour < 12) return '$hour AM';
-    if (hour == 12) return '12 PM';
-    return '${hour - 12} PM';
+    return AppStrings.current().formatHourLabel(hour);
   }
 }
 
@@ -1085,7 +1081,7 @@ class _TimelineEventBlock extends StatelessWidget {
               if (isShift && item.durationMinutes > 0) ...[
                 const SizedBox(width: 5),
                 Text(
-                  '(${(item.durationMinutes / 60).toStringAsFixed(1)}h)',
+                  '(${tr.localizeDigits((item.durationMinutes / 60).toStringAsFixed(1))}${tr.hourAbbr})',
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
@@ -1218,7 +1214,7 @@ class _TimelineEventBlock extends StatelessWidget {
                   borderRadius: BorderRadius.zero,
                 ),
                 child: Text(
-                  '${(item.durationMinutes / 60).toStringAsFixed(1)} hours duration',
+                  tr.hoursDurationLabel(tr.localizeDigits((item.durationMinutes / 60).toStringAsFixed(1))),
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -1304,7 +1300,13 @@ class _TimelineEventBlock extends StatelessWidget {
                               ? const Color(0xFF16A34A)
                               : const Color(0xFFDC2626),
                       child: Text(
-                        item.type.name.toUpperCase(),
+                        switch (item.type) {
+                          CalendarItemType.shift => tr.shiftLabel.toUpperCase(),
+                          CalendarItemType.expense => tr.expense.toUpperCase(),
+                          CalendarItemType.income => tr.income.toUpperCase(),
+                          CalendarItemType.bill => tr.billTagLabel.toUpperCase(),
+                          CalendarItemType.goal => tr.goalLabel.toUpperCase(),
+                        },
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
                       ),
                     ),
@@ -1326,7 +1328,7 @@ class _TimelineEventBlock extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpace.xs),
                 Text(
-                  'Amount: ${MoneyFormatter.format(item.amountMinor, item.currencyCode)}',
+                  tr.amountWithValue(MoneyFormatter.format(item.amountMinor, item.currencyCode)),
                   style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: AppSpace.lg),

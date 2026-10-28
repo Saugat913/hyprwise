@@ -52,12 +52,12 @@ class _MoneyScreenState extends State<MoneyScreen> {
             actions: [
               TopBarAction(
                 HugeIcons.strokeRoundedAnalytics01,
-                tooltip: 'Analytics',
+                tooltip: tr.analytics,
                 onPressed: () => context.push(AppRoutes.analytics),
               ),
               TopBarAction(
                 HugeIcons.strokeRoundedPlusSign,
-                tooltip: 'Add transaction',
+                tooltip: tr.addTransaction,
                 onPressed: () => context.push(AppRoutes.addTransaction),
               ),
             ],
@@ -70,7 +70,7 @@ class _MoneyScreenState extends State<MoneyScreen> {
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search notes, merchants, categories...',
+                    hintText: tr.searchTransactionsHint,
                     prefixIcon: const Icon(Icons.search_rounded, size: 20),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
@@ -100,10 +100,10 @@ class _MoneyScreenState extends State<MoneyScreen> {
 
                 // Type Tabs
                 SegmentedTabs<MoneyFilterTab>(
-                  options: const {
-                    MoneyFilterTab.all: 'All',
-                    MoneyFilterTab.income: 'Income',
-                    MoneyFilterTab.expenses: 'Expenses',
+                  options: {
+                    MoneyFilterTab.all: tr.allEvents,
+                    MoneyFilterTab.income: tr.income,
+                    MoneyFilterTab.expenses: tr.expenses,
                   },
                   value: viewModel.tab,
                   onChanged: viewModel.setTab,
@@ -117,7 +117,7 @@ class _MoneyScreenState extends State<MoneyScreen> {
                     child: Row(
                       children: [
                         _FilterChip(
-                          label: 'All categories',
+                          label: tr.allCategoriesTitle,
                           isSelected: viewModel.selectedCategory == null,
                           onTap: () => viewModel.selectCategory(null),
                         ),
@@ -143,7 +143,7 @@ class _MoneyScreenState extends State<MoneyScreen> {
                     child: Row(
                       children: [
                         Text(
-                          '${txs.length} ${txs.length == 1 ? "transaction" : "transactions"} found',
+                          tr.transactionsFoundCount(txs.length),
                           style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                         ),
                         const Spacer(),
@@ -155,7 +155,7 @@ class _MoneyScreenState extends State<MoneyScreen> {
                             viewModel.selectAccount(null);
                           },
                           child: Text(
-                            'Clear filters',
+                            tr.clearFilters,
                             style: text.bodySmall?.copyWith(
                               color: scheme.primary,
                               fontWeight: FontWeight.w600,
@@ -171,11 +171,11 @@ class _MoneyScreenState extends State<MoneyScreen> {
                     height: 340,
                     child: EmptyState(
                       icon: HugeIcons.strokeRoundedCoins01,
-                      title: hasActiveFilter ? 'No matching transactions' : 'No transactions yet',
+                      title: hasActiveFilter ? tr.noMatchingTransactions : tr.noTransactionsYet,
                       message: hasActiveFilter
-                          ? 'Try adjusting your search terms or clearing category filters.'
-                          : 'Add your first income or expense and it will show up here.',
-                      actionLabel: hasActiveFilter ? 'Clear filters' : 'Add transaction',
+                          ? tr.tryAdjustingSearchOrFilters
+                          : tr.tapAddToRecordFirstTransaction,
+                      actionLabel: hasActiveFilter ? tr.clearFilters : tr.addTransaction,
                       onAction: hasActiveFilter
                           ? () {
                               _searchController.clear();

@@ -88,4 +88,22 @@ void main() {
     expect(authService.isAuthenticated, isFalse);
     expect(authService.currentUser, isNull);
   });
+
+  test('Logging out and logging back in with the same Google account preserves canonical userId', () async {
+    final firstLogin = await authService.signInWithGoogle(
+      email: 'Canonical.User@Hyprwise.com',
+      displayName: 'Canonical User',
+    );
+    final firstId = firstLogin.id;
+    expect(firstId, isNotEmpty);
+
+    await authService.signOut();
+    expect(authService.currentUser, isNull);
+
+    final secondLogin = await authService.signInWithGoogle(
+      email: 'canonical.user@hyprwise.com',
+      displayName: 'Canonical User',
+    );
+    expect(secondLogin.id, equals(firstId));
+  });
 }

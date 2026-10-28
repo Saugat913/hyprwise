@@ -4,6 +4,7 @@ import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
+import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
 class HomeTransactionRow extends StatelessWidget {
@@ -20,9 +21,10 @@ class HomeTransactionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final isIncome = transaction.type == TransactionType.income.value;
+    final locCat = TransactionCategories.localizedCategoryName(transaction.category);
     final name = (transaction.note?.isNotEmpty ?? false)
         ? transaction.note!
-        : transaction.category;
+        : locCat;
     final date = DateTime.fromMillisecondsSinceEpoch(transaction.occurredAt);
 
     return Padding(
@@ -37,7 +39,7 @@ class HomeTransactionRow extends StatelessWidget {
               children: [
                 Text(name, style: text.titleSmall),
                 Text(
-                  '${transaction.category} · ${AppDate.short(date)}',
+                  '$locCat · ${AppDate.short(date)}',
                   style: text.bodySmall,
                 ),
               ],

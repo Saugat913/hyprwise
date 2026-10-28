@@ -51,10 +51,11 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     final text = Theme.of(context).textTheme;
     final tr = context.strings;
     final balanceMinor = viewModel.balanceOf(account.id);
+    final displayAccountName = tr.accountDisplayName(account.name);
 
     return Scaffold(
       appBar: AppTopBar(
-        title: account.name,
+        title: displayAccountName,
         subtitle: tr.editAccountDetails,
         actions: [
           TopBarAction(
@@ -63,7 +64,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
             onPressed: () async {
               final confirmed = await showConfirmDialog(
                 context,
-                title: tr.t('Delete ${account.name}?', ne: '${account.name} मेटाउने?', es: '¿Eliminar ${account.name}?', fr: 'Supprimer ${account.name} ?', de: '${account.name} löschen?', ja: '${account.name}を削除しますか？', zh: '确定删除 ${account.name}？', it: 'Eliminare ${account.name}?'),
+                title: tr.t('Delete $displayAccountName?', ne: '$displayAccountName मेटाउने?', es: '¿Eliminar $displayAccountName?', fr: 'Supprimer $displayAccountName ?', de: '$displayAccountName löschen?', ja: '$displayAccountNameを削除しますか？', zh: '确定删除 $displayAccountName？', it: 'Eliminare $displayAccountName?'),
                 message: tr.t(
                   'Its transactions stay in your history but are no longer linked to an account.',
                   ne: 'यसका कारोबारहरू इतिहासमा रहनेछन् तर कुनै खातासँग जोडिने छैनन्।',
@@ -182,7 +183,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
                 onPressed: () async {
                   final confirmed = await showConfirmDialog(
                     context,
-                    title: tr.t('Delete ${account.name}?', ne: '${account.name} मेटाउने?', es: '¿Eliminar ${account.name}?', fr: 'Supprimer ${account.name} ?', de: '${account.name} löschen?', ja: '${account.name}を削除しますか？', zh: '确定删除 ${account.name}？', it: 'Eliminare ${account.name}?'),
+                    title: tr.t('Delete $displayAccountName?', ne: '$displayAccountName मेटाउने?', es: '¿Eliminar $displayAccountName?', fr: 'Supprimer $displayAccountName ?', de: '$displayAccountName löschen?', ja: '$displayAccountNameを削除しますか？', zh: '确定删除 $displayAccountName？', it: 'Eliminare $displayAccountName?'),
                     message: tr.t(
                       'Its transactions stay in your history but are no longer linked to an account.',
                       ne: 'यसका कारोबारहरू इतिहासमा रहनेछन् तर कुनै खातासँग जोडिने छैनन्।',

@@ -60,7 +60,7 @@ void showAppPrivacyPolicyDialog(BuildContext context) {
             ),
             const SizedBox(height: AppSpace.lg),
             AppButton(
-              isNe ? 'बुझें' : 'Got it',
+              tr.t('Got it', ne: 'बुझें', es: 'Entendido', fr: 'Compris', de: 'Verstanden', ja: '了解', zh: '知道了', it: 'Ho capito'),
               onPressed: () => Navigator.of(ctx).pop(),
             ),
           ],
@@ -124,7 +124,7 @@ void showAppTermsDialog(BuildContext context) {
             ),
             const SizedBox(height: AppSpace.lg),
             AppButton(
-              isNe ? 'बुझें' : 'Got it',
+              tr.t('Got it', ne: 'बुझें', es: 'Entendido', fr: 'Compris', de: 'Verstanden', ja: '了解', zh: '知道了', it: 'Ho capito'),
               onPressed: () => Navigator.of(ctx).pop(),
             ),
           ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/shared/widgets/app_button.dart';
 import 'package:finance_tracker/features/shared/widgets/app_dialogs.dart';
@@ -46,12 +47,13 @@ class WizardScaffold extends StatelessWidget {
 
   Future<void> _close(BuildContext context) async {
     if (confirmClose) {
+      final tr = context.strings;
       final discard = await showConfirmDialog(
         context,
-        title: discardTitle ?? 'Discard this?',
-        message: 'What you entered will be lost.',
-        confirmLabel: 'Discard',
-        cancelLabel: 'Keep editing',
+        title: discardTitle ?? tr.discardTitle,
+        message: tr.discardMessage,
+        confirmLabel: tr.discardAction,
+        cancelLabel: tr.keepEditing,
       );
       if (!discard || !context.mounted) return;
     }

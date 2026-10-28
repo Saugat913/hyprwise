@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
@@ -97,6 +98,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
     final theme = Theme.of(context);
     final text = theme.textTheme;
     final scheme = theme.colorScheme;
+    final tr = context.strings;
     final isDark = theme.brightness == Brightness.dark;
     const brandOrange = Color(0xFFFF6500);
 
@@ -152,7 +154,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
 
               // Title
               Text(
-                'Sign In to Link Data & Purchase Pro',
+                tr.signInToLinkProTitle,
                 textAlign: TextAlign.center,
                 style: text.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
@@ -163,9 +165,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
 
               // Explanation Message
               Text(
-                (!kIsWeb && Platform.isIOS)
-                    ? 'Please sign in with Google or Apple to link your current transactions, shifts, and budgets to your account and activate your Hyprwise Pro subscription.'
-                    : 'Please sign in with Google to link your current transactions, shifts, and budgets to your account and activate your Hyprwise Pro subscription.',
+                tr.signInToLinkProDesc,
                 textAlign: TextAlign.center,
                 style: text.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
@@ -194,7 +194,16 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                     const SizedBox(width: AppSpace.sm),
                     Expanded(
                       child: Text(
-                        'All your existing on-device financial records will be automatically saved to your user account.',
+                        tr.t(
+                          'All your existing on-device financial records will be automatically saved to your user account.',
+                          ne: 'तपाईंको फोनमा रहेका सबै वित्तीय रेकर्डहरू स्वतः तपाईंको खातामा सुरक्षित हुनेछन्।',
+                          es: 'Todos tus registros financieros en el dispositivo se guardarán automáticamente en tu cuenta.',
+                          fr: 'Tous vos enregistrements financiers sur l\'appareil seront automatiquement sauvegardés.',
+                          de: 'Alle Ihre gespeicherten Finanzdaten werden automatisch in Ihrem Konto gesichert.',
+                          ja: '端末内のすべての財務記録は自動的にアカウントへ保存されます。',
+                          zh: '您设备上的所有现有财务记录都将自动保存到您的账户中。',
+                          it: 'Tutti i tuoi dati finanziari sul dispositivo verranno salvati automaticamente nel tuo account.',
+                        ),
                         style: text.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: isDark ? const Color(0xFFD6E3DC) : const Color(0xFF1F2726),
@@ -248,9 +257,9 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                       size: 20,
                       color: isDark ? Colors.black : Colors.white,
                     ),
-                    label: const Text(
-                      'Continue with Google',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    label: Text(
+                      tr.continueWithGoogle,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                     ),
                     onPressed: _handleGoogleSignIn,
                   ),
@@ -275,9 +284,9 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                         size: 20,
                         color: isDark ? Colors.black : Colors.white,
                       ),
-                      label: const Text(
-                        'Continue with Apple',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      label: Text(
+                        tr.continueWithApple,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                       ),
                       onPressed: _handleAppleSignIn,
                     ),
@@ -290,7 +299,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   child: Text(
-                    'Cancel',
+                    tr.cancel,
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,

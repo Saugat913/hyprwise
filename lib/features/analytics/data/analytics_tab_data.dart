@@ -120,7 +120,7 @@ AnalyticsTrend bucketTrend(
       () {
         final d = first.add(Duration(days: i * step));
         if (totalDays <= 7) return AppDate.weekday(d);
-        return totalDays > 92 ? DateFormatter.monthShort(d) : '${d.day}';
+        return totalDays > 92 ? DateFormatter.monthShort(d) : DateFormatter.day(d);
       }(),
   ];
   return AnalyticsTrend(values, labels);
@@ -152,8 +152,9 @@ extension AnalyticsTabData on AnalyticsViewModel {
       points.add((t.occurredAt, amt.toDouble()));
       cats.update(t.category, (v) => v + amt, ifAbsent: () => amt);
       final raw = t.note?.split('·').first.trim();
-      final name = (raw != null && raw.isNotEmpty) ? raw : t.category;
-      final cur = tops[name] ?? (0, 0, t.category);
+      final locCat = TransactionCategories.localizedCategoryName(t.category);
+      final name = (raw != null && raw.isNotEmpty) ? raw : locCat;
+      final cur = tops[name] ?? (0, 0, locCat);
       tops[name] = (cur.$1 + amt, cur.$2 + 1, cur.$3);
     }
     return AnalyticsTxTabData(

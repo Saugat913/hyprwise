@@ -184,11 +184,12 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
 
   void _openCurrencyConverter(BuildContext context) {
     final subService = getIt<SubscriptionService>();
+    final tr = context.strings;
     if (!subService.isPro) {
       showProUpgradeSheet(
         context,
-        title: 'Multi-Currency is a Pro Feature',
-        message: 'Convert foreign transaction amounts dynamically into your base currency with live exchange rates in Hyprwise Pro.',
+        title: tr.multiCurrencyProTitle,
+        message: tr.multiCurrencyProMessage,
       );
       return;
     }
@@ -335,7 +336,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
               // "Where?" merchant card grid (PDF pages 33-34)
               if (merchants.isNotEmpty) ...[
                 Text(
-                  'Where?',
+                  tr.whereQuestion,
                   style: text.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
@@ -364,7 +365,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
                         SizedBox(
                           width: itemWidth,
                           child: _MerchantCard(
-                            name: 'Other',
+                            name: tr.otherOption,
                             isOther: true,
                             selected: _merchant == 'Other',
                             onTap: () {
@@ -410,7 +411,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
                   children: [
                     for (final acc in viewModel.accounts)
                       ChoicePill(
-                        '${acc.name} (${MoneyFormatter.format(viewModel.snapshot.balanceOf(acc.id), acc.currencyCode)})',
+                        '${tr.accountDisplayName(acc.name)} (${MoneyFormatter.format(viewModel.snapshot.balanceOf(acc.id), acc.currencyCode)})',
                         selected: (_selectedAccountId ?? viewModel.accounts.first.id) == acc.id,
                         onTap: () => setState(() => _selectedAccountId = acc.id),
                       ),
@@ -442,7 +443,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
                         child: Row(
                           children: [
                             Text(
-                              'Date',
+                              tr.date,
                               style: text.bodyMedium?.copyWith(
                                 color: scheme.onSurfaceVariant,
                               ),
@@ -450,7 +451,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
                             const Spacer(),
                             Text(
                               AppDate.dateOnly(_date) == AppDate.dateOnly(DateTime.now())
-                                  ? 'Today'
+                                  ? tr.today
                                   : AppDate.short(_date),
                               style: text.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
@@ -470,7 +471,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
                       child: Row(
                         children: [
                           Text(
-                            'Note',
+                            tr.note,
                             style: text.bodyMedium?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
@@ -484,7 +485,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
                                 color: scheme.onSurface,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Optional',
+                                hintText: tr.optional,
                                 hintStyle: text.bodyMedium?.copyWith(
                                   color: scheme.onSurfaceVariant,
                                 ),
@@ -510,6 +511,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
 
   void _promptNewCategory(BuildContext context) {
     final ctrl = TextEditingController();
+    final tr = context.strings;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -526,7 +528,9 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Add Custom ${_type == TransactionType.expense ? "Expense" : "Income"} Category',
+              _type == TransactionType.expense
+                  ? tr.addCustomExpenseCategory
+                  : tr.addCustomIncomeCategory,
               style: Theme.of(ctx).textTheme.titleMedium,
             ),
             const SizedBox(height: AppSpace.md),
@@ -534,14 +538,14 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
               controller: ctrl,
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Category name',
-                hintText: 'e.g. Gym, Subscriptions, Freelance',
+              decoration: InputDecoration(
+                labelText: tr.categoryNameLabel,
+                hintText: tr.categoryNameHint,
               ),
             ),
             const SizedBox(height: AppSpace.lg),
             AppButton(
-              'Add Category',
+              tr.addCategoryButton,
               onPressed: () async {
                 final name = ctrl.text.trim();
                 if (name.isEmpty) return;
@@ -805,7 +809,7 @@ class _NewCategoryCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '+ New',
+                '+ ${context.strings.newLabel}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -946,9 +950,7 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                       Text(tr.currencyConverter, style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 2),
                       Text(
-                        tr.isNepali
-                            ? 'विदेशी मुद्रा सिधै ${widget.baseCurrency} मा रूपान्तरण गर्नुहोस्'
-                            : 'Convert foreign amount directly into ${widget.baseCurrency}',
+                        tr.convertForeignAmountIntoBase(widget.baseCurrency),
                         style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                       ),
                       if (_isUsingServerRate) ...[
@@ -958,7 +960,7 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                             const Icon(Icons.circle, size: 7, color: Color(0xFF16A34A)),
                             const SizedBox(width: 4),
                             Text(
-                              'Live Institutional Rates (Hyprwise Server)',
+                              tr.liveInstitutionalRates,
                               style: text.bodySmall?.copyWith(
                                 color: const Color(0xFF16A34A),
                                 fontWeight: FontWeight.w700,
@@ -1015,7 +1017,7 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                 ),
                 prefixText: '${Currency.fromCode(_selectedForeignCurrency).symbol} ',
                 border: const OutlineInputBorder(),
-                hintText: '25.00',
+                hintText: tr.localizeDigits('25.00'),
               ),
             ),
             const SizedBox(height: AppSpace.lg),
@@ -1034,7 +1036,7 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                     children: [
                       Text(tr.exchangeRate, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                       Text(
-                        '1 $_selectedForeignCurrency = ${rate.toStringAsFixed(2)} ${widget.baseCurrency}',
+                        tr.localizeDigits('1 $_selectedForeignCurrency = ${rate.toStringAsFixed(2)} ${widget.baseCurrency}'),
                         style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -1045,7 +1047,7 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                     children: [
                       Text(tr.convertedIn(widget.baseCurrency), style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                       Text(
-                        '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                        '${Currency.fromCode(widget.baseCurrency).symbol} ${tr.localizeDigits(convertedAmount.toStringAsFixed(2))}',
                         style: text.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: scheme.primary,
@@ -1066,9 +1068,16 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                     },
               icon: const Icon(Icons.check),
               label: Text(
-                tr.isNepali
-                    ? '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} लागू गर्नुहोस्'
-                    : 'Apply ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                tr.t(
+                  'Apply ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  ne: '${Currency.fromCode(widget.baseCurrency).symbol} ${tr.localizeDigits(convertedAmount.toStringAsFixed(2))} लागू गर्नुहोस्',
+                  es: 'Aplicar ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  fr: 'Appliquer ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  de: '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} übernehmen',
+                  ja: '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} を適用',
+                  zh: '应用 ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  it: 'Applica ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                ),
               ),
             ),
             const SizedBox(height: AppSpace.sm),

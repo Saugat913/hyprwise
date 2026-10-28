@@ -258,7 +258,7 @@ class HomeScreen extends StatelessWidget {
                                   Row(
                                     children: [
                                       Text(
-                                        tr.t('${viewModel.activeDebts.length} active', ne: '${viewModel.activeDebts.length} सक्रिय', es: '${viewModel.activeDebts.length} activos', fr: '${viewModel.activeDebts.length} actifs', de: '${viewModel.activeDebts.length} aktiv', ja: '${viewModel.activeDebts.length}件 進行中', zh: '${viewModel.activeDebts.length} 条待清算', it: '${viewModel.activeDebts.length} attivi'),
+                                        tr.t('${tr.formatNumber(viewModel.activeDebts.length)} active', ne: '${tr.formatNumber(viewModel.activeDebts.length)} सक्रिय', es: '${tr.formatNumber(viewModel.activeDebts.length)} activos', fr: '${tr.formatNumber(viewModel.activeDebts.length)} actifs', de: '${tr.formatNumber(viewModel.activeDebts.length)} aktiv', ja: '${tr.formatNumber(viewModel.activeDebts.length)}件 進行中', zh: '${tr.formatNumber(viewModel.activeDebts.length)} 条待清算', it: '${tr.formatNumber(viewModel.activeDebts.length)} attivi'),
                                         style: text.labelSmall?.copyWith(
                                           color: colors.onHeroSecondary,
                                           fontWeight: FontWeight.w500,
@@ -366,7 +366,7 @@ class HomeScreen extends StatelessWidget {
                       step: tr.formatNumber(1),
                       title: tr.addAccountChecklist,
                       subtitle: viewModel.hasAccounts
-                          ? '${tr.done} · ${viewModel.snapshot.accounts.first.name}'
+                          ? '${tr.done} · ${tr.accountDisplayName(viewModel.snapshot.accounts.first.name)}'
                           : tr.balanceRealSubtitle,
                       isDone: viewModel.hasAccounts,
                       onTap: () => context.push(AppRoutes.addAccount),
@@ -584,7 +584,7 @@ class _ActiveShiftBanner extends StatelessWidget {
     final h = d.inHours.toString().padLeft(2, '0');
     final m = (d.inMinutes % 60).toString().padLeft(2, '0');
     final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
+    return AppStrings.current().localizeDigits('$h:$m:$s');
   }
 
   @override

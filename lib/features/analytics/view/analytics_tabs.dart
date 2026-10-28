@@ -17,7 +17,7 @@ import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 String _duration(AppStrings tr, int minutes) {
   final h = minutes ~/ 60;
   final m = minutes % 60;
-  return '$h${tr.hourAbbr} $m${tr.minuteAbbr}';
+  return '${tr.formatNumber(h)}${tr.hourAbbr} ${tr.formatNumber(m)}${tr.minuteAbbr}';
 }
 
 const _tabPadding = EdgeInsets.fromLTRB(
@@ -79,7 +79,7 @@ class AnalyticsTransactionsTab extends StatelessWidget {
               const SizedBox(height: AppSpace.lg),
               Row(
                 children: [
-                  _Stat(tr.analyticsTransactionsCount, '${data.count}'),
+                  _Stat(tr.analyticsTransactionsCount, tr.formatNumber(data.count)),
                   _Stat(
                     tr.analyticsAverage,
                     MoneyFormatter.format(data.averageMinor, currency),
@@ -121,7 +121,7 @@ class AnalyticsTransactionsTab extends StatelessWidget {
                   leading: LetterAvatar(data.top[i].name, size: 36),
                   title: data.top[i].name,
                   subtitle:
-                      '${TransactionCategories.fromValue(data.top[i].category, type).label} · ${data.top[i].count}×',
+                      '${TransactionCategories.fromValue(data.top[i].category, type).label} · ${tr.formatNumber(data.top[i].count)}×',
                   trailing: MoneyText(
                     data.top[i].amountMinor,
                     currency,
@@ -197,7 +197,7 @@ class AnalyticsDebtTab extends StatelessWidget {
                     MoneyFormatter.format(data.settledMinor, currency),
                     color: context.colors.income,
                   ),
-                  _Stat(tr.analyticsEntriesCount, '${data.count}'),
+                  _Stat(tr.analyticsEntriesCount, tr.formatNumber(data.count)),
                 ],
               ),
             ],
@@ -315,7 +315,7 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
       for (final w in data.weeks)
         _showEarnings ? w.earningsMinor.toDouble() : w.minutes / 60,
     ];
-    final weekLabels = [for (final w in data.weeks) '${w.start.day}'];
+    final weekLabels = [for (final w in data.weeks) tr.formatNumber(w.start.day)];
 
     return ListView(
       padding: _tabPadding,
@@ -346,7 +346,7 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
                     tr.analyticsTotalHours,
                     _duration(tr, data.totalMinutes),
                   ),
-                  _Stat(tr.analyticsShiftsCount, '${data.shiftCount}'),
+                  _Stat(tr.analyticsShiftsCount, tr.formatNumber(data.shiftCount)),
                   _Stat(
                     tr.analyticsAvgShiftLength,
                     _duration(tr, data.averageShiftMinutes),
@@ -412,7 +412,7 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
                   totalMinor: data.earningsMinor,
                   currency: currency,
                   subtitle:
-                      '${_duration(tr, data.jobs[i].minutes)} · ${data.jobs[i].shifts} ${tr.analyticsShiftsCount.toLowerCase()}',
+                      '${_duration(tr, data.jobs[i].minutes)} · ${tr.formatNumber(data.jobs[i].shifts)} ${tr.analyticsShiftsCount.toLowerCase()}',
                 ),
               ],
             ],
@@ -512,7 +512,7 @@ class _ShareRow extends StatelessWidget {
                   style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-              Text('${(share * 100).round()}%', style: text.bodySmall),
+              Text('${context.strings.formatNumber((share * 100).round())}%', style: text.bodySmall),
               const SizedBox(width: AppSpace.md),
               MoneyText(
                 amountMinor,

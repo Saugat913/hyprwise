@@ -533,7 +533,7 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
                     final isSelected = _selectedDates.contains(AppDate.dateOnly(day));
                     final shortDay = tr.weekdayShort(day.weekday);
                     return _OptionGridCard(
-                      label: '$shortDay ${day.day}',
+                      label: '$shortDay ${tr.formatNumber(day.day)}',
                       isSelected: isSelected,
                       onTap: () => _toggleDate(day),
                     );
@@ -567,7 +567,7 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
           step: 2,
           steps: 3,
           title: tr.whatTimeAreShifts,
-          subtitle: '${selectedJob?.name ?? tr.work} · $_totalShiftCount ${tr.shiftsOnly.toLowerCase()}',
+          subtitle: '${selectedJob?.name ?? tr.work} · ${tr.formatNumber(_totalShiftCount)} ${tr.shiftsOnly.toLowerCase()}',
           onBack: () => setState(() => _step = 1),
           onClose: () => context.pop(),
           confirmClose: true,
@@ -585,7 +585,7 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
                         final picked = await showTimePicker(context: context, initialTime: _startTime);
                         if (picked != null) setState(() => _startTime = picked);
                       },
-                      child: Text('${tr.starts}: ${_startTime.format(context)}'),
+                      child: Text('${tr.starts}: ${AppDate.timeOnly(DateTime(2000, 1, 1, _startTime.hour, _startTime.minute))}'),
                     ),
                   ),
                   const SizedBox(width: AppSpace.md),
@@ -596,7 +596,7 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
                           final picked = await showTimePicker(context: context, initialTime: _endTime);
                           if (picked != null) setState(() => _endTime = picked);
                         },
-                        child: Text('${tr.ends}: ${_endTime.format(context)}'),
+                        child: Text('${tr.ends}: ${AppDate.timeOnly(DateTime(2000, 1, 1, _endTime.hour, _endTime.minute))}'),
                       ),
                     ),
                 ],
@@ -749,7 +749,7 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(tr.hoursPerShift, style: text.bodySmall),
-                            Text('${_hoursPerShift.toStringAsFixed(1)} ${tr.hoursUnit}', style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            Text('${tr.localizeDigits(_hoursPerShift.toStringAsFixed(1))} ${tr.hoursUnit}', style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -858,7 +858,7 @@ class _JobWorkCard extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)} / h',
+                '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)} / ${context.strings.hourAbbr}',
                 style: text.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,

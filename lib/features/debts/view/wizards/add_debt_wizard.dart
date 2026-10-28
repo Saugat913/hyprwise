@@ -180,11 +180,12 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
 
   void _openCurrencyConverter(BuildContext context) {
     final subService = getIt<SubscriptionService>();
+    final tr = context.strings;
     if (!subService.isPro) {
       showProUpgradeSheet(
         context,
-        title: 'Multi-Currency is a Pro Feature',
-        message: 'Convert loans and debts dynamically across AUD, NPR, USD, EUR, and GBP with real-time exchange rates in Hyprwise Pro.',
+        title: tr.multiCurrencyProTitle,
+        message: tr.multiCurrencyProMessage,
       );
       return;
     }
@@ -544,7 +545,7 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                   labelText: tr.amountInCurrency(_selectedForeignCurrency),
                   prefixText: '${Currency.fromCode(_selectedForeignCurrency).symbol} ',
                   border: const OutlineInputBorder(),
-                  hintText: 'e.g. 25.00',
+                  hintText: tr.localizeDigits('25.00'),
                 ),
               ),
               const SizedBox(height: AppSpace.lg),
@@ -562,7 +563,7 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                       children: [
                         Text(tr.rateLabel, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                         Text(
-                          '1 $_selectedForeignCurrency = ${rate.toStringAsFixed(2)} ${widget.baseCurrency}',
+                          tr.localizeDigits('1 $_selectedForeignCurrency = ${rate.toStringAsFixed(2)} ${widget.baseCurrency}'),
                           style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -573,7 +574,7 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                       children: [
                         Text(tr.convertedInBase(widget.baseCurrency), style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                         Text(
-                          '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                          '${Currency.fromCode(widget.baseCurrency).symbol} ${tr.localizeDigits(convertedAmount.toStringAsFixed(2))}',
                           style: text.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: scheme.primary,
@@ -586,9 +587,16 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
               ),
               const SizedBox(height: AppSpace.lg),
               AppButton(
-                tr.isNepali
-                    ? '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} लागू गर्नुहोस्'
-                    : 'Apply ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                tr.t(
+                  'Apply ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  ne: '${Currency.fromCode(widget.baseCurrency).symbol} ${tr.localizeDigits(convertedAmount.toStringAsFixed(2))} लागू गर्नुहोस्',
+                  es: 'Aplicar ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  fr: 'Appliquer ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  de: '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} übernehmen',
+                  ja: '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} を適用',
+                  zh: '应用 ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  it: 'Applica ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                ),
                 onPressed: foreignAmount <= 0
                     ? null
                     : () {

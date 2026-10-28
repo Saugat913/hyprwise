@@ -1,4 +1,5 @@
 import 'package:finance_tracker/core/database/app_database.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 
 /// A supported language linked with associated currencies.
 class AppLanguage {
@@ -96,7 +97,7 @@ class AppLanguage {
 class Currency {
   const Currency(
     this.code,
-    this.name,
+    this._defaultName,
     this.symbol, {
     this.associatedLanguages = 'English',
     this.associatedLanguageCodes = const ['en'],
@@ -104,11 +105,14 @@ class Currency {
   });
 
   final String code;
-  final String name;
+  final String _defaultName;
   final String symbol;
   final String associatedLanguages;
   final List<String> associatedLanguageCodes;
   final String defaultLanguageCode;
+
+  String get defaultName => _defaultName;
+  String get name => AppStrings.current().currencyName(code, _defaultName);
 
   /// Symbolic representation that adapts to locale / language support.
   /// Uses symbolic representation like '$' instead of 'USD', 'A$' for Australian Dollar,

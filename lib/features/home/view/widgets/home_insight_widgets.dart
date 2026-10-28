@@ -148,8 +148,8 @@ class HomeInsights extends StatelessWidget {
   }
 
   static String _pretty(String key) {
-    final s = key.replaceAll('_', ' ');
-    return s.isEmpty ? key : s[0].toUpperCase() + s.substring(1);
+    final tr = AppStrings.current();
+    return tr.categoryLabel(key, key.replaceAll('_', ' '));
   }
 }
 
@@ -216,7 +216,7 @@ class _Ring extends StatelessWidget {
                   backgroundColor: track,
                 ),
               ),
-              Text('${(v * 100).round()}%', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              Text('${context.strings.formatNumber((v * 100).round())}%', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
             ],
           ),
         ),

@@ -1,3 +1,4 @@
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/features/shared/data/finance_snapshot.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/plan/data/model/goals.dart';
@@ -6,14 +7,22 @@ import 'package:finance_tracker/features/money/data/model/transaction_type.dart'
 import 'package:finance_tracker/features/work/data/model/work.dart';
 
 enum InsightsPeriod {
-  week('This week', 7),
-  month('This month', 31),
-  quarter('Last 90 days', 90);
+  week(7),
+  month(31),
+  quarter(90);
 
-  const InsightsPeriod(this.label, this.days);
+  const InsightsPeriod(this.days);
 
-  final String label;
   final int days;
+
+  String get label {
+    final tr = AppStrings.current();
+    return switch (this) {
+      InsightsPeriod.week => tr.filterThisWeek,
+      InsightsPeriod.month => tr.filterThisMonth,
+      InsightsPeriod.quarter => tr.filter3Months,
+    };
+  }
 
   (DateTime, DateTime) range(DateTime now) {
     final end = AppDate.dateOnly(now);

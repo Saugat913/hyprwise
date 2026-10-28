@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,8 +8,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
+import 'package:finance_tracker/features/assistant/viewmodels/assistant_view_model.dart';
 import 'package:finance_tracker/features/auth/data/model/user_profile.dart';
 import 'package:finance_tracker/features/settings/data/repository/data_repository.dart';
+import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 class AuthService extends ChangeNotifier {
@@ -25,15 +28,62 @@ class AuthService extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   static const _userKey = 'auth_user_profile';
+  static const _tokenKey = 'auth_api_token';
+  static const _deviceGuestIdKey = 'auth_device_guest_id';
 
   bool get _hasFirebase => Firebase.apps.isNotEmpty;
 
+  /// Deterministic canonical fallback user ID from normalized email
+  /// so the same email address always maps to the same user ID even before server sync.
+  static String deterministicUserIdFromEmail(String email, {String prefix = 'usr_g_'}) {
+    final norm = email.trim().toLowerCase();
+    int h1 = 0x811c9dc5;
+    int h2 = 0x01000193;
+    for (final code in norm.codeUnits) {
+      h1 ^= code;
+      h1 = (h1 * 0x01000193) & 0xFFFFFFFF;
+      h2 ^= (code * 31) & 0xFF;
+      h2 = (h2 * 0x85ebca6b) & 0xFFFFFFFF;
+    }
+    final hex = '${h1.toRadixString(16).padLeft(8, '0')}${h2.toRadixString(16).padLeft(8, '0')}';
+    return '$prefix$hex';
+  }
+
+  Future<void> _applyServerSyncResult(Map<String, dynamic>? serverRes) async {
+    if (serverRes == null) return;
+    final token = serverRes['token'] as String?;
+    if (token != null && token.isNotEmpty) {
+      await _storage.write(key: _tokenKey, value: token);
+    }
+    final serverUser = serverRes['user'] as Map<String, dynamic>?;
+    if (serverUser != null) {
+      final used = serverUser['dailyAiQueriesUsed'] as int?;
+      final left = serverUser['dailyAiQueriesLeft'] as int?;
+      if (getIt.isRegistered<AssistantViewModel>() && (used != null || left != null)) {
+        getIt<AssistantViewModel>().updateQuotaFromServer(
+          used: used ?? (left != null ? (5 - left).clamp(0, 5) : 0),
+          left: left,
+        );
+      }
+      final isPro = serverUser['isPro'] as bool? ?? false;
+      if (getIt.isRegistered<SubscriptionService>()) {
+        await getIt<SubscriptionService>().setServerProStatus(isPro);
+      }
+    }
+  }
+
   Future<void> load() async {
     try {
+      final savedToken = await _storage.read(key: _tokenKey);
       final raw = await _storage.read(key: _userKey);
       if (raw != null) {
         final map = jsonDecode(raw) as Map<String, dynamic>;
         _currentUser = UserProfile.fromJson(map);
+        ApiClient.instance.setAuthContext(
+          token: savedToken,
+          userId: _currentUser!.id,
+          email: _currentUser!.email,
+        );
         TelemetryService.instance.setUserId(_currentUser!.id);
         TelemetryService.instance.setUserProperty(name: 'is_pro', value: _currentUser!.isPro.toString());
         TelemetryService.instance.setUserProperty(name: 'auth_provider', value: _currentUser!.provider.name);
@@ -48,8 +98,8 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      String userId = 'usr_google_demo_1';
-      String userEmail = email ?? 'user.finance@gmail.com';
+      String userEmail = (email ?? 'user.finance@gmail.com').trim().toLowerCase();
+      String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
       String userName = displayName ?? 'Google User';
       String? photoUrl;
       String? idToken;
@@ -59,9 +109,10 @@ class AuthService extends ChangeNotifier {
           final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
           final GoogleSignInAccount? gUser = await googleSignIn.signIn();
           if (gUser != null) {
-            userEmail = gUser.email;
+            userEmail = gUser.email.trim().toLowerCase();
             userName = gUser.displayName ?? userEmail.split('@')[0];
             photoUrl = gUser.photoUrl;
+            userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
 
             final GoogleSignInAuthentication gAuth = await gUser.authentication;
             idToken = gAuth.idToken;
@@ -75,7 +126,7 @@ class AuthService extends ChangeNotifier {
             final fbUser = userCredential.user;
             if (fbUser != null) {
               userId = fbUser.uid;
-              userEmail = fbUser.email ?? userEmail;
+              userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
               userName = fbUser.displayName ?? userName;
               photoUrl = fbUser.photoURL ?? photoUrl;
               idToken = await fbUser.getIdToken();
@@ -86,7 +137,7 @@ class AuthService extends ChangeNotifier {
         }
       }
 
-      // Synchronize with Hyprwise Cloudflare Server
+      // Synchronize with Hyprwise Cloudflare Server and adopt canonical account identity
       bool isPro = false;
       try {
         final serverRes = await ApiClient.instance.authenticateFirebase(
@@ -98,10 +149,18 @@ class AuthService extends ChangeNotifier {
           provider: 'google',
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
-        isPro = serverUser?['isPro'] as bool? ?? false;
+        if (serverUser != null) {
+          userId = (serverUser['id'] as String?) ?? userId;
+          userEmail = (serverUser['email'] as String?) ?? userEmail;
+          userName = (serverUser['displayName'] as String?) ?? userName;
+          isPro = serverUser['isPro'] as bool? ?? false;
+        }
+        await _applyServerSyncResult(serverRes);
       } catch (_) {}
 
-      // Link with RevenueCat customer identity
+      ApiClient.instance.setAuthContext(userId: userId, email: userEmail);
+
+      // Link with RevenueCat customer identity using canonical userId
       try {
         await Purchases.logIn(userId);
       } catch (_) {}
@@ -116,6 +175,10 @@ class AuthService extends ChangeNotifier {
       );
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+      if (getIt.isRegistered<AssistantViewModel>()) {
+        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
+      }
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
@@ -134,8 +197,8 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      String userId = 'usr_apple_demo_1';
-      String userEmail = email ?? 'user.finance@icloud.com';
+      String userEmail = (email ?? 'user.finance@icloud.com').trim().toLowerCase();
+      String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_');
       String userName = fullName ?? 'Apple User';
       String? idToken;
 
@@ -146,7 +209,7 @@ class AuthService extends ChangeNotifier {
           final fbUser = userCredential.user;
           if (fbUser != null) {
             userId = fbUser.uid;
-            userEmail = fbUser.email ?? userEmail;
+            userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
             userName = fbUser.displayName ?? userName;
             idToken = await fbUser.getIdToken();
           }
@@ -155,7 +218,7 @@ class AuthService extends ChangeNotifier {
         }
       }
 
-      // Synchronize with Hyprwise Cloudflare Server
+      // Synchronize with Hyprwise Cloudflare Server and adopt canonical account identity
       bool isPro = false;
       try {
         final serverRes = await ApiClient.instance.authenticateFirebase(
@@ -166,8 +229,16 @@ class AuthService extends ChangeNotifier {
           provider: 'apple',
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
-        isPro = serverUser?['isPro'] as bool? ?? false;
+        if (serverUser != null) {
+          userId = (serverUser['id'] as String?) ?? userId;
+          userEmail = (serverUser['email'] as String?) ?? userEmail;
+          userName = (serverUser['displayName'] as String?) ?? userName;
+          isPro = serverUser['isPro'] as bool? ?? false;
+        }
+        await _applyServerSyncResult(serverRes);
       } catch (_) {}
+
+      ApiClient.instance.setAuthContext(userId: userId, email: userEmail);
 
       // Link with RevenueCat
       try {
@@ -183,6 +254,10 @@ class AuthService extends ChangeNotifier {
       );
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+      if (getIt.isRegistered<AssistantViewModel>()) {
+        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
+      }
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
@@ -202,8 +277,8 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      String userId = _currentUser?.id ?? 'usr_google_${DateTime.now().millisecondsSinceEpoch}';
       String userEmail = 'user.finance@gmail.com';
+      String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
       String userName = 'Google User';
       String? photoUrl;
       String? idToken;
@@ -216,9 +291,10 @@ class AuthService extends ChangeNotifier {
           return null;
         }
 
-        userEmail = gUser.email;
+        userEmail = gUser.email.trim().toLowerCase();
         userName = gUser.displayName ?? userEmail.split('@')[0];
         photoUrl = gUser.photoUrl;
+        userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
 
         final GoogleSignInAuthentication gAuth = await gUser.authentication;
         idToken = gAuth.idToken;
@@ -247,14 +323,14 @@ class AuthService extends ChangeNotifier {
         final fbUser = userCredential.user;
         if (fbUser != null) {
           userId = fbUser.uid;
-          userEmail = fbUser.email ?? userEmail;
+          userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
           userName = fbUser.displayName ?? userName;
           photoUrl = fbUser.photoURL ?? photoUrl;
           idToken = await fbUser.getIdToken();
         }
       }
 
-      // Synchronize with Cloudflare Server
+      // Synchronize with Cloudflare Server and adopt canonical account identity
       bool isPro = false;
       try {
         final serverRes = await ApiClient.instance.authenticateFirebase(
@@ -266,10 +342,18 @@ class AuthService extends ChangeNotifier {
           provider: 'google',
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
-        isPro = serverUser?['isPro'] as bool? ?? false;
+        if (serverUser != null) {
+          userId = (serverUser['id'] as String?) ?? userId;
+          userEmail = (serverUser['email'] as String?) ?? userEmail;
+          userName = (serverUser['displayName'] as String?) ?? userName;
+          isPro = serverUser['isPro'] as bool? ?? false;
+        }
+        await _applyServerSyncResult(serverRes);
       } catch (_) {}
 
-      // Link with RevenueCat customer identity
+      ApiClient.instance.setAuthContext(userId: userId, email: userEmail);
+
+      // Link with RevenueCat customer identity using canonical userId
       try {
         await Purchases.logIn(userId);
       } catch (_) {}
@@ -287,6 +371,10 @@ class AuthService extends ChangeNotifier {
 
       // Backup local Drift SQLite database to cloud
       await syncLocalDataToCloud();
+
+      if (getIt.isRegistered<AssistantViewModel>()) {
+        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
+      }
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
@@ -306,8 +394,8 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      String userId = _currentUser?.id ?? 'usr_apple_${DateTime.now().millisecondsSinceEpoch}';
       String userEmail = 'user.finance@icloud.com';
+      String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_');
       String userName = 'Apple User';
       String? idToken;
 
@@ -332,13 +420,13 @@ class AuthService extends ChangeNotifier {
         final fbUser = userCredential.user;
         if (fbUser != null) {
           userId = fbUser.uid;
-          userEmail = fbUser.email ?? userEmail;
+          userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
           userName = fbUser.displayName ?? userName;
           idToken = await fbUser.getIdToken();
         }
       }
 
-      // Synchronize with Cloudflare Server
+      // Synchronize with Cloudflare Server and adopt canonical account identity
       bool isPro = false;
       try {
         final serverRes = await ApiClient.instance.authenticateFirebase(
@@ -349,8 +437,16 @@ class AuthService extends ChangeNotifier {
           provider: 'apple',
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
-        isPro = serverUser?['isPro'] as bool? ?? false;
+        if (serverUser != null) {
+          userId = (serverUser['id'] as String?) ?? userId;
+          userEmail = (serverUser['email'] as String?) ?? userEmail;
+          userName = (serverUser['displayName'] as String?) ?? userName;
+          isPro = serverUser['isPro'] as bool? ?? false;
+        }
+        await _applyServerSyncResult(serverRes);
       } catch (_) {}
+
+      ApiClient.instance.setAuthContext(userId: userId, email: userEmail);
 
       // Link with RevenueCat
       try {
@@ -369,6 +465,10 @@ class AuthService extends ChangeNotifier {
 
       // Backup local Drift SQLite database to cloud
       await syncLocalDataToCloud();
+
+      if (getIt.isRegistered<AssistantViewModel>()) {
+        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
+      }
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
@@ -399,8 +499,12 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      String userId = 'usr_guest_offline';
-      if (_hasFirebase) {
+      // Reuse persistent device guest ID so logging out and logging in as guest on the same device
+      // keeps the same server quota identity.
+      String? storedGuestId = await _storage.read(key: _deviceGuestIdKey);
+      String userId = storedGuestId ?? '';
+
+      if (userId.isEmpty && _hasFirebase) {
         try {
           final userCredential = await FirebaseAuth.instance.signInAnonymously();
           if (userCredential.user != null) {
@@ -408,6 +512,25 @@ class AuthService extends ChangeNotifier {
           }
         } catch (_) {}
       }
+      if (userId.isEmpty) {
+        userId = 'usr_guest_device_1';
+      }
+      await _storage.write(key: _deviceGuestIdKey, value: userId);
+
+      try {
+        final serverRes = await ApiClient.instance.authenticateFirebase(
+          uid: userId,
+          email: 'guest@hyprwise.local',
+          displayName: 'Guest User',
+          provider: 'offline',
+        );
+        await _applyServerSyncResult(serverRes);
+      } catch (_) {}
+
+      ApiClient.instance.setAuthContext(
+        userId: userId,
+        email: 'guest@hyprwise.local',
+      );
 
       final user = UserProfile(
         id: userId,
@@ -418,6 +541,10 @@ class AuthService extends ChangeNotifier {
       );
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+      if (getIt.isRegistered<AssistantViewModel>()) {
+        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
+      }
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
@@ -444,6 +571,12 @@ class AuthService extends ChangeNotifier {
 
     _currentUser = null;
     await _storage.delete(key: _userKey);
+    await _storage.delete(key: _tokenKey);
+    ApiClient.instance.clearAuthContext();
+
+    if (getIt.isRegistered<SubscriptionService>()) {
+      await getIt<SubscriptionService>().resetOnLogout();
+    }
 
     // Firebase Analytics Tracking
     TelemetryService.instance.setUserId(null);

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
@@ -122,6 +123,25 @@ class AssistantViewModel extends ChangeNotifier {
     }
   }
 
+  void updateQuotaFromServer({required int used, int? left}) {
+    _syncUsageDay();
+    _dailyQueriesUsed = used.clamp(0, 9999);
+    notifyListeners();
+  }
+
+  Future<void> syncQuotaFromServer() async {
+    try {
+      final quota = await ApiClient.instance.getAiQuota();
+      if (quota != null) {
+        final used = quota['dailyAiQueriesUsed'] as int?;
+        final left = quota['dailyAiQueriesLeft'] as int?;
+        if (used != null) {
+          updateQuotaFromServer(used: used, left: left);
+        }
+      }
+    } catch (_) {}
+  }
+
   int get dailyQueriesUsed {
     _syncUsageDay();
     return _dailyQueriesUsed;
@@ -142,6 +162,38 @@ class AssistantViewModel extends ChangeNotifier {
     _dailyQueriesUsed++;
   }
 
+  /// Authoritative server-side quota check & consumption.
+  /// Returns `(allowed: bool, consumedOnServer: bool)`.
+  Future<({bool allowed, bool consumedOnServer})> _verifyAndConsumeServerQuota({
+    required bool isPro,
+  }) async {
+    if (isPro) return (allowed: true, consumedOnServer: false);
+
+    try {
+      final res = await ApiClient.instance.consumeAiQuota();
+      if (res != null) {
+        final used = (res['dailyAiQueriesUsed'] as int?) ?? _dailyQueriesUsed;
+        updateQuotaFromServer(
+          used: used,
+          left: res['dailyAiQueriesLeft'] as int?,
+        );
+        final allowed = (res['allowed'] as bool?) ?? (res['limitReached'] != true);
+        if (!allowed || res['limitReached'] == true) {
+          updateQuotaFromServer(used: freeDailyAiLimit, left: 0);
+          return (allowed: false, consumedOnServer: false);
+        }
+        return (allowed: true, consumedOnServer: true);
+      }
+    } catch (_) {}
+
+    // Offline fallback if server is temporarily unreachable
+    if (isLimitReached(isPro: isPro)) {
+      return (allowed: false, consumedOnServer: false);
+    }
+    _recordAiQuery();
+    return (allowed: true, consumedOnServer: false);
+  }
+
   String get baseCurrency => financeStore.baseCurrency;
 
   void clear() {
@@ -149,24 +201,47 @@ class AssistantViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> scanBillImage(XFile imageFile, {bool isPro = false}) async {
-    if (isLimitReached(isPro: isPro)) return;
-    _recordAiQuery();
+  Future<bool> scanBillImage(XFile imageFile, {bool isPro = false}) async {
+    if (isLimitReached(isPro: isPro)) return false;
+
+    final quotaCheck = await _verifyAndConsumeServerQuota(isPro: isPro);
+    if (!quotaCheck.allowed) {
+      return false;
+    }
+
     final bytes = await imageFile.readAsBytes();
-    _messages.add(
-      AssistantMessage(
-        isUser: true,
-        text: '📸 Scanned receipt: ${imageFile.name}',
-        imageBytes: bytes,
-        imagePath: imageFile.path,
+    final tr = AppStrings.current();
+    final userMsg = AssistantMessage(
+      isUser: true,
+      text: tr.t(
+        '📸 Scanned receipt: ${imageFile.name}',
+        ne: '📸 स्क्यान गरिएको बिल: ${imageFile.name}',
+        es: '📸 Recibo escaneado: ${imageFile.name}',
+        fr: '📸 Reçu scanné : ${imageFile.name}',
+        de: '📸 Beleg gescannt: ${imageFile.name}',
+        ja: '📸 レシートをスキャン: ${imageFile.name}',
+        zh: '📸 已扫描小票: ${imageFile.name}',
+        it: '📸 Scontrino scansionato: ${imageFile.name}',
       ),
+      imageBytes: bytes,
+      imagePath: imageFile.path,
     );
+    _messages.add(userMsg);
     notifyListeners();
 
     final analyzingMsg = AssistantMessage(
       isUser: false,
-      headline: 'Scanning Bill',
-      text: 'Analyzing receipt and extracting expense details...',
+      headline: tr.t('Scanning Bill', ne: 'बिल स्क्यान हुँदैछ', es: 'Escaneando recibo', fr: 'Analyse du reçu', de: 'Beleg wird gescannt', ja: 'レシートを解析中', zh: '正在扫描账单', it: 'Scansione scontrino'),
+      text: tr.t(
+        'Analyzing receipt and extracting expense details...',
+        ne: 'बिलको विश्लेषण गरी खर्च विवरण निकालिँदैछ...',
+        es: 'Analizando recibo y extrayendo detalles...',
+        fr: 'Analyse du reçu et extraction des détails...',
+        de: 'Beleg wird analysiert und Ausgaben werden extrahiert...',
+        ja: 'レシートを解析して支出の詳細を抽出しています...',
+        zh: '正在识别收据并提取支出明细...',
+        it: 'Analisi dello scontrino ed estrazione dei dettagli...',
+      ),
     );
     _messages.add(analyzingMsg);
     notifyListeners();
@@ -176,7 +251,7 @@ class AssistantViewModel extends ChangeNotifier {
       final base64Img = base64Encode(bytes);
       final mimeType = filename.endsWith('.png') ? 'image/png' : 'image/jpeg';
 
-      String? aiResult;
+      AiChatResult? aiDetailed;
       try {
         final prompt = '''
 You are an expert OCR receipt & bill scanner.
@@ -189,12 +264,28 @@ Extract:
 Respond ONLY with a JSON object in this exact format:
 {"merchant": "Merchant Name", "amount": 45.50, "category": "Groceries"}
 ''';
-        aiResult = await ApiClient.instance.chatWithAi(
+        aiDetailed = await ApiClient.instance.chatWithAiDetailed(
           prompt,
           imageBase64: base64Img,
           imageMimeType: mimeType,
+          quotaAlreadyConsumed: quotaCheck.consumedOnServer,
         );
       } catch (_) {}
+
+      if (aiDetailed?.dailyAiQueriesUsed != null) {
+        updateQuotaFromServer(
+          used: aiDetailed!.dailyAiQueriesUsed!,
+          left: aiDetailed.dailyAiQueriesLeft,
+        );
+      }
+      if (aiDetailed?.limitReached == true) {
+        _messages.remove(analyzingMsg);
+        _messages.remove(userMsg);
+        updateQuotaFromServer(used: freeDailyAiLimit, left: 0);
+        return false;
+      }
+
+      final aiResult = aiDetailed?.content;
 
       String merchant = '';
       double amount = 0.0;
@@ -253,27 +344,45 @@ Respond ONLY with a JSON object in this exact format:
         _messages.add(
           AssistantMessage(
             isUser: false,
-            headline: 'Could Not Read Bill',
-            text:
-                "I couldn't detect a clear bill total or merchant from this image. Please ensure the bill is clearly visible and well-lit, or type the expense details (e.g. 'Add 25 for lunch') to record it manually.",
-            suggestions: const ['Add expense manually', 'Check balances'],
+            headline: tr.t('Could Not Read Bill', ne: 'बिल पढ्न सकिएन', es: 'No se pudo leer el recibo', fr: 'Impossible de lire le reçu', de: 'Beleg nicht lesbar', ja: 'レシートを読み取れませんでした', zh: '无法识别账单', it: 'Impossibile leggere lo scontrino'),
+            text: tr.t(
+              "I couldn't detect a clear bill total or merchant from this image. Please ensure the bill is clearly visible and well-lit, or type the expense details (e.g. 'Add 25 for lunch') to record it manually.",
+              ne: 'यो तस्बिरबाट स्पष्ट रकम वा पसलको नाम पत्ता लगाउन सकिएन। कृपया स्पष्ट तस्बिर खिच्नुहोस् वा म्यानुअल रूपमा खर्च लेख्नुहोस्।',
+              es: 'No pude detectar un total o comercio claro en esta imagen. Asegúrate de que el recibo sea legible o ingresa el gasto manualmente.',
+              fr: 'Je n\'ai pas pu détecter un montant ou un commerçant clair sur cette image. Assurez-vous que le reçu est bien visible ou saisissez la dépense.',
+              de: 'Ich konnte keinen klaren Betrag oder Händler auf diesem Bild erkennen. Bitte sorgen Sie für gute Beleuchtung oder geben Sie die Ausgabe manuell ein.',
+              ja: 'この画像から明確な合計金額や店舗名を検出できませんでした。明るい場所で撮り直すか、手動で入力してください。',
+              zh: '无法从该图片中识别出清晰的金额或商户名称。请确保账单清晰可见，或直接输入支出详情。',
+              it: 'Non sono riuscito a rilevare un totale o un esercente chiaro da questa immagine. Assicurati che lo scontrino sia leggibile.',
+            ),
+            suggestions: [tr.addExpense, tr.accounts],
           ),
         );
         notifyListeners();
-        return;
+        return true;
       }
 
       final amountMinor = (amount * 100).round();
+      final fmtAmt = MoneyFormatter.format(amountMinor, baseCurrency);
+      final locCat = tr.categoryLabel(category, category);
 
       _messages.add(
         AssistantMessage(
           isUser: false,
-          headline: 'Bill Scanned Successfully',
-          text:
-              'Extracted receipt from **$merchant** totaling **${MoneyFormatter.format(amountMinor, baseCurrency)}** ($category).\n\nReview the details below and tap **Confirm** to record it in your expenses.',
+          headline: tr.t('Bill Scanned Successfully', ne: 'बिल सफलतापूर्वक स्क्यान भयो', es: 'Recibo escaneado con éxito', fr: 'Reçu scanné avec succès', de: 'Beleg erfolgreich gescannt', ja: 'レシートのスキャン完了', zh: '账单扫描成功', it: 'Scontrino scansionato con successo'),
+          text: tr.t(
+            'Extracted receipt from **$merchant** totaling **$fmtAmt** ($locCat).\n\nReview the details below and tap **Confirm** to record it in your expenses.',
+            ne: '**$merchant** बाट **$fmtAmt** ($locCat) को बिल निकालियो।\n\nतलको विवरण जाँच गरी खर्चमा दर्ता गर्न **पुष्टि गर्नुहोस्** थिच्नुहोस्।',
+            es: 'Recibo extraído de **$merchant** por **$fmtAmt** ($locCat).\n\nRevisa los detalles abajo y toca **Confirmar** para registrarlo.',
+            fr: 'Reçu extrait de **$merchant** pour **$fmtAmt** ($locCat).\n\nVérifiez les détails ci-dessous et appuyez sur **Confirmer**.',
+            de: 'Beleg von **$merchant** über **$fmtAmt** ($locCat) erkannt.\n\nPrüfen Sie die Details unten und tippen Sie auf **Bestätigen**.',
+            ja: '**$merchant** のレシート（合計 **$fmtAmt** / $locCat）を読み取りました。\n\n内容を確認して**確認**をタップすると支出に記録されます。',
+            zh: '已提取 **$merchant** 的收据，总计 **$fmtAmt** ($locCat)。\n\n请核对下方信息并点击**确认**记入支出。',
+            it: 'Estratto scontrino da **$merchant** per **$fmtAmt** ($locCat).\n\nControlla i dettagli qui sotto e tocca **Conferma**.',
+          ),
           pendingAction: AssistantActionPending(
             kind: AssistantActionKind.addExpense,
-            title: 'Scanned Bill: $merchant',
+            title: tr.t('Scanned Bill: $merchant', ne: 'स्क्यान गरिएको बिल: $merchant', es: 'Recibo: $merchant', fr: 'Reçu : $merchant', de: 'Beleg: $merchant', ja: 'スキャンした請求: $merchant', zh: '扫描账单：$merchant', it: 'Scontrino: $merchant'),
             amountMinor: amountMinor,
             merchant: merchant,
             category: category,
@@ -285,15 +394,24 @@ Respond ONLY with a JSON object in this exact format:
       _messages.add(
         AssistantMessage(
           isUser: false,
-          headline: 'Could Not Read Bill',
-          text:
-              "I couldn't process this image. Please ensure the bill is clearly visible, or enter the expense manually.",
-          suggestions: const ['Add expense manually', 'Check balances'],
+          headline: tr.t('Could Not Read Bill', ne: 'बिल पढ्न सकिएन', es: 'No se pudo leer el recibo', fr: 'Impossible de lire le reçu', de: 'Beleg nicht lesbar', ja: 'レシートを読み取れませんでした', zh: '无法识别账单', it: 'Impossibile leggere lo scontrino'),
+          text: tr.t(
+            "I couldn't process this image. Please ensure the bill is clearly visible, or enter the expense manually.",
+            ne: 'यो तस्बिर प्रशोधन गर्न सकिएन। कृपया स्पष्ट बिल प्रयोग गर्नुहोस् वा खर्च म्यानुअल रूपमा प्रविष्ट गर्नुहोस्।',
+            es: 'No pude procesar esta imagen. Asegúrate de que el recibo sea visible o ingresa el gasto manualmente.',
+            fr: 'Impossible de traiter cette image. Assurez-vous que le reçu est visible ou saisissez la dépense manuellement.',
+            de: 'Dieses Bild konnte nicht verarbeitet werden. Bitte geben Sie die Ausgabe manuell ein.',
+            ja: '画像を処理できませんでした。レシートがはっきり写っているか確認するか、手動で入力してください。',
+            zh: '无法处理此图片。请确保账单清晰可见，或手动录入支出。',
+            it: 'Impossibile elaborare questa immagine. Inserisci la spesa manualmente.',
+          ),
+          suggestions: [tr.addExpense, tr.accounts],
         ),
       );
     }
 
     notifyListeners();
+    return true;
   }
 
   ParsedTransactionIntent? _parseTransactionIntent(String text) {
@@ -388,24 +506,36 @@ Respond ONLY with a JSON object in this exact format:
   bool _isTyping = false;
   bool get isTyping => _isTyping;
 
-  Future<void> sendMessage(String query, {bool isPro = false}) async {
-    if (query.trim().isEmpty) return;
-    if (isLimitReached(isPro: isPro)) return;
-    _recordAiQuery();
+  Future<bool> sendMessage(String query, {bool isPro = false}) async {
+    if (query.trim().isEmpty) return true;
+    if (isLimitReached(isPro: isPro)) return false;
+
+    final quotaCheck = await _verifyAndConsumeServerQuota(isPro: isPro);
+    if (!quotaCheck.allowed) {
+      return false;
+    }
+
     _isTyping = true;
     try {
-      await _sendMessage(query);
+      return await _sendMessage(
+        query,
+        quotaAlreadyConsumed: quotaCheck.consumedOnServer,
+      );
     } finally {
       _isTyping = false;
       notifyListeners();
     }
   }
 
-  Future<void> _sendMessage(String query) async {
+  Future<bool> _sendMessage(
+    String query, {
+    bool quotaAlreadyConsumed = false,
+  }) async {
     final text = query.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) return true;
 
-    _messages.add(AssistantMessage(isUser: true, text: text));
+    final userMsg = AssistantMessage(isUser: true, text: text);
+    _messages.add(userMsg);
     notifyListeners();
 
     final lower = text.toLowerCase();
@@ -453,7 +583,7 @@ Respond ONLY with a JSON object in this exact format:
         ),
       );
       notifyListeners();
-      return;
+      return true;
     }
 
     // 2. Undo command
@@ -475,7 +605,7 @@ Respond ONLY with a JSON object in this exact format:
           ),
         );
         notifyListeners();
-        return;
+        return true;
       }
     }
 
@@ -502,7 +632,7 @@ Respond ONLY with a JSON object in this exact format:
         ),
       );
       notifyListeners();
-      return;
+      return true;
     }
 
     // 4. Debts and IOUs query
@@ -531,7 +661,7 @@ Respond ONLY with a JSON object in this exact format:
         ),
       );
       notifyListeners();
-      return;
+      return true;
     }
 
     // 5. Balance breakdown
@@ -550,7 +680,7 @@ Respond ONLY with a JSON object in this exact format:
         ),
       );
       notifyListeners();
-      return;
+      return true;
     }
 
     // 6. Shift schedule query (e.g. "when is my next shift", "upcoming shifts", "my schedule")
@@ -585,7 +715,7 @@ Respond ONLY with a JSON object in this exact format:
         ),
       );
       notifyListeners();
-      return;
+      return true;
     }
 
     // 7. Specific category / merchant spending query (e.g. "how much did I spend at Gucci", "spending on groceries")
@@ -606,7 +736,7 @@ Respond ONLY with a JSON object in this exact format:
           ),
         );
         notifyListeners();
-        return;
+        return true;
       }
     }
 
@@ -633,7 +763,7 @@ Respond ONLY with a JSON object in this exact format:
         ),
       );
       notifyListeners();
-      return;
+      return true;
     }
 
     // 7. Actionable shift and goal commands
@@ -807,9 +937,10 @@ CRITICAL RULES & GUARDRAILS:
    - ONLY reveal data when the user specifically asks for it. Do NOT dump the entire ledger or unrequested financial metrics unprompted.
 3. ACTIONS & MCP:
    - When the user asks to add an expense, record income, convert currency, schedule a shift, or allocate savings to a goal, call the matching tool declaration.
-4. CURRENCY & FORMATTING:
+4. CURRENCY, LANGUAGE & FORMATTING:
    - Adaptively use the user's base currency (${financeStore.baseCurrency}) and appropriate native symbols (\$ for USD, A\$ for AUD, ¥ for JPY, € for EUR, रु for NPR, ₹ for INR).
-
+   - Active app locale code: "${AppStrings.current().localeCode}". Respond in the user's selected language (e.g., if locale is "ne", reply in natural Nepali using Devanagari script).
+ 
 User Financial Snapshot (Live On-Device Ledger):
 - Current Date: ${now.toIso8601String().substring(0, 10)}
 - Base Currency: ${financeStore.baseCurrency}
@@ -828,10 +959,23 @@ User Financial Snapshot (Live On-Device Ledger):
           text,
           systemInstruction: systemPrompt,
           tools: mcpTools.declarations,
+          quotaAlreadyConsumed: quotaAlreadyConsumed,
         );
       } catch (_) {}
 
       if (serverAiResponse != null) {
+        if (serverAiResponse.dailyAiQueriesUsed != null) {
+          updateQuotaFromServer(
+            used: serverAiResponse.dailyAiQueriesUsed!,
+            left: serverAiResponse.dailyAiQueriesLeft,
+          );
+        }
+        if (serverAiResponse.limitReached) {
+          _messages.remove(userMsg);
+          updateQuotaFromServer(used: freeDailyAiLimit, left: 0);
+          return false;
+        }
+
         // Handle MCP function calls if triggered by Gemini
         if (serverAiResponse.functionCalls.isNotEmpty) {
           for (final call in serverAiResponse.functionCalls) {
@@ -926,7 +1070,7 @@ User Financial Snapshot (Live On-Device Ledger):
             }
           }
           notifyListeners();
-          return;
+          return true;
         }
 
         if (serverAiResponse.content != null &&
@@ -940,7 +1084,7 @@ User Financial Snapshot (Live On-Device Ledger):
             ),
           );
           notifyListeners();
-          return;
+          return true;
         }
       }
 
@@ -958,6 +1102,7 @@ User Financial Snapshot (Live On-Device Ledger):
     }
 
     notifyListeners();
+    return true;
   }
 
   Future<void> confirmAction(

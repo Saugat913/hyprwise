@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
+import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/debts/data/model/debt.dart';
 import 'package:finance_tracker/features/plan/data/forecast_engine.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
@@ -67,13 +69,14 @@ class HomeViewModel extends ChangeNotifier {
     for (final shift in todayShifts) {
       final job = jobsById[shift.jobId];
       if (job == null) continue;
+      final tr = AppStrings.current();
       final earnings = ShiftEarnings.forShift(shift, job);
       final rateStr =
-          '${job.currencyCode} ${(job.hourlyRateMinor / 100).toStringAsFixed(job.hourlyRateMinor % 100 == 0 ? 0 : 2)}/h';
+          '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)}/${tr.hourAbbr}';
       list.add(
         ForecastEvent(
           date: today,
-          label: '${job.name} shift',
+          label: tr.jobShiftTitle(job.name),
           deltaMinor: earnings.earningsMinor,
           kind: ForecastEventKind.shift,
           rateFormatted: rateStr,

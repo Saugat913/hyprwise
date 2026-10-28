@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/plan/data/forecast_engine.dart';
+import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';
 
@@ -147,7 +149,8 @@ class CalendarViewModel extends ChangeNotifier {
         if (!onTargetDate) continue;
 
         final job = jobsById[s.jobId];
-        final jobName = job?.name ?? 'Shift';
+        final tr = AppStrings.current();
+        final jobName = job?.name ?? tr.shiftLabel;
         final earnings = job != null ? ShiftEarnings.forShift(s, job) : null;
         final timeStr = end != null
             ? '${AppDate.timeOnly(start)} – ${AppDate.timeOnly(end)}'
@@ -181,14 +184,15 @@ class CalendarViewModel extends ChangeNotifier {
         if (AppDate.dateOnly(txDate) != targetDate) continue;
 
         final isIncome = t.type == TransactionType.income.value;
-        final title = (t.note != null && t.note!.isNotEmpty) ? t.note! : t.category;
+        final locCat = TransactionCategories.localizedCategoryName(t.category);
+        final title = (t.note != null && t.note!.isNotEmpty) ? t.note! : locCat;
 
         items.add(
           CalendarItem(
             id: 'tx_${t.id}',
             type: isIncome ? CalendarItemType.income : CalendarItemType.expense,
             title: title,
-            subtitle: '${t.category} · ${AppDate.timeOnly(txDate)}',
+            subtitle: '$locCat · ${AppDate.timeOnly(txDate)}',
             date: txDate,
             amountMinor: t.amountMinor,
             currencyCode: baseCurrency,
@@ -202,6 +206,7 @@ class CalendarViewModel extends ChangeNotifier {
 
     // 3. Forecast events (bills, subscriptions, goal contributions) on selected date
     if (_filter == CalendarFilter.all || _filter == CalendarFilter.bills) {
+      final tr = AppStrings.current();
       final forecast = financeStore.forecast(horizonDays: 60);
       for (var i = 0; i < forecast.events.length; i++) {
         final e = forecast.events[i];
@@ -218,7 +223,7 @@ class CalendarViewModel extends ChangeNotifier {
             id: 'forecast_$i',
             type: type,
             title: e.label,
-            subtitle: isBill ? 'Recurring bill due' : 'Goal contribution planned',
+            subtitle: isBill ? tr.recurringBillDue : tr.goalContributionPlanned,
             date: e.date,
             amountMinor: e.deltaMinor.abs(),
             currencyCode: baseCurrency,

@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 
 String? _activeLocale([String? locale]) {
@@ -16,15 +17,64 @@ String? _activeLocale([String? locale]) {
   }
 }
 
+const _neMonthsFull = <String>[
+  'जनवरी',
+  'फेब्रुअरी',
+  'मार्च',
+  'अप्रिल',
+  'मे',
+  'जुन',
+  'जुलाई',
+  'अगस्ट',
+  'सेप्टेम्बर',
+  'अक्टोबर',
+  'नोभेम्बर',
+  'डिसेम्बर',
+];
+
+const _neWeekdaysFull = <String>[
+  'सोमबार',
+  'मंगलबार',
+  'बुधबार',
+  'बिहिबार',
+  'शुक्रबार',
+  'शनिबार',
+  'आइतबार',
+];
+
+const _neWeekdaysShort = <String>[
+  'सोम',
+  'मंगल',
+  'बुध',
+  'बिहि',
+  'शुक्र',
+  'शनि',
+  'आइत',
+];
+
+String _neMonth(DateTime d) => _neMonthsFull[(d.month - 1).clamp(0, 11)];
+String _neWeekdayFull(DateTime d) => _neWeekdaysFull[(d.weekday - 1).clamp(0, 6)];
+String _neWeekdayShort(DateTime d) => _neWeekdaysShort[(d.weekday - 1).clamp(0, 6)];
+String _neDigits(Object v) => AppStrings.localizeDigitsForLocale(v.toString(), 'ne');
+
+String _neTime(DateTime date) {
+  final h12 = date.hour == 0 ? 12 : (date.hour > 12 ? date.hour - 12 : date.hour);
+  final minStr = date.minute.toString().padLeft(2, '0');
+  final period = date.hour < 12 ? 'बिहान' : (date.hour < 17 ? 'दिउँसो' : 'साँझ');
+  return '${_neDigits(h12)}:${_neDigits(minStr)} $period';
+}
+
 String _safeFormat(String pattern, DateTime date, [String? locale]) {
   final loc = _activeLocale(locale);
   if (loc != null) {
     try {
-      return DateFormat(pattern, loc).format(date);
+      final res = DateFormat(pattern, loc).format(date);
+      return AppStrings.localizeDigitsForLocale(res, loc);
     } catch (_) {}
   }
   try {
-    return DateFormat(pattern).format(date);
+    final res = DateFormat(pattern).format(date);
+    return loc != null ? AppStrings.localizeDigitsForLocale(res, loc) : res;
   } catch (_) {
     return date.toIso8601String();
   }
@@ -34,11 +84,13 @@ String _safeNamedFormat(DateFormat Function(String? loc) builder, DateTime date,
   final loc = _activeLocale(locale);
   if (loc != null) {
     try {
-      return builder(loc).format(date);
+      final res = builder(loc).format(date);
+      return AppStrings.localizeDigitsForLocale(res, loc);
     } catch (_) {}
   }
   try {
-    return builder(null).format(date);
+    final res = builder(null).format(date);
+    return loc != null ? AppStrings.localizeDigitsForLocale(res, loc) : res;
   } catch (_) {
     return date.toIso8601String();
   }
@@ -46,26 +98,54 @@ String _safeNamedFormat(DateFormat Function(String? loc) builder, DateTime date,
 
 /// Centralized, locale-aware date formatting.
 abstract final class DateFormatter {
-  static String monthYear(DateTime date, {String? locale}) =>
-      _safeNamedFormat(DateFormat.yMMMM, date, locale);
+  static String monthYear(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return '${_neMonth(date)} ${_neDigits(date.year)}';
+    }
+    return _safeNamedFormat(DateFormat.yMMMM, date, locale);
+  }
 
-  static String monthShort(DateTime date, {String? locale}) =>
-      _safeNamedFormat(DateFormat.MMM, date, locale);
+  static String monthShort(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return _neMonth(date);
+    }
+    return _safeNamedFormat(DateFormat.MMM, date, locale);
+  }
 
-  static String day(DateTime date, {String? locale}) =>
-      _safeNamedFormat(DateFormat.d, date, locale);
+  static String day(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return _neDigits(date.day);
+    }
+    return _safeNamedFormat(DateFormat.d, date, locale);
+  }
 
-  static String numeric(DateTime date, {String? locale}) =>
-      _safeNamedFormat(DateFormat.yMd, date, locale);
+  static String numeric(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return '${_neDigits(date.month)}/${_neDigits(date.day)}/${_neDigits(date.year)}';
+    }
+    return _safeNamedFormat(DateFormat.yMd, date, locale);
+  }
 
-  static String weekdayDate(DateTime date, {String? locale}) =>
-      _safeNamedFormat(DateFormat.MMMEd, date, locale);
+  static String weekdayDate(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return '${_neWeekdayShort(date)}, ${_neMonth(date)} ${_neDigits(date.day)}';
+    }
+    return _safeNamedFormat(DateFormat.MMMEd, date, locale);
+  }
 
-  static String time(DateTime date, {String? locale}) =>
-      _safeNamedFormat(DateFormat.jm, date, locale);
+  static String time(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return _neTime(date);
+    }
+    return _safeNamedFormat(DateFormat.jm, date, locale);
+  }
 
-  static String monthDayTime(DateTime date, {String? locale}) =>
-      _safeNamedFormat((loc) => DateFormat.MMMd(loc).add_jm(), date, locale);
+  static String monthDayTime(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return '${_neMonth(date)} ${_neDigits(date.day)}, ${_neTime(date)}';
+    }
+    return _safeNamedFormat((loc) => DateFormat.MMMd(loc).add_jm(), date, locale);
+  }
 
   /// Human-friendly relative label such as `Today`, `Yesterday`, `in 3 days`, localized.
   static String relative(DateTime date, {DateTime? now, String? locale}) {
@@ -137,7 +217,7 @@ abstract final class DateFormatter {
     if (days > 1 && days < 7) {
       switch (loc) {
         case 'ne':
-          return '$days दिनमा';
+          return '${_neDigits(days)} दिनमा';
         case 'es':
           return 'En $days días';
         case 'fr':
@@ -158,7 +238,7 @@ abstract final class DateFormatter {
       final past = -days;
       switch (loc) {
         case 'ne':
-          return '$past दिन अगाडि';
+          return '${_neDigits(past)} दिन अगाडि';
         case 'es':
           return 'Hace $past días';
         case 'fr':
@@ -206,16 +286,45 @@ abstract final class AppDate {
     return List.generate(42, (index) => start.add(Duration(days: index)));
   }
 
-  static String header(DateTime date, {String? locale}) =>
-      _safeFormat('EEEE, d MMM', date, locale);
-  static String short(DateTime date, {String? locale}) =>
-      _safeFormat('d MMM', date, locale);
-  static String weekday(DateTime date, {String? locale}) =>
-      _safeFormat('EEE', date, locale);
-  static String weekdayDay(DateTime date, {String? locale}) =>
-      _safeFormat('EEE d', date, locale);
-  static String monthYear(DateTime date, {String? locale}) =>
-      _safeFormat('MMMM y', date, locale);
-  static String timeOnly(DateTime date, {String? locale}) =>
-      _safeFormat('h:mm a', date, locale).toLowerCase();
+  static String header(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return '${_neWeekdayFull(date)}, ${_neDigits(date.day)} ${_neMonth(date)}';
+    }
+    return _safeFormat('EEEE, d MMM', date, locale);
+  }
+
+  static String short(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return '${_neDigits(date.day)} ${_neMonth(date)}';
+    }
+    return _safeFormat('d MMM', date, locale);
+  }
+
+  static String weekday(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return _neWeekdayShort(date);
+    }
+    return _safeFormat('EEE', date, locale);
+  }
+
+  static String weekdayDay(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return '${_neWeekdayShort(date)} ${_neDigits(date.day)}';
+    }
+    return _safeFormat('EEE d', date, locale);
+  }
+
+  static String monthYear(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return '${_neMonth(date)} ${_neDigits(date.year)}';
+    }
+    return _safeFormat('MMMM y', date, locale);
+  }
+
+  static String timeOnly(DateTime date, {String? locale}) {
+    if (_activeLocale(locale)?.toLowerCase() == 'ne') {
+      return _neTime(date);
+    }
+    return _safeFormat('h:mm a', date, locale).toLowerCase();
+  }
 }

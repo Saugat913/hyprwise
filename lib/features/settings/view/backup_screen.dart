@@ -38,6 +38,7 @@ class _BackupScreenState extends State<BackupScreen> {
   bool _isCloudPushing = false;
   bool _isCloudPulling = false;
   DriveBackupMetadata? _driveMetadata;
+  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -69,6 +70,7 @@ class _BackupScreenState extends State<BackupScreen> {
                 : null);
         final driveEmail = _driveMetadata?.accountEmail ??
             GoogleDriveBackupService.instance.connectedEmail;
+        final hasBackup = lastBackupDate != null;
 
         return Scaffold(
           appBar: AppTopBar(
@@ -76,383 +78,420 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           body: SafeArea(
             child: ListView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.page,
-                vertical: AppSpace.md,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.page,
+                AppSpace.md,
+                AppSpace.page,
+                AppSpace.xxxl,
               ),
               children: [
-                // Concise plain-text intro (never styled like clickable buttons)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpace.lg),
-                  child: Text(
-                    tr.t(
-                      'Choose how you want to back up, export, or restore your financial records. All backups include your accounts, transactions, shifts, jobs, debts, and goals.',
-                      ne: 'तपाईंको वित्तीय डाटा ब्याकअप, निर्यात वा रिस्टोर गर्ने माध्यम छान्नुहोस्। सबै ब्याकअपमा खाता, कारोबार, सिफ्ट, काम र लक्ष्यहरू समावेश हुन्छन्।',
-                      es: 'Elige cómo respaldar, exportar o restaurar tus registros financieros. Incluye cuentas, transacciones, turnos y metas.',
-                      fr: 'Choisissez comment sauvegarder, exporter ou restaurer vos données financières.',
-                      de: 'Wählen Sie, wie Sie Ihre Finanzdaten sichern, exportieren oder wiederherstellen möchten.',
-                      ja: 'データのバックアップ、エクスポート、復元方法を選択してください。すべての口座・取引・シフトが含まれます。',
-                      zh: '选择备份、导出或恢复财务数据的方式。备份包含您的所有账户、收支、排班和目标。',
-                      it: 'Scegli come eseguire il backup, esportare o ripristinare i tuoi dati finanziari.',
-                    ),
-                    style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                ),
-
                 // ============================================================
-                // SECTION 1: CLOUD BACKUP & SYNC
+                // STATUS HERO SUMMARY CARD
                 // ============================================================
-                SectionHeader(
-                  tr.t(
-                    'CLOUD BACKUP',
-                    ne: 'क्लाउड ब्याकअप',
-                    es: 'COPIA EN LA NUBE',
-                    fr: 'SAUVEGARDE CLOUD',
-                    de: 'CLOUD-BACKUP',
-                    ja: 'クラウドバックアップ',
-                    zh: '云端备份',
-                    it: 'BACKUP CLOUD',
-                  ),
-                ),
-                const SizedBox(height: AppSpace.sm),
-
-                // 1A. Google Drive Backup Card
                 AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.all(AppSpace.lg),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          const IconTile(HugeIcons.strokeRoundedGoogleDrive),
-                          const SizedBox(width: AppSpace.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tr.googleDriveBackup,
-                                  style: text.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  driveEmail ?? tr.googleDriveBackupDesc,
-                                  style: text.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          StatusChip(
-                            lastBackupDate != null
-                                ? tr.t('Backed up', ne: 'सुरक्षित', es: 'Guardado', fr: 'Sauvegardé', de: 'Gesichert', ja: '保存済', zh: '已备份')
-                                : tr.t('Not backed up', ne: 'ब्याकअप छैन', es: 'Sin copia', fr: 'Non sauvegardé', de: 'Kein Backup', ja: '未保存', zh: '未备份'),
-                            tone: lastBackupDate != null ? ChipTone.success : ChipTone.neutral,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpace.md),
                       Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpace.md,
-                          vertical: AppSpace.sm,
-                        ),
+                        width: 48,
+                        height: 48,
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          color: hasBackup ? colors.incomeBg : colors.brandBg,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
-                        child: Row(
+                        child: AppIcon(
+                          hasBackup
+                              ? HugeIcons.strokeRoundedCloudSavingDone01
+                              : HugeIcons.strokeRoundedCloudUpload,
+                          size: 24,
+                          color: hasBackup ? colors.income : colors.brand,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpace.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            AppIcon(
-                              HugeIcons.strokeRoundedClock01,
-                              size: 16,
-                              color: scheme.onSurfaceVariant,
+                            Text(
+                              hasBackup
+                                  ? tr.t(
+                                      'Backup Active',
+                                      ne: 'ब्याकअप सक्रिय छ',
+                                      es: 'Respaldo activo',
+                                      fr: 'Sauvegarde active',
+                                      de: 'Backup aktiv',
+                                      ja: 'バックアップ有効',
+                                      zh: '备份已激活',
+                                      it: 'Backup attivo',
+                                    )
+                                  : tr.t(
+                                      'No Recent Backup',
+                                      ne: 'हालसालै ब्याकअप छैन',
+                                      es: 'Sin respaldo reciente',
+                                      fr: 'Aucune sauvegarde récente',
+                                      de: 'Kein aktuelles Backup',
+                                      ja: '最近のバックアップなし',
+                                      zh: '暂无近期备份',
+                                      it: 'Nessun backup recente',
+                                    ),
+                              style: text.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                            const SizedBox(width: AppSpace.xs),
-                            Expanded(
-                              child: Text(
-                                lastBackupDate != null
-                                    ? tr.t(
-                                        'Last backup: ${AppDate.header(lastBackupDate)} • ${AppDate.timeOnly(lastBackupDate)}',
-                                        ne: 'पछिल्लो ब्याकअप: ${AppDate.header(lastBackupDate)} • ${AppDate.timeOnly(lastBackupDate)}',
-                                        es: 'Última copia: ${AppDate.header(lastBackupDate)} • ${AppDate.timeOnly(lastBackupDate)}',
-                                        fr: 'Dernière sauvegarde : ${AppDate.header(lastBackupDate)} • ${AppDate.timeOnly(lastBackupDate)}',
-                                        de: 'Letztes Backup: ${AppDate.header(lastBackupDate)} • ${AppDate.timeOnly(lastBackupDate)}',
-                                        ja: '最終バックアップ: ${AppDate.header(lastBackupDate)} ${AppDate.timeOnly(lastBackupDate)}',
-                                        zh: '上次备份：${AppDate.header(lastBackupDate)} ${AppDate.timeOnly(lastBackupDate)}',
-                                      )
-                                    : tr.t(
-                                        'No Google Drive backup recorded yet',
-                                        ne: 'अहिलेसम्म गुगल ड्राइभ ब्याकअप गरिएको छैन',
-                                        es: 'Aún no hay copia en Google Drive',
-                                        fr: 'Aucune sauvegarde Google Drive enregistrée',
-                                        de: 'Noch kein Google Drive-Backup vorhanden',
-                                        ja: 'Googleドライブへのバックアップ履歴はありません',
-                                        zh: '尚未创建 Google 云端硬盘备份',
-                                      ),
-                                style: text.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            const SizedBox(height: 4),
+                            Text(
+                              hasBackup
+                                  ? '${AppDate.header(lastBackupDate)} • ${AppDate.timeOnly(lastBackupDate)}'
+                                  : tr.t(
+                                      'Keep your ledger safe in the cloud or on device',
+                                      ne: 'आफ्नो हिसाब क्लाउड वा फोनमा सुरक्षित राख्नुहोस्',
+                                      es: 'Mantén tus registros seguros en la nube o dispositivo',
+                                      fr: 'Gardez vos comptes en sécurité dans le cloud ou sur l\'appareil',
+                                      de: 'Sichern Sie Ihre Daten in der Cloud oder auf dem Gerät',
+                                      ja: 'データをクラウドまたは端末に安全に保護します',
+                                      zh: '将您的账本安全保存在云端或本地设备中',
+                                      it: 'Mantieni i tuoi conti al sicuro nel cloud o sul dispositivo',
+                                    ),
+                              style: text.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppSpace.md),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppButton(
-                              _isDriveBackingUp
-                                  ? tr.t('Backing up...', ne: 'ब्याकअप हुँदैछ...', es: 'Guardando...', fr: 'Sauvegarde...', de: 'Sichere...', ja: '保存中...', zh: '正在备份...')
-                                  : tr.t('Back Up Now', ne: 'अहिले ब्याकअप गर्नुहोस्', es: 'Respaldar ahora', fr: 'Sauvegarder', de: 'Jetzt sichern', ja: '今すぐバックアップ', zh: '立即备份'),
-                              icon: HugeIcons.strokeRoundedCloudUpload,
-                              onPressed: (_isDriveBackingUp || _isDriveRestoring)
-                                  ? null
-                                  : () => _handleGoogleDriveBackup(context),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpace.sm),
-                          Expanded(
-                            child: AppButton(
-                              _isDriveRestoring
-                                  ? tr.t('Restoring...', ne: 'रिस्टोर हुँदैछ...', es: 'Restaurando...', fr: 'Restauration...', de: 'Lade...', ja: '復元中...', zh: '正在恢复...')
-                                  : tr.t('Restore Drive', ne: 'ड्राइभबाट रिस्टोर', es: 'Restaurar Drive', fr: 'Restaurer Drive', de: 'Aus Drive laden', ja: 'ドライブから復元', zh: '从网盘恢复'),
-                              kind: AppButtonKind.secondary,
-                              icon: HugeIcons.strokeRoundedCloudDownload,
-                              onPressed: (_isDriveBackingUp || _isDriveRestoring)
-                                  ? null
-                                  : () => _handleGoogleDriveRestore(context),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: AppSpace.xs),
+                      StatusChip(
+                        hasBackup
+                            ? tr.t('Protected', ne: 'सुरक्षित', es: 'Protegido', fr: 'Protégé', de: 'Gesichert', ja: '保護済', zh: '已保护', it: 'Protetto')
+                            : tr.t('Pending', ne: 'बाँकी', es: 'Pendiente', fr: 'En attente', de: 'Ausstehend', ja: '未設定', zh: '待备份', it: 'In attesa'),
+                        tone: hasBackup ? ChipTone.success : ChipTone.neutral,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpace.md),
 
-                // 1B. Hyprwise Cloud Sync Card (Pro)
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const IconTile(HugeIcons.strokeRoundedCloud),
-                          const SizedBox(width: AppSpace.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        tr.hyprwiseCloudSync,
-                                        style: text.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.w700,
+                const SizedBox(height: AppSpace.lg),
+
+                // ============================================================
+                // SEGMENTED TABS: CLOUD vs EXPORT & LOCAL
+                // ============================================================
+                SegmentedTabs<int>(
+                  value: _selectedTab,
+                  onChanged: (v) => setState(() => _selectedTab = v),
+                  options: {
+                    0: tr.t(
+                      'Cloud Backup',
+                      ne: 'क्लाउड ब्याकअप',
+                      es: 'Copia en Nube',
+                      fr: 'Sauvegarde Cloud',
+                      de: 'Cloud-Backup',
+                      ja: 'クラウド保存',
+                      zh: '云端备份',
+                      it: 'Backup Cloud',
+                    ),
+                    1: tr.t(
+                      'Export & Local',
+                      ne: 'निर्यात र फाइल',
+                      es: 'Exportar y Local',
+                      fr: 'Export & Local',
+                      de: 'Export & Lokal',
+                      ja: '出力と復元',
+                      zh: '导出与本地',
+                      it: 'Esporta e File',
+                    ),
+                  },
+                ),
+
+                const SizedBox(height: AppSpace.lg),
+
+                if (_selectedTab == 0) ...[
+                  // ==========================================================
+                  // TAB 0: CLOUD BACKUP (GOOGLE DRIVE & HYPRWISE CLOUD)
+                  // ==========================================================
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpace.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const IconTile(
+                              HugeIcons.strokeRoundedGoogleDrive,
+                              size: 44,
+                            ),
+                            const SizedBox(width: AppSpace.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tr.googleDriveBackup,
+                                    style: text.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    driveEmail ?? tr.googleDriveBackupDesc,
+                                    style: text.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpace.lg),
+                        AppButton(
+                          _isDriveBackingUp
+                              ? tr.t('Backing up...', ne: 'ब्याकअप हुँदैछ...', es: 'Guardando...', fr: 'Sauvegarde...', de: 'Sichere...', ja: '保存中...', zh: '正在备份...', it: 'Backup in corso...')
+                              : tr.t('Back Up to Google Drive', ne: 'गुगल ड्राइभमा ब्याकअप गर्नुहोस्', es: 'Respaldar en Google Drive', fr: 'Sauvegarder sur Google Drive', de: 'In Google Drive sichern', ja: 'Googleドライブにバックアップ', zh: '备份到 Google 云端硬盘', it: 'Esegui backup su Google Drive'),
+                          icon: HugeIcons.strokeRoundedCloudUpload,
+                          onPressed: (_isDriveBackingUp || _isDriveRestoring)
+                              ? null
+                              : () => _handleGoogleDriveBackup(context),
+                        ),
+                        const SizedBox(height: AppSpace.sm),
+                        AppButton(
+                          _isDriveRestoring
+                              ? tr.t('Restoring...', ne: 'रिस्टोर हुँदैछ...', es: 'Restaurando...', fr: 'Restauration...', de: 'Lade...', ja: '復元中...', zh: '正在恢复...', it: 'Ripristino...')
+                              : tr.t('Restore from Google Drive', ne: 'गुगल ड्राइभबाट रिस्टोर गर्नुहोस्', es: 'Restaurar desde Google Drive', fr: 'Restaurer depuis Google Drive', de: 'Aus Google Drive wiederherstellen', ja: 'Googleドライブから復元', zh: '从 Google 云端硬盘恢复', it: 'Ripristina da Google Drive'),
+                          kind: AppButtonKind.secondary,
+                          icon: HugeIcons.strokeRoundedCloudDownload,
+                          onPressed: (_isDriveBackingUp || _isDriveRestoring)
+                              ? null
+                              : () => _handleGoogleDriveRestore(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpace.lg),
+
+                  // Hyprwise Cloud Sync Card (Pro)
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpace.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const IconTile(
+                              HugeIcons.strokeRoundedCloud,
+                              size: 44,
+                            ),
+                            const SizedBox(width: AppSpace.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          tr.hyprwiseCloudSync,
+                                          style: text.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    if (!_subService.isPro) ...[
-                                      const SizedBox(width: AppSpace.xs),
-                                      const ProCrownBadge(isCompact: true),
+                                      if (!_subService.isPro) ...[
+                                        const SizedBox(width: AppSpace.xs),
+                                        const ProCrownBadge(isCompact: true),
+                                      ],
                                     ],
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _authService.isAuthenticated
-                                      ? tr.connectedAccountEmail(
-                                          _authService.currentUser?.email ?? '',
-                                        )
-                                      : tr.signInToSyncHono,
-                                  style: text.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpace.md),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppButton(
-                              _isCloudPushing
-                                  ? tr.t('Pushing...', ne: 'अपलोड हुँदैछ...', es: 'Subiendo...', fr: 'Envoi...', de: 'Sende...', ja: '送信中...', zh: '同步中...')
-                                  : tr.pushDataToCloud,
-                              icon: HugeIcons.strokeRoundedUpload04,
-                              onPressed: (_isCloudPushing || _isCloudPulling)
-                                  ? null
-                                  : () => _handleCloudPush(context),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpace.sm),
-                          Expanded(
-                            child: AppButton(
-                              _isCloudPulling
-                                  ? tr.t('Pulling...', ne: 'डाउनलोड हुँदैछ...', es: 'Descargando...', fr: 'Récupération...', de: 'Lade...', ja: '取得中...', zh: '拉取中...')
-                                  : tr.pullDataFromCloud,
-                              kind: AppButtonKind.secondary,
-                              icon: HugeIcons.strokeRoundedDownload04,
-                              onPressed: (_isCloudPushing || _isCloudPulling)
-                                  ? null
-                                  : () => _handleCloudPull(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: AppSpace.xl),
-
-                // ============================================================
-                // SECTION 2: LOCAL FILES & REPORTS
-                // ============================================================
-                SectionHeader(
-                  tr.t(
-                    'LOCAL FILES & REPORTS',
-                    ne: 'स्थानीय फाइल र रिपोर्ट',
-                    es: 'ARCHIVOS LOCALES Y REPORTES',
-                    fr: 'FICHIERS LOCAUX & RAPPORTS',
-                    de: 'LOKALE DATEIEN & BERICHTE',
-                    ja: 'ローカルファイルとレポート',
-                    zh: '本地文件与报表',
-                    it: 'FILE LOCALI E REPORT',
-                  ),
-                ),
-                const SizedBox(height: AppSpace.sm),
-
-                // 2A. Export Data (CSV / JSON / Report)
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const IconTile(HugeIcons.strokeRoundedDownload01),
-                          const SizedBox(width: AppSpace.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tr.exportDataFormats,
-                                  style: text.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _authService.isAuthenticated
+                                        ? tr.connectedAccountEmail(
+                                            _authService.currentUser?.email ?? '',
+                                          )
+                                        : tr.signInToSyncHono,
+                                    style: text.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  tr.t(
-                                    'Save CSV spreadsheets (Excel/Sheets), full JSON backups, or summary reports to your phone.',
-                                    ne: 'CSV स्प्रेडसिट, पूर्ण JSON ब्याकअप वा सारांश रिपोर्ट फोनमा सेभ वा सेयर गर्नुहोस्।',
-                                    es: 'Guarda hojas CSV (Excel/Sheets), copias JSON completas o informes en tu teléfono.',
-                                    fr: 'Enregistrez des feuilles CSV, des sauvegardes JSON ou des rapports sur votre téléphone.',
-                                    de: 'CSV-Tabellen, vollständige JSON-Backups oder Berichte auf dem Gerät speichern.',
-                                    ja: 'CSVスプレッドシート、JSONバックアップ、サマリーレポートを端末に保存または共有します。',
-                                    zh: '将 CSV 表格（支持 Excel）、完整 JSON 备份或财务汇总报告保存到手机。',
-                                  ),
-                                  style: text.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpace.md),
-                      AppButton(
-                        tr.t(
-                          'Export Data (CSV / JSON / Report)',
-                          ne: 'डाटा निर्यात गर्नुहोस् (CSV / JSON)',
-                          es: 'Exportar datos (CSV / JSON / Informe)',
-                          fr: 'Exporter les données (CSV / JSON)',
-                          de: 'Daten exportieren (CSV / JSON)',
-                          ja: 'データをエクスポート (CSV / JSON)',
-                          zh: '导出数据 (CSV / JSON / 报告)',
+                          ],
                         ),
-                        kind: AppButtonKind.secondary,
-                        icon: HugeIcons.strokeRoundedFileExport,
-                        onPressed: () => ExportService.showExportDialog(context),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpace.md),
-
-                // 2B. Restore from Local JSON File
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          IconTile(
-                            HugeIcons.strokeRoundedUpload01,
-                            color: colors.brand,
-                          ),
-                          const SizedBox(width: AppSpace.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tr.restoreFromJsonBackup,
-                                  style: text.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  tr.t(
-                                    'Select a previously exported Hyprwise .json backup file from your device storage to restore all records.',
-                                    ne: 'पहिले सेभ गरिएको .json ब्याकअप फाइल छानेर सबै पुराना रेकर्डहरू रिस्टोर गर्नुहोस्।',
-                                    es: 'Selecciona un archivo .json de respaldo guardado en tu dispositivo para restaurar tus datos.',
-                                    fr: 'Sélectionnez un fichier .json sur votre appareil pour restaurer vos enregistrements.',
-                                    de: 'Wählen Sie eine gespeicherte .json-Backup-Datei vom Gerät, um alle Daten wiederherzustellen.',
-                                    ja: '端末に保存された .json バックアップファイルを選択してデータを復元します。',
-                                    zh: '从手机存储中选择之前导出的 Hyprwise .json 备份文件以恢复全部记录。',
-                                  ),
-                                  style: text.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
+                        const SizedBox(height: AppSpace.lg),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AppButton(
+                                _isCloudPushing
+                                    ? tr.t('Pushing...', ne: 'अपलोड हुँदैछ...', es: 'Subiendo...', fr: 'Envoi...', de: 'Sende...', ja: '送信中...', zh: '同步中...', it: 'Invio...')
+                                    : tr.pushDataToCloud,
+                                icon: HugeIcons.strokeRoundedUpload04,
+                                onPressed: (_isCloudPushing || _isCloudPulling)
+                                    ? null
+                                    : () => _handleCloudPush(context),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpace.md),
-                      AppButton(
-                        tr.t(
-                          'Choose .json Backup File',
-                          ne: '.json ब्याकअप फाइल छान्नुहोस्',
-                          es: 'Elegir archivo .json de copia',
-                          fr: 'Choisir un fichier .json',
-                          de: '.json Backup-Datei auswählen',
-                          ja: '.json バックアップファイルを選択',
-                          zh: '选择 .json 备份文件进行恢复',
+                            const SizedBox(width: AppSpace.sm),
+                            Expanded(
+                              child: AppButton(
+                                _isCloudPulling
+                                    ? tr.t('Pulling...', ne: 'डाउनलोड हुँदैछ...', es: 'Descargando...', fr: 'Récupération...', de: 'Lade...', ja: '取得中...', zh: '拉取中...', it: 'Scaricamento...')
+                                    : tr.pullDataFromCloud,
+                                kind: AppButtonKind.secondary,
+                                icon: HugeIcons.strokeRoundedDownload04,
+                                onPressed: (_isCloudPushing || _isCloudPulling)
+                                    ? null
+                                    : () => _handleCloudPull(context),
+                              ),
+                            ),
+                          ],
                         ),
-                        kind: AppButtonKind.secondary,
-                        icon: HugeIcons.strokeRoundedFolderOpen,
-                        onPressed: () => _pickAndRestoreBackup(context, _viewModel),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpace.xxl),
+                ] else ...[
+                  // ==========================================================
+                  // TAB 1: EXPORT & LOCAL FILES
+                  // ==========================================================
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpace.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const IconTile(
+                              HugeIcons.strokeRoundedFileExport,
+                              size: 44,
+                            ),
+                            const SizedBox(width: AppSpace.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tr.exportDataFormats,
+                                    style: text.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    tr.t(
+                                      'Export CSV spreadsheets for Excel/Sheets, full JSON backups, or summary reports.',
+                                      ne: 'CSV स्प्रेडसिट, पूर्ण JSON ब्याकअप वा सारांश रिपोर्ट निर्यात गर्नुहोस्।',
+                                      es: 'Exporta hojas CSV para Excel, respaldos JSON o informes resumidos.',
+                                      fr: 'Exportez des fichiers CSV, des sauvegardes JSON ou des rapports.',
+                                      de: 'CSV-Tabellen, vollständige JSON-Backups oder Berichte exportieren.',
+                                      ja: 'CSVスプレッドシート、JSONバックアップ、レポートを出力します。',
+                                      zh: '导出适用于 Excel 的 CSV 表格、完整 JSON 备份或财务汇总报告。',
+                                      it: 'Esporta fogli CSV, backup JSON completi o report riepilogativi.',
+                                    ),
+                                    style: text.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpace.lg),
+                        AppButton(
+                          tr.t(
+                            'Choose Export Format',
+                            ne: 'निर्यात ढाँचा छान्नुहोस्',
+                            es: 'Elegir formato de exportación',
+                            fr: 'Choisir le format d\'export',
+                            de: 'Exportformat wählen',
+                            ja: 'エクスポート形式を選択',
+                            zh: '选择导出格式',
+                            it: 'Scegli formato di esportazione',
+                          ),
+                          icon: HugeIcons.strokeRoundedDownload01,
+                          onPressed: () => ExportService.showExportDialog(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpace.lg),
+
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpace.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            IconTile(
+                              HugeIcons.strokeRoundedFolderOpen,
+                              size: 44,
+                              color: colors.brand,
+                            ),
+                            const SizedBox(width: AppSpace.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tr.restoreFromJsonBackup,
+                                    style: text.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    tr.t(
+                                      'Select a saved Hyprwise .json backup file from your device storage to restore all records.',
+                                      ne: 'फोनमा सेभ गरिएको .json ब्याकअप फाइल छानेर सबै रेकर्डहरू रिस्टोर गर्नुहोस्।',
+                                      es: 'Selecciona un archivo .json guardado en tu dispositivo para restaurar tus datos.',
+                                      fr: 'Sélectionnez un fichier .json sur votre appareil pour restaurer vos données.',
+                                      de: 'Wählen Sie eine gespeicherte .json-Datei vom Gerät zur Wiederherstellung.',
+                                      ja: '端末内の .json バックアップファイルを選択して全データを復元します。',
+                                      zh: '从设备存储中选择已保存的 Hyprwise .json 备份文件以恢复全部记录。',
+                                      it: 'Seleziona un file .json salvato sul dispositivo per ripristinare i dati.',
+                                    ),
+                                    style: text.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpace.lg),
+                        AppButton(
+                          tr.t(
+                            'Select .json Backup File',
+                            ne: '.json ब्याकअप फाइल छान्नुहोस्',
+                            es: 'Seleccionar archivo .json',
+                            fr: 'Sélectionner un fichier .json',
+                            de: '.json-Datei auswählen',
+                            ja: '.json バックアップファイルを選択',
+                            zh: '选择 .json 备份文件',
+                            it: 'Seleziona file .json',
+                          ),
+                          kind: AppButtonKind.secondary,
+                          icon: HugeIcons.strokeRoundedUpload01,
+                          onPressed: () => _pickAndRestoreBackup(context, _viewModel),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

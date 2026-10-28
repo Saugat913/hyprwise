@@ -43,12 +43,14 @@ class _AddGoalWizardState extends State<AddGoalWizard> {
 
   String _goalName(BuildContext context) {
     final tr = context.strings;
-    if (_category == 'Something else') {
-      return _customNameController.text.trim().isEmpty
+    return switch (_category) {
+      'Emergency fund' => tr.emergencyFund,
+      'Something to buy' => tr.somethingToBuy,
+      'A trip' => tr.aTrip,
+      _ => _customNameController.text.trim().isEmpty
           ? tr.myGoal
-          : _customNameController.text.trim();
-    }
-    return _category;
+          : _customNameController.text.trim(),
+    };
   }
 
   void _onNext() {

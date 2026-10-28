@@ -243,9 +243,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                   ),
                                   const SizedBox(height: AppSpace.sm),
                                   Text(
-                                    tr.isNepali
-                                        ? '${viewModel.filteredTransactions.where((t) => t.type == viewModel.activeType.value).length} कारोबारहरू रेकर्ड गरियो'
-                                        : '${viewModel.filteredTransactions.where((t) => t.type == viewModel.activeType.value).length} transactions recorded',
+                                    tr.transactionsRecordedCount(
+                                      viewModel.filteredTransactions
+                                          .where(
+                                            (t) =>
+                                                t.type ==
+                                                viewModel.activeType.value,
+                                          )
+                                          .length,
+                                    ),
                                     style: text.bodySmall?.copyWith(
                                       color: scheme.onSurfaceVariant,
                                     ),
@@ -787,6 +793,7 @@ class _CategoryFilterButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tr = context.strings;
     final hasCategory = viewModel.selectedCategory != null;
     final label =
         hasCategory
@@ -794,7 +801,7 @@ class _CategoryFilterButton extends StatelessWidget {
               viewModel.selectedCategory!,
               TransactionType.expense,
             ).label
-            : 'All Categories';
+            : tr.allCategoriesTitle;
 
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -1047,7 +1054,7 @@ class _CategorySpendRow extends StatelessWidget {
                   style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-              Text('$percent%', style: text.bodySmall),
+              Text('${context.strings.formatNumber(percent)}%', style: text.bodySmall),
               const SizedBox(width: AppSpace.md),
               MoneyText(
                 spend.amountMinor,
@@ -1091,7 +1098,7 @@ class _MerchantRow extends StatelessWidget {
                   style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  '${TransactionCategories.fromValue(merchant.category, TransactionType.expense).label} · ${merchant.count} ${merchant.count == 1 ? "tx" : "txs"}',
+                  '${TransactionCategories.fromValue(merchant.category, TransactionType.expense).label} · ${context.strings.txCountShort(merchant.count)}',
                   style: text.bodySmall,
                 ),
               ],

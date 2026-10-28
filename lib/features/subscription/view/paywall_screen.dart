@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
@@ -88,6 +89,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final authService = getIt<AuthService>();
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final tr = context.strings;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const brandOrange = Color(0xFFFF6500);
 
@@ -135,7 +137,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     const SizedBox(height: AppSpace.xl),
 
                     Text(
-                      'Sign In to Link Data & Purchase Pro',
+                      tr.signInToLinkProTitle,
                       textAlign: TextAlign.center,
                       style: text.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w800,
@@ -145,9 +147,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     const SizedBox(height: AppSpace.sm),
 
                     Text(
-                      (!kIsWeb && Platform.isIOS)
-                          ? 'Please sign in with Google or Apple to link your current transactions, shifts, and budgets to your account and activate your Hyprwise Pro subscription.'
-                          : 'Please sign in with Google to link your current transactions, shifts, and budgets to your account and activate your Hyprwise Pro subscription.',
+                      tr.signInToLinkProDesc,
                       textAlign: TextAlign.center,
                       style: text.bodyMedium?.copyWith(
                         color: scheme.onSurfaceVariant,
@@ -175,7 +175,16 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           const SizedBox(width: AppSpace.sm),
                           Expanded(
                             child: Text(
-                              'All your current local shifts, accounts, and transactions will be safely preserved and stored in your user account.',
+                              tr.t(
+                                'All your current local shifts, accounts, and transactions will be safely preserved and stored in your user account.',
+                                ne: 'तपाईंका हालका सबै सिफ्ट, खाता र कारोबारहरू सुरक्षित रूपमा तपाईंको खातामा राखिनेछन्।',
+                                es: 'Todos tus turnos, cuentas y transacciones locales se conservarán de forma segura.',
+                                fr: 'Tous vos quarts, comptes et transactions locaux seront conservés en toute sécurité.',
+                                de: 'Alle Ihre lokalen Schichten, Konten und Transaktionen bleiben sicher erhalten.',
+                                ja: '現在のシフト、口座、取引データはすべて安全にアカウントに保存されます。',
+                                zh: '您当前的所有本地班次、账户和交易记录都将安全地保存在您的账户中。',
+                                it: 'Tutti i tuoi turni, conti e transazioni locali saranno conservati in sicurezza.',
+                              ),
                               style: text.bodySmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? const Color(0xFFD6E3DC) : const Color(0xFF1F2726),
@@ -228,9 +237,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             size: 20,
                             color: isDark ? Colors.black : Colors.white,
                           ),
-                          label: const Text(
-                            'Continue with Google',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                          label: Text(
+                            tr.continueWithGoogle,
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                           ),
                           onPressed: _handleGoogleSignIn,
                         ),
@@ -254,9 +263,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               size: 20,
                               color: isDark ? Colors.black : Colors.white,
                             ),
-                            label: const Text(
-                              'Continue with Apple',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                            label: Text(
+                              tr.continueWithApple,
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                             ),
                             onPressed: _handleAppleSignIn,
                           ),
@@ -283,14 +292,14 @@ class _PaywallScreenState extends State<PaywallScreen> {
           onPurchaseCompleted: (customerInfo, storeTransaction) async {
             await subService.checkEntitlement();
             if (context.mounted) {
-              showToast(context, 'Welcome to Hyprwise Pro!');
+              showToast(context, tr.proActive);
               context.pop();
             }
           },
           onRestoreCompleted: (customerInfo) async {
             await subService.checkEntitlement();
             if (context.mounted) {
-              showToast(context, 'Purchases restored successfully');
+              showToast(context, tr.proActive);
               context.pop();
             }
           },
@@ -333,13 +342,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
               ),
               const SizedBox(height: AppSpace.sm),
               Text(
-                'Unlock unlimited AI budget intelligence, automated bill OCR scans, and seamless encrypted cloud sync.',
+                tr.proUpgradeSubtitle,
                 textAlign: TextAlign.center,
                 style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: AppSpace.xl),
               AppButton(
-                'Launch RevenueCat Paywall',
+                tr.upgradeToPro,
                 onPressed: () async {
                   final result = await subService.presentPaywall();
                   if (result == PaywallResult.purchased || result == PaywallResult.restored) {

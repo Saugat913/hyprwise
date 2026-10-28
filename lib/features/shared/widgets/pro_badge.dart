@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/app/routes.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/shared/widgets/app_icon.dart';
@@ -151,19 +152,19 @@ Future<void> showProUpgradeSheet(
                   children: [
                     _PerkRow(
                       icon: HugeIcons.strokeRoundedChatBot,
-                      label: 'Unlimited Hypr AI financial insights & shift advice',
+                      label: sheetContext.strings.proPerkAiAssistant,
                       isHighlight: featureHighlight == 'ai',
                     ),
                     const SizedBox(height: AppSpace.sm),
                     _PerkRow(
                       icon: HugeIcons.strokeRoundedCloud,
-                      label: 'Automated multi-device cloud backup & sync',
+                      label: sheetContext.strings.proPerkMultiCurrency,
                       isHighlight: featureHighlight == 'backup',
                     ),
                     const SizedBox(height: AppSpace.sm),
                     _PerkRow(
                       icon: HugeIcons.strokeRoundedFile01,
-                      label: 'PDF report exports & full forecast projection',
+                      label: sheetContext.strings.proPerkCloudBackup,
                       isHighlight: featureHighlight == 'export',
                     ),
                   ],
@@ -199,9 +200,9 @@ Future<void> showProUpgradeSheet(
                       if (context.mounted) context.push(AppRoutes.paywall);
                     }
                   },
-                  child: const Text(
-                    'Explore Pro Plans',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  child: Text(
+                    sheetContext.strings.exploreProPlans,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                 ),
               ),
@@ -211,7 +212,7 @@ Future<void> showProUpgradeSheet(
               TextButton(
                 onPressed: () => Navigator.of(sheetContext).pop(),
                 child: Text(
-                  'Maybe later',
+                  sheetContext.strings.maybeLater,
                   style: text.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),

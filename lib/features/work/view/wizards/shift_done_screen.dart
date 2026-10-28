@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/app/routes.dart';
@@ -24,7 +23,7 @@ class ShiftDoneScreen extends StatelessWidget {
   String _formatDurationMinutes(int totalMinutes, AppStrings tr) {
     final h = totalMinutes ~/ 60;
     final m = totalMinutes % 60;
-    return '$h${tr.hourAbbr} $m${tr.minuteAbbr}';
+    return '${tr.formatNumber(h)}${tr.hourAbbr} ${tr.formatNumber(m)}${tr.minuteAbbr}';
   }
 
   @override
@@ -52,7 +51,6 @@ class ShiftDoneScreen extends StatelessWidget {
     final workedMinutes = calculated?.workedMinutes ?? 0;
     final breakMinutes = shift.breakMinutes;
     final baseRateMinor = shift.rateOverrideMinor ?? job?.hourlyRateMinor ?? 0;
-    final timeFmt = DateFormat('h:mm a');
 
     void handleBack() {
       if (context.canPop()) {
@@ -84,7 +82,7 @@ class ShiftDoneScreen extends StatelessWidget {
               // Build chronological timeline entries
               final timelineItems = <_ShiftTimelineEntry>[
                 _ShiftTimelineEntry(
-                  timeLabel: timeFmt.format(startTime),
+                  timeLabel: AppDate.timeOnly(startTime),
                   title: tr.clockedInEvent,
                   subtitle: '${job?.name ?? tr.activeShift} · ${MoneyFormatter.format(baseRateMinor, currency)}/${tr.hourAbbr}',
                   icon: HugeIcons.strokeRoundedPlay,
@@ -101,7 +99,7 @@ class ShiftDoneScreen extends StatelessWidget {
                   final bMins = ShiftTimeline.breakMinutesOf(b, now: endTime);
                   timelineItems.add(
                     _ShiftTimelineEntry(
-                      timeLabel: '${timeFmt.format(bStart)} – ${timeFmt.format(bEnd)}',
+                      timeLabel: '${AppDate.timeOnly(bStart)} – ${AppDate.timeOnly(bEnd)}',
                       title: tr.breakSegmentLabel,
                       subtitle: _formatDurationMinutes(bMins, tr),
                       icon: HugeIcons.strokeRoundedCoffee01,
@@ -112,7 +110,7 @@ class ShiftDoneScreen extends StatelessWidget {
               } else if (breakMinutes > 0) {
                 timelineItems.add(
                   _ShiftTimelineEntry(
-                    timeLabel: '$breakMinutes${tr.minuteAbbr}',
+                    timeLabel: '${tr.formatNumber(breakMinutes)}${tr.minuteAbbr}',
                     title: tr.breakSegmentLabel,
                     subtitle: _formatDurationMinutes(breakMinutes, tr),
                     icon: HugeIcons.strokeRoundedCoffee01,
@@ -126,7 +124,7 @@ class ShiftDoneScreen extends StatelessWidget {
                 final otReachedAt = startTime.add(Duration(minutes: otThreshold + breakMinutes));
                 timelineItems.add(
                   _ShiftTimelineEntry(
-                    timeLabel: timeFmt.format(otReachedAt),
+                    timeLabel: AppDate.timeOnly(otReachedAt),
                     title: tr.overtimeReachedEvent,
                     subtitle: '${_formatDurationMinutes(calculated.overtimeMinutes, tr)} @ ${MoneyFormatter.format(calculated.overtimeRateMinor, currency)}/${tr.hourAbbr}',
                     icon: HugeIcons.strokeRoundedFlash,
@@ -137,7 +135,7 @@ class ShiftDoneScreen extends StatelessWidget {
 
               timelineItems.add(
                 _ShiftTimelineEntry(
-                  timeLabel: timeFmt.format(endTime),
+                  timeLabel: AppDate.timeOnly(endTime),
                   title: tr.clockedOutEvent,
                   subtitle: '+${MoneyFormatter.format(calculated?.earningsMinor ?? 0, currency)}',
                   icon: HugeIcons.strokeRoundedCheckmarkCircle02,
@@ -207,7 +205,7 @@ class ShiftDoneScreen extends StatelessWidget {
                         child: _MetricTile(
                           label: tr.totalClockTime,
                           value: _formatDurationMinutes(totalClockMinutes, tr),
-                          subValue: '${timeFmt.format(startTime)} – ${timeFmt.format(endTime)}',
+                          subValue: '${AppDate.timeOnly(startTime)} – ${AppDate.timeOnly(endTime)}',
                         ),
                       ),
                       const SizedBox(width: AppSpace.sm),

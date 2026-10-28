@@ -32,6 +32,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   void initState() {
     super.initState();
     _viewModel = getIt<AssistantViewModel>();
+    _viewModel.syncQuotaFromServer();
   }
 
   @override
@@ -61,7 +62,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
     );
   }
 
-  void _send([String? query]) {
+  Future<void> _send([String? query]) async {
     final text = query ?? _inputController.text;
     if (text.trim().isEmpty) return;
 
@@ -71,8 +72,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
       return;
     }
 
-    _viewModel.sendMessage(text, isPro: subService.isPro);
     _inputController.clear();
+    final allowed = await _viewModel.sendMessage(text, isPro: subService.isPro);
+    if (!allowed && mounted) {
+      _showLimitSheet();
+    }
   }
 
   Future<void> _pickBillImage(BuildContext context) async {
@@ -132,7 +136,13 @@ class _AssistantScreenState extends State<AssistantScreen> {
           imageQuality: 85,
         );
         if (picked != null) {
-          await _viewModel.scanBillImage(picked, isPro: subService.isPro);
+          final allowed = await _viewModel.scanBillImage(
+            picked,
+            isPro: subService.isPro,
+          );
+          if (!allowed && mounted) {
+            _showLimitSheet();
+          }
         }
       } catch (e) {
         debugPrint('Error picking bill image: $e');
@@ -156,7 +166,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
           if (!isPro)
             IconButton(
               icon: const ProCrownBadge(isCompact: true),
-              tooltip: 'Upgrade to Pro',
+              tooltip: tr.upgradeToPro,
               onPressed:
                   () => showProUpgradeSheet(
                     context,
@@ -475,7 +485,16 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                     Expanded(
                                       child: Text(
                                         msg.confirmedSummary ??
-                                            'Action completed',
+                                            tr.t(
+                                              'Action completed',
+                                              ne: 'कार्य सम्पन्न भयो',
+                                              es: 'Acción completada',
+                                              fr: 'Action terminée',
+                                              de: 'Aktion abgeschlossen',
+                                              ja: '操作が完了しました',
+                                              zh: '操作已完成',
+                                              it: 'Azione completata',
+                                            ),
                                         style: text.titleSmall?.copyWith(
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -816,7 +835,7 @@ class _InteractiveActionCardState extends State<_InteractiveActionCard> {
                 children: [
                   for (final cat in _quickCategories) ...[
                     ChoicePill(
-                      cat,
+                      tr.categoryLabel(cat, cat),
                       selected: _category.toLowerCase() == cat.toLowerCase(),
                       onTap: () => setState(() => _category = cat),
                     ),

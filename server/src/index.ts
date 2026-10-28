@@ -81,7 +81,7 @@ app.get('/api/health', (c) => {
   });
 });
 
-// Helper: Resolve authenticated user from Bearer token
+// Helper: Resolve authenticated user from Bearer token or canonical headers
 export interface UserRow {
   id: string;
   email: string;
@@ -95,15 +95,113 @@ export interface UserRow {
   createdAt: number;
 }
 
-async function resolveUser(c: Context<{ Bindings: Bindings }>): Promise<UserRow | null> {
+async function deterministicUserIdFromEmail(email: string, prefix = 'usr_g_'): Promise<string> {
+  const normalized = email.trim().toLowerCase();
+  const encoder = new TextEncoder();
+  const data = encoder.encode(normalized);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  return `${prefix}${hex}`;
+}
+
+function isRealEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const norm = email.trim().toLowerCase();
+  if (!norm.includes('@')) return false;
+  if (norm.endsWith('@firebase.hyprwise') || norm.endsWith('@hyprwise.local')) return false;
+  return true;
+}
+
+function computeQuotaSnapshot(user: UserRow) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
+  const isExpired = user.proExpiresAt ? user.proExpiresAt < now : false;
+  const activePro = Boolean(user.isPro) && !isExpired;
+  const dailyAiQueriesUsed = user.lastAiQueryDate === todayStr ? (user.dailyAiQueriesCount || 0) : 0;
+  const dailyAiQueriesLeft = activePro ? 9999 : Math.max(0, 5 - dailyAiQueriesUsed);
+  return {
+    todayStr,
+    activePro,
+    dailyAiQueriesUsed,
+    dailyAiQueriesLeft,
+    limitReached: !activePro && dailyAiQueriesUsed >= 5,
+  };
+}
+
+async function resolveUser(c: Context<{ Bindings: Bindings }>, autoProvision = false): Promise<UserRow | null> {
+  if (!c.env?.DB) return null;
+
   const authHeader = c.req.header('Authorization');
-  if (!authHeader) return null;
-  const token = authHeader.replace('Bearer ', '');
-  const match = token.match(/tok_(.+?)_\d+$/);
-  const userId = match ? match[1] : (token.startsWith('usr_') || token.length >= 6 ? token : null);
-  if (!userId || !c.env?.DB) return null;
-  const user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first<UserRow>();
-  return user || null;
+  const headerUserId = c.req.header('X-User-Id')?.trim();
+  const headerEmail = c.req.header('X-User-Email')?.trim().toLowerCase();
+
+  let tokenUserId: string | null = null;
+  if (authHeader) {
+    const token = authHeader.replace('Bearer ', '').trim();
+    const match = token.match(/^tok_(.+?)_\d+$/);
+    tokenUserId = match ? match[1] : (token.startsWith('usr_') || token.length >= 6 ? token : null);
+  }
+
+  // 1. Try canonical email match first if a real email is provided
+  if (isRealEmail(headerEmail)) {
+    const byEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
+      .bind(headerEmail!)
+      .first<UserRow>();
+    if (byEmail) return byEmail;
+  }
+
+  // 2. Try token userId or X-User-Id
+  const candidateId = tokenUserId || headerUserId;
+  if (candidateId) {
+    const byId = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
+      .bind(candidateId)
+      .first<UserRow>();
+    if (byId) return byId;
+  }
+
+  // 3. Auto-provision if requested so server-side quota is always tracked in D1
+  if (autoProvision) {
+    const resolvedId = isRealEmail(headerEmail)
+      ? await deterministicUserIdFromEmail(headerEmail!, 'usr_g_')
+      : (candidateId || 'usr_guest_default');
+    const resolvedEmail = isRealEmail(headerEmail)
+      ? headerEmail!
+      : `${resolvedId}@hyprwise.local`;
+    const newUser: UserRow = {
+      id: resolvedId,
+      email: resolvedEmail,
+      displayName: isRealEmail(headerEmail) ? headerEmail!.split('@')[0] : 'Hyprwise User',
+      photoUrl: null,
+      provider: isRealEmail(headerEmail) ? 'google' : 'offline',
+      isPro: 0,
+      proExpiresAt: null,
+      dailyAiQueriesCount: 0,
+      lastAiQueryDate: null,
+      createdAt: Date.now(),
+    };
+    await c.env.DB.prepare(
+      `INSERT OR IGNORE INTO users (id, email, displayName, photoUrl, provider, isPro, proExpiresAt, dailyAiQueriesCount, lastAiQueryDate, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      newUser.id,
+      newUser.email,
+      newUser.displayName,
+      newUser.photoUrl,
+      newUser.provider,
+      newUser.isPro,
+      newUser.proExpiresAt,
+      newUser.dailyAiQueriesCount,
+      newUser.lastAiQueryDate,
+      newUser.createdAt
+    ).run();
+    const fetched = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
+      .bind(resolvedId)
+      .first<UserRow>();
+    return fetched || newUser;
+  }
+
+  return null;
 }
 
 // ==========================================
@@ -114,8 +212,8 @@ app.post('/api/auth/firebase', async (c) => {
     const body = await c.req.json();
     const { idToken, uid, email, displayName, photoUrl, provider } = body;
 
-    let verifiedUid = uid;
-    let verifiedEmail = email;
+    let verifiedUid = uid ? String(uid).trim() : '';
+    let verifiedEmail = email ? String(email).trim().toLowerCase() : '';
     let verifiedName = displayName;
     let verifiedPhoto = photoUrl;
 
@@ -125,30 +223,76 @@ app.post('/api/auth/firebase', async (c) => {
         const expectedProjectId = c.env.FIREBASE_PROJECT_ID || 'tilvane';
         if (payload.aud === expectedProjectId || payload.iss?.includes(expectedProjectId)) {
           verifiedUid = payload.sub || payload.user_id || verifiedUid;
-          if (payload.email) verifiedEmail = payload.email;
+          if (payload.email) verifiedEmail = String(payload.email).trim().toLowerCase();
           if (payload.name) verifiedName = payload.name;
           if (payload.picture) verifiedPhoto = payload.picture;
         }
       }
     }
 
-    if (!verifiedUid) {
-      return c.json({ error: 'UID is required' }, 400);
+    if (!verifiedUid && !verifiedEmail) {
+      return c.json({ error: 'UID or email is required' }, 400);
     }
 
-    const userId = verifiedUid;
-    const existing = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first<UserRow>();
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    // Look up existing user by canonical email first so the same Google/Apple account
+    // ALWAYS resolves to the exact same userId, subscription state, and AI quota.
+    let existingByEmail: UserRow | null = null;
+    if (isRealEmail(verifiedEmail)) {
+      existingByEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
+        .bind(verifiedEmail)
+        .first<UserRow>();
+    }
+
+    const existingById = verifiedUid
+      ? await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(verifiedUid).first<UserRow>()
+      : null;
+
+    const existing = existingByEmail || existingById;
+
+    // Determine canonical userId:
+    // 1. Reuse existing canonical account ID if this email/UID already exists in DB
+    // 2. Otherwise if real email & ephemeral/fallback client UID, derive deterministic ID from email
+    // 3. Otherwise use verifiedUid
+    let userId: string;
+    if (existing) {
+      userId = existing.id;
+    } else if (
+      isRealEmail(verifiedEmail) &&
+      (!verifiedUid ||
+        verifiedUid.startsWith('usr_google_') ||
+        verifiedUid.startsWith('usr_apple_') ||
+        verifiedUid.startsWith('usr_guest_'))
+    ) {
+      userId = await deterministicUserIdFromEmail(
+        verifiedEmail,
+        provider === 'apple' ? 'usr_a_' : 'usr_g_'
+      );
+    } else {
+      userId = verifiedUid || (await deterministicUserIdFromEmail(verifiedEmail, 'usr_g_'));
+    }
+
+    // Merge pro status and today's AI query count across both records if user previously had a guest/alternate UID
+    const mergedIsPro = Math.max(existingByEmail?.isPro ?? 0, existingById?.isPro ?? 0);
+    const mergedProExpiresAt = existingByEmail?.proExpiresAt || existingById?.proExpiresAt || null;
+    const countEmail = existingByEmail?.lastAiQueryDate === todayStr ? (existingByEmail?.dailyAiQueriesCount ?? 0) : 0;
+    const countId = existingById?.lastAiQueryDate === todayStr ? (existingById?.dailyAiQueriesCount ?? 0) : 0;
+    const mergedDailyCount = Math.max(countEmail, countId);
+    const mergedLastDate = mergedDailyCount > 0 ? todayStr : (existing?.lastAiQueryDate ?? null);
 
     const user: UserRow = {
       id: userId,
-      email: verifiedEmail || existing?.email || `${userId}@firebase.hyprwise`,
+      email: isRealEmail(verifiedEmail)
+        ? verifiedEmail
+        : (existing?.email || `${userId}@firebase.hyprwise`),
       displayName: verifiedName || existing?.displayName || 'Hyprwise User',
       photoUrl: verifiedPhoto || existing?.photoUrl || null,
-      provider: (provider === 'apple' ? 'apple' : 'google') as 'google' | 'apple' | 'offline',
-      isPro: existing?.isPro ?? 0,
-      proExpiresAt: existing?.proExpiresAt ?? null,
-      dailyAiQueriesCount: existing?.dailyAiQueriesCount ?? 0,
-      lastAiQueryDate: existing?.lastAiQueryDate ?? null,
+      provider: (provider === 'apple' ? 'apple' : (provider === 'offline' ? 'offline' : 'google')) as 'google' | 'apple' | 'offline',
+      isPro: mergedIsPro,
+      proExpiresAt: mergedProExpiresAt,
+      dailyAiQueriesCount: mergedDailyCount,
+      lastAiQueryDate: mergedLastDate,
       createdAt: existing?.createdAt ?? Date.now(),
     };
 
@@ -168,12 +312,16 @@ app.post('/api/auth/firebase', async (c) => {
       user.createdAt
     ).run();
 
+    const quota = computeQuotaSnapshot(user);
+
     return c.json({
       success: true,
       token: `tok_${userId}_${Date.now()}`,
       user: {
         ...user,
-        isPro: Boolean(user.isPro),
+        isPro: quota.activePro,
+        dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+        dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
       },
     });
   } catch (e: any) {
@@ -190,20 +338,21 @@ app.post('/api/auth/google', async (c) => {
       return c.json({ error: 'Email is required' }, 400);
     }
 
-    // Deterministic userId from email
-    const encoder = new TextEncoder();
-    const data = encoder.encode(email);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-    const userId = `usr_g_${hex}`;
-
-    const existing = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first<UserRow>();
+    const normEmail = String(email).trim().toLowerCase();
+    const existingByEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
+      .bind(normEmail)
+      .first<UserRow>();
+    const deterministicId = await deterministicUserIdFromEmail(normEmail, 'usr_g_');
+    const existingById = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
+      .bind(deterministicId)
+      .first<UserRow>();
+    const existing = existingByEmail || existingById;
+    const userId = existing?.id || deterministicId;
 
     const user: UserRow = {
       id: userId,
-      email,
-      displayName: displayName || email.split('@')[0],
+      email: normEmail,
+      displayName: displayName || existing?.displayName || normEmail.split('@')[0],
       photoUrl: photoUrl || existing?.photoUrl || null,
       provider: 'google',
       isPro: existing?.isPro ?? 0,
@@ -229,12 +378,16 @@ app.post('/api/auth/google', async (c) => {
       user.createdAt
     ).run();
 
+    const quota = computeQuotaSnapshot(user);
+
     return c.json({
       success: true,
       token: `tok_${userId}_${Date.now()}`,
       user: {
         ...user,
-        isPro: Boolean(user.isPro),
+        isPro: quota.activePro,
+        dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+        dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
       },
     });
   } catch (e: any) {
@@ -247,15 +400,16 @@ app.post('/api/auth/apple', async (c) => {
     const body = await c.req.json();
     const { identityToken, email, fullName } = body;
 
-    const emailStr = email || 'apple_user@privaterelay.appleid.com';
-    const encoder = new TextEncoder();
-    const data = encoder.encode(emailStr);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-    const userId = `usr_a_${hex}`;
-
-    const existing = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first<UserRow>();
+    const emailStr = String(email || 'apple_user@privaterelay.appleid.com').trim().toLowerCase();
+    const existingByEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
+      .bind(emailStr)
+      .first<UserRow>();
+    const deterministicId = await deterministicUserIdFromEmail(emailStr, 'usr_a_');
+    const existingById = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
+      .bind(deterministicId)
+      .first<UserRow>();
+    const existing = existingByEmail || existingById;
+    const userId = existing?.id || deterministicId;
 
     const user: UserRow = {
       id: userId,
@@ -286,12 +440,16 @@ app.post('/api/auth/apple', async (c) => {
       user.createdAt
     ).run();
 
+    const quota = computeQuotaSnapshot(user);
+
     return c.json({
       success: true,
       token: `tok_${userId}_${Date.now()}`,
       user: {
         ...user,
-        isPro: Boolean(user.isPro),
+        isPro: quota.activePro,
+        dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+        dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
       },
     });
   } catch (e: any) {
@@ -300,14 +458,17 @@ app.post('/api/auth/apple', async (c) => {
 });
 
 app.get('/api/auth/me', async (c) => {
-  const user = await resolveUser(c);
+  const user = await resolveUser(c, true);
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
+  const quota = computeQuotaSnapshot(user);
   return c.json({
     user: {
       ...user,
-      isPro: Boolean(user.isPro),
+      isPro: quota.activePro,
+      dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+      dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
     },
   });
 });
@@ -398,29 +559,27 @@ app.post('/api/subscription/webhook', async (c) => {
 });
 
 app.get('/api/subscription/status', async (c) => {
-  const user = await resolveUser(c);
+  const user = await resolveUser(c, true);
   if (!user) {
     return c.json({
       isPro: false,
       tier: 'free',
+      dailyAiQueriesUsed: 0,
       dailyAiQueriesLeft: 5,
+      limitReached: false,
     });
   }
 
-  const isPro = Boolean(user.isPro);
-  const now = Date.now();
-  const isExpired = user.proExpiresAt ? user.proExpiresAt < now : false;
-  const activePro = isPro && !isExpired;
-
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const currentCount = user.lastAiQueryDate === todayStr ? user.dailyAiQueriesCount : 0;
-  const dailyAiQueriesLeft = activePro ? 9999 : Math.max(0, 5 - currentCount);
+  const quota = computeQuotaSnapshot(user);
 
   return c.json({
-    isPro: activePro,
-    tier: activePro ? 'pro' : 'free',
+    userId: user.id,
+    isPro: quota.activePro,
+    tier: quota.activePro ? 'pro' : 'free',
     proExpiresAt: user.proExpiresAt,
-    dailyAiQueriesLeft,
+    dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+    dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
+    limitReached: quota.limitReached,
   });
 });
 
@@ -675,29 +834,116 @@ app.get('/api/sync/status', async (c) => {
 // ==========================================
 // 6. Gemini AI & MCP Function Calling Gateway (Restricted for Free, Unlimited for Pro)
 // ==========================================
+app.get('/api/ai/quota', async (c) => {
+  try {
+    const user = await resolveUser(c, true);
+    if (!user) {
+      return c.json({
+        isPro: false,
+        dailyLimit: 5,
+        dailyAiQueriesUsed: 0,
+        dailyAiQueriesLeft: 5,
+        limitReached: false,
+      });
+    }
+    const quota = computeQuotaSnapshot(user);
+    return c.json({
+      userId: user.id,
+      isPro: quota.activePro,
+      dailyLimit: 5,
+      dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+      dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
+      limitReached: quota.limitReached,
+    });
+  } catch (e: any) {
+    return c.json({ error: e.message || 'Failed to check AI quota' }, 500);
+  }
+});
+
+app.post('/api/ai/quota/consume', async (c) => {
+  try {
+    const user = await resolveUser(c, true);
+    if (!user) {
+      return c.json({ error: 'Unable to resolve user identity for quota tracking' }, 401);
+    }
+    const quota = computeQuotaSnapshot(user);
+    if (!quota.activePro && quota.dailyAiQueriesUsed >= 5) {
+      return c.json({
+        allowed: false,
+        error: 'pro_required',
+        feature: 'assistant',
+        limitReached: true,
+        isPro: false,
+        dailyLimit: 5,
+        dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+        dailyAiQueriesLeft: 0,
+        message: 'You have reached your 5 free AI queries for today. Upgrade to Hyprwise Pro for unlimited intelligent financial analysis.',
+      }, 403);
+    }
+
+    const newUsed = quota.dailyAiQueriesUsed + 1;
+    await c.env.DB.prepare(
+      'UPDATE users SET dailyAiQueriesCount = ?, lastAiQueryDate = ? WHERE id = ?'
+    ).bind(newUsed, quota.todayStr, user.id).run();
+
+    const newLeft = quota.activePro ? 9999 : Math.max(0, 5 - newUsed);
+    return c.json({
+      allowed: true,
+      userId: user.id,
+      isPro: quota.activePro,
+      dailyLimit: 5,
+      dailyAiQueriesUsed: newUsed,
+      dailyAiQueriesLeft: newLeft,
+      limitReached: !quota.activePro && newUsed >= 5,
+    });
+  } catch (e: any) {
+    return c.json({ error: e.message || 'Failed to consume AI quota' }, 500);
+  }
+});
+
 app.post('/api/ai/chat', async (c) => {
   try {
-    const user = await resolveUser(c);
-    const isPro = user ? Boolean(user.isPro) : false;
+    const body = await c.req.json();
+    const { messages, tools, systemInstruction, context, quotaAlreadyConsumed } = body;
 
-    // Quota tracking for free users (5 queries per day)
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const user = await resolveUser(c, true);
+    const quota = user
+      ? computeQuotaSnapshot(user)
+      : { todayStr: new Date().toISOString().slice(0, 10), activePro: false, dailyAiQueriesUsed: 0, dailyAiQueriesLeft: 5, limitReached: false };
+    const isPro = quota.activePro;
+
+    let updatedUsed = quota.dailyAiQueriesUsed;
+    let updatedLeft = quota.dailyAiQueriesLeft;
+
+    // Strict server-side quota enforcement for free users (5 queries per day)
     if (user && !isPro) {
-      let count = user.lastAiQueryDate === todayStr ? user.dailyAiQueriesCount : 0;
-      if (count >= 5) {
+      if (!quotaAlreadyConsumed) {
+        if (quota.dailyAiQueriesUsed >= 5) {
+          return c.json({
+            error: 'pro_required',
+            feature: 'assistant',
+            limitReached: true,
+            dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+            dailyAiQueriesLeft: 0,
+            message: 'You have reached your 5 free AI queries for today. Upgrade to Hyprwise Pro for unlimited intelligent financial analysis.',
+          }, 403);
+        }
+        updatedUsed = quota.dailyAiQueriesUsed + 1;
+        updatedLeft = Math.max(0, 5 - updatedUsed);
+        await c.env.DB.prepare(
+          'UPDATE users SET dailyAiQueriesCount = ?, lastAiQueryDate = ? WHERE id = ?'
+        ).bind(updatedUsed, quota.todayStr, user.id).run();
+      } else if (quota.dailyAiQueriesUsed > 5) {
         return c.json({
           error: 'pro_required',
           feature: 'assistant',
+          limitReached: true,
+          dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
+          dailyAiQueriesLeft: 0,
           message: 'You have reached your 5 free AI queries for today. Upgrade to Hyprwise Pro for unlimited intelligent financial analysis.',
         }, 403);
       }
-      await c.env.DB.prepare(
-        'UPDATE users SET dailyAiQueriesCount = ?, lastAiQueryDate = ? WHERE id = ?'
-      ).bind(count + 1, todayStr, user.id).run();
     }
-
-    const body = await c.req.json();
-    const { messages, tools, systemInstruction, context } = body;
 
     const geminiApiKey = c.env.GEMINI_API_KEY || '';
     if (!geminiApiKey) {
@@ -705,6 +951,10 @@ app.post('/api/ai/chat', async (c) => {
         content:
           "Hyprwise AI Server is connected in local mode. Please configure `GEMINI_API_KEY` in server environment to enable live Gemini Flash 2.5 reasoning.",
         functionCalls: [],
+        isPro,
+        dailyAiQueriesUsed: updatedUsed,
+        dailyAiQueriesLeft: updatedLeft,
+        limitReached: false,
       });
     }
 
@@ -794,6 +1044,9 @@ CRITICAL RULES & BOUNDARIES:
       content: textResponse || (functionCalls.length > 0 ? null : response.text()),
       functionCalls,
       isPro,
+      dailyAiQueriesUsed: updatedUsed,
+      dailyAiQueriesLeft: updatedLeft,
+      limitReached: false,
     });
   } catch (e: any) {
     return c.json({ error: e.message || 'Gemini AI execution failed' }, 500);

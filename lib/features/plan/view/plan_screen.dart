@@ -87,14 +87,14 @@ class PlanScreen extends StatelessWidget {
                     const SizedBox(width: AppSpace.sm),
                     _FilterPill(
                       label: tr.t(
-                        'In progress (${viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length})',
-                        ne: 'प्रगतिमा (${viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length})',
-                        es: 'En curso (${viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length})',
-                        fr: 'En cours (${viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length})',
-                        de: 'In Arbeit (${viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length})',
-                        ja: '進行中 (${viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length})',
-                        zh: '进行中 (${viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length})',
-                        it: 'In corso (${viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length})',
+                        'In progress (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
+                        ne: 'प्रगतिमा (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
+                        es: 'En curso (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
+                        fr: 'En cours (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
+                        de: 'In Arbeit (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
+                        ja: '進行中 (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
+                        zh: '进行中 (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
+                        it: 'In corso (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
                       ),
                       isSelected: viewModel.filter == GoalFilter.inProgress,
                       onTap: () => viewModel.setFilter(GoalFilter.inProgress),
@@ -102,14 +102,14 @@ class PlanScreen extends StatelessWidget {
                     const SizedBox(width: AppSpace.sm),
                     _FilterPill(
                       label: tr.t(
-                        'Completed (${viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length})',
-                        ne: 'सम्पन्न (${viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length})',
-                        es: 'Completados (${viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length})',
-                        fr: 'Terminés (${viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length})',
-                        de: 'Erreicht (${viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length})',
-                        ja: '達成済み (${viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length})',
-                        zh: '已达成 (${viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length})',
-                        it: 'Completati (${viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length})',
+                        'Completed (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
+                        ne: 'सम्पन्न (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
+                        es: 'Completados (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
+                        fr: 'Terminés (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
+                        de: 'Erreicht (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
+                        ja: '達成済み (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
+                        zh: '已达成 (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
+                        it: 'Completati (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
                       ),
                       isSelected: viewModel.filter == GoalFilter.completed,
                       onTap: () => viewModel.setFilter(GoalFilter.completed),
@@ -174,7 +174,7 @@ class PlanScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(AppRadius.pill),
                             ),
                             child: Text(
-                              '${(gf.progress.fraction * 100).round()}%',
+                              '${tr.formatNumber((gf.progress.fraction * 100).round())}%',
                               style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
@@ -202,7 +202,7 @@ class PlanScreen extends StatelessWidget {
                                       const SizedBox(width: 5),
                                       Flexible(
                                         child: Text(
-                                          acc?.name ?? tr.savingsAccount,
+                                          acc != null ? tr.accountDisplayName(acc.name) : tr.savingsAccount,
                                           style: text.labelSmall?.copyWith(
                                             fontWeight: FontWeight.w600,
                                             color: const Color(0xFF1F7A45),
@@ -347,7 +347,7 @@ class PlanScreen extends StatelessWidget {
                             DropdownMenuItem<int?>(
                               value: acc.id,
                               child: Text(
-                                '${acc.name} (${MoneyFormatter.format(viewModel.financeStore.snapshot.balanceOf(acc.id), acc.currencyCode)})',
+                                '${tr.accountDisplayName(acc.name)} (${MoneyFormatter.format(viewModel.financeStore.snapshot.balanceOf(acc.id), acc.currencyCode)})',
                               ),
                             ),
                           DropdownMenuItem<int?>(

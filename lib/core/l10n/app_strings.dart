@@ -31,7 +31,7 @@ class AppStrings {
   }) {
     switch (localeCode.toLowerCase()) {
       case 'ne':
-        return ne ?? en;
+        return localizeDigits(ne ?? en);
       case 'es':
         return es ?? en;
       case 'fr':
@@ -68,6 +68,30 @@ class AppStrings {
     final locale = Localizations.maybeLocaleOf(context);
     return AppStrings(locale?.languageCode ?? 'en');
   }
+
+  static AppStrings current() {
+    if (getIt.isRegistered<SettingsRepository>()) {
+      return AppStrings(getIt<SettingsRepository>().localeCode);
+    }
+    return const AppStrings('en');
+  }
+
+  static String localizeDigitsForLocale(String input, String localeCode) {
+    if (localeCode.toLowerCase() != 'ne') return input;
+    const nepaliDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+    final buffer = StringBuffer();
+    for (var i = 0; i < input.length; i++) {
+      final code = input.codeUnitAt(i);
+      if (code >= 48 && code <= 57) {
+        buffer.write(nepaliDigits[code - 48]);
+      } else {
+        buffer.writeCharCode(code);
+      }
+    }
+    return buffer.toString();
+  }
+
+  String localizeDigits(String input) => localizeDigitsForLocale(input, localeCode);
 
   // Common Navigation
   String get home => _t('Home', ne: 'गृहपृष्ठ', es: 'Inicio', fr: 'Accueil', de: 'Startseite', ja: 'ホーム', zh: '首页', it: 'Home');
@@ -774,15 +798,8 @@ class AppStrings {
   String get andWord => _t(' and ', ne: ' र ', es: ' y ', fr: ' et ', de: ' und ', ja: 'と', zh: '和');
   String get agreeToTermsSuffix => _t('.', ne: ' स्वीकार गर्नुहुन्छ।', es: '.', fr: '.', de: ' zu.', ja: 'に同意したことになります。', zh: '。');
 
-  String formatNumber(int n) {
-    if (isNepali) {
-      const nepaliDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
-      return n.toString().split('').map((char) {
-        final digit = int.tryParse(char);
-        return digit != null ? nepaliDigits[digit] : char;
-      }).join('');
-    }
-    return n.toString();
+  String formatNumber(num n) {
+    return localizeDigits(n.toString());
   }
 
   String get lendingBorrowingIous => _t('Lending & Borrowing (IOUs)', ne: 'ऋण र सापटी (IOUs)', es: 'Préstamos y deudas (IOU)', fr: 'Prêts et dettes (reconnaissances)', de: 'Leihen & Schulden (Schuldscheine)', ja: '貸し借り・精算 (IOU)', zh: '借贷与借条 (IOUs)', it: 'Prestiti e debiti (IOU)');
@@ -899,6 +916,302 @@ class AppStrings {
   String get statusCompleted => _t('Completed', ne: 'सम्पन्न', es: 'Completado', fr: 'Terminé', de: 'Abgeschlossen', ja: '完了', zh: '已完成', it: 'Completato');
   String longShiftAlertTitle(String job) => _t('Still working at $job?', ne: '$job मा अझै काम गर्दै हुनुहुन्छ?', es: '¿Sigues trabajando en $job?', fr: 'Toujours en service chez $job ?', de: 'Noch bei $job im Dienst?', ja: '$job でまだ勤務中ですか？', zh: '还在 $job 工作吗？', it: 'Stai ancora lavorando da $job?');
   String longShiftAlertBody(String duration) => _t('You have been clocked in for $duration. Tap to review or clock out.', ne: 'तपाईंले $duration काम गरिसक्नुभयो। समाप्त गर्न ट्याप गर्नुहोस्।', es: 'Llevas $duration en turno. Toca para revisar o salir.', fr: 'Vous êtes en service depuis $duration. Appuyez pour terminer.', de: 'Sie sind seit $duration eingestempelt. Tippen zum Prüfen oder Ausstempeln.', ja: '出勤から $duration 経過しました。タップして確認または退勤。', zh: '您已连续打卡 $duration，点击查看或下班打卡。', it: 'Sei in turno da $duration. Tocca per controllare o uscire.');
+
+  // Built-in Category, Account & Currency Localization
+  String categoryLabel(String keyOrLabel, [String? fallback]) {
+    final norm = keyOrLabel.trim().toLowerCase().replaceAll(' ', '_');
+    switch (norm) {
+      case 'salary':
+        return _t('Salary', ne: 'तलब', es: 'Salario', fr: 'Salaire', de: 'Gehalt', ja: '給与', zh: '工资', it: 'Stipendio');
+      case 'shift_pay':
+      case 'shift':
+        return _t('Shift pay', ne: 'सिफ्ट कमाइ', es: 'Pago de turno', fr: 'Paie de quart', de: 'Schichtlohn', ja: 'シフト給', zh: '班次薪资', it: 'Paga turno');
+      case 'business':
+        return _t('Business', ne: 'व्यवसाय', es: 'Negocio', fr: 'Entreprise', de: 'Geschäft', ja: 'ビジネス', zh: '生意/副业', it: 'Attività');
+      case 'interest':
+        return _t('Interest', ne: 'ब्याज', es: 'Intereses', fr: 'Intérêts', de: 'Zinsen', ja: '利息', zh: '利息', it: 'Interessi');
+      case 'borrowing':
+      case 'borrowed':
+        return _t('Borrowing', ne: 'सापटी लिएको', es: 'Préstamo recibido', fr: 'Emprunt', de: 'Geliehen', ja: '借入', zh: '借入', it: 'Prestito ricevuto');
+      case 'debt_repayment':
+        return _t('Debt Repayment', ne: 'ऋण फिर्ता', es: 'Pago de deuda', fr: 'Remboursement', de: 'Schuldenrückzahlung', ja: '返済', zh: '债务偿还', it: 'Rimborso debito');
+      case 'gift_received':
+      case 'gift':
+        return _t('Gift received', ne: 'उपहार प्राप्त', es: 'Regalo recibido', fr: 'Cadeau reçu', de: 'Geschenk erhalten', ja: 'ギフト', zh: '收到礼金', it: 'Regalo ricevuto');
+      case 'other_income':
+        return _t('Other income', ne: 'अन्य आम्दानी', es: 'Otros ingresos', fr: 'Autre revenu', de: 'Sonstige Einnahmen', ja: 'その他収入', zh: '其他收入', it: 'Altre entrate');
+      case 'groceries':
+        return _t('Groceries', ne: 'किराना तथा खाद्यान्न', es: 'Supermercado', fr: 'Courses', de: 'Lebensmittel', ja: '食料品', zh: '买菜/杂货', it: 'Spesa alimentare');
+      case 'eating_out':
+      case 'dining':
+      case 'food':
+        return _t('Eating out', ne: 'बाहिरको खाना / खाजा', es: 'Comer fuera', fr: 'Restaurant', de: 'Auswärts essen', ja: '外食', zh: '餐饮外食', it: 'Ristorante');
+      case 'entertainment':
+        return _t('Entertainment', ne: 'मनोरञ्जन', es: 'Entretenimiento', fr: 'Divertissement', de: 'Unterhaltung', ja: '娯楽', zh: '休闲娱乐', it: 'Intrattenimento');
+      case 'transport':
+        return _t('Transport', ne: 'यातायात', es: 'Transporte', fr: 'Transport', de: 'Transport', ja: '交通費', zh: '交通出行', it: 'Trasporti');
+      case 'bills':
+      case 'utilities':
+        return _t('Bills', ne: 'बिल तथा महसुल', es: 'Facturas', fr: 'Factures', de: 'Rechnungen', ja: '請求・光熱費', zh: '生活账单', it: 'Bollette');
+      case 'lending':
+      case 'lent':
+        return _t('Lending', ne: 'सापटी दिएको', es: 'Dinero prestado', fr: 'Prêt accordé', de: 'Verliehen', ja: '貸出', zh: '借出', it: 'Prestito concesso');
+      case 'other_expense':
+      case 'other':
+        return _t('Other expense', ne: 'अन्य खर्च', es: 'Otros gastos', fr: 'Autre dépense', de: 'Sonstige Ausgaben', ja: 'その他支出', zh: '其他支出', it: 'Altre spese');
+      case 'shopping':
+        return _t('Shopping', ne: 'किनमेल', es: 'Compras', fr: 'Shopping', de: 'Einkaufen', ja: '買い物', zh: '购物', it: 'Shopping');
+      case 'housing':
+      case 'rent':
+        return _t('Housing', ne: 'आवास / भाडा', es: 'Vivienda', fr: 'Logement', de: 'Wohnen', ja: '住居・家賃', zh: '住房/房租', it: 'Casa / Affitto');
+      case 'health':
+        return _t('Health', ne: 'स्वास्थ्य', es: 'Salud', fr: 'Santé', de: 'Gesundheit', ja: '医療・健康', zh: '医疗健康', it: 'Salute');
+      case 'transfer':
+        return transfer;
+      case 'goal':
+        return goalLabel;
+      case 'general':
+        return _t('General', ne: 'सामान्य', es: 'General', fr: 'Général', de: 'Allgemein', ja: '一般', zh: '常规', it: 'Generale');
+      default:
+        return fallback ?? keyOrLabel;
+    }
+  }
+
+  String accountDisplayName(String rawName) {
+    final norm = rawName.trim().toLowerCase();
+    switch (norm) {
+      case 'everyday':
+      case 'everyday account':
+        return everyday;
+      case 'savings':
+      case 'savings account':
+        return savings;
+      case 'cash':
+      case 'cash wallet':
+        return cash;
+      default:
+        return rawName;
+    }
+  }
+
+  String currencyName(String code, String fallback) {
+    switch (code.toUpperCase()) {
+      case 'AUD':
+        return _t('Australian dollar', ne: 'अस्ट्रेलियन डलर', es: 'Dólar australiano', fr: 'Dollar australien', de: 'Australischer Dollar', ja: 'オーストラリア・ドル', zh: '澳大利亚元', it: 'Dollaro australiano');
+      case 'NPR':
+        return _t('Nepali rupee', ne: 'नेपाली रुपैयाँ', es: 'Rupia nepalí', fr: 'Roupie népalaise', de: 'Nepalesische Rupie', ja: 'ネパール・ルピー', zh: '尼泊尔卢比', it: 'Rupia nepalese');
+      case 'USD':
+        return _t('US dollar', ne: 'अमेरिकी डलर', es: 'Dólar estadounidense', fr: 'Dollar américain', de: 'US-Dollar', ja: '米ドル', zh: '美元', it: 'Dollaro statunitense');
+      case 'INR':
+        return _t('Indian rupee', ne: 'भारतीय रुपैयाँ', es: 'Rupia india', fr: 'Roupie indienne', de: 'Indische Rupie', ja: 'インド・ルピー', zh: '印度卢比', it: 'Rupia indiana');
+      case 'EUR':
+        return _t('Euro', ne: 'युरो', es: 'Euro', fr: 'Euro', de: 'Euro', ja: 'ユーロ', zh: '欧元', it: 'Euro');
+      case 'GBP':
+        return _t('British pound', ne: 'बेलायती पाउन्ड', es: 'Libra esterlina', fr: 'Livre sterling', de: 'Britisches Pfund', ja: '英ポンド', zh: '英镑', it: 'Sterlina britannica');
+      case 'JPY':
+        return _t('Japanese yen', ne: 'जापानी येन', es: 'Yen japonés', fr: 'Yen japonais', de: 'Japanischer Yen', ja: '日本円', zh: '日元', it: 'Yen giapponese');
+      case 'CAD':
+        return _t('Canadian dollar', ne: 'क्यानेडियन डलर', es: 'Dólar canadiense', fr: 'Dollar canadien', de: 'Kanadischer Dollar', ja: 'カナダ・ドル', zh: '加拿大元', it: 'Dollaro canadese');
+      case 'CNY':
+        return _t('Chinese yuan', ne: 'चिनियाँ युआन', es: 'Yuan chino', fr: 'Yuan chinois', de: 'Chinesischer Yuan', ja: '中国人民元', zh: '人民币', it: 'Yuan cinese');
+      case 'CHF':
+        return _t('Swiss franc', ne: 'स्विस फ्र्याङ्क', es: 'Franco suizo', fr: 'Franc suisse', de: 'Schweizer Franken', ja: 'スイス・フラン', zh: '瑞士法郎', it: 'Franco svizzero');
+      case 'HKD':
+        return _t('Hong Kong dollar', ne: 'हङकङ डलर', es: 'Dólar de Hong Kong', fr: 'Dollar de Hong Kong', de: 'Hongkong-Dollar', ja: '香港ドル', zh: '港元', it: 'Dollaro di Hong Kong');
+      case 'SGD':
+        return _t('Singapore dollar', ne: 'सिंगापुर डलर', es: 'Dólar de Singapur', fr: 'Dollar de Singapour', de: 'Singapur-Dollar', ja: 'シンガポール・ドル', zh: '新加坡元', it: 'Dollaro di Singapore');
+      default:
+        return fallback;
+    }
+  }
+
+  String formatHourLabel(int hour) {
+    final h12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    final numStr = formatNumber(h12);
+    if (hour < 12) {
+      return _t('$numStr AM', ne: '$numStr बिहान', es: '$numStr AM', fr: '${formatNumber(hour)}h', de: '${formatNumber(hour)} Uhr', ja: '午前$numStr時', zh: '上午$numStr点', it: '${formatNumber(hour)}:00');
+    } else {
+      return _t('$numStr PM', ne: '$numStr दिउँसो', es: '$numStr PM', fr: '${formatNumber(hour)}h', de: '${formatNumber(hour)} Uhr', ja: '午後$numStr時', zh: '下午$numStr点', it: '${formatNumber(hour)}:00');
+    }
+  }
+
+  // Analytics & Filter Period Labels
+  String get filterThisMonth => _t('This Month', ne: 'यो महिना', es: 'Este mes', fr: 'Ce mois-ci', de: 'Dieser Monat', ja: '今月', zh: '本月', it: 'Questo mese');
+  String get filterThisWeek => _t('This Week', ne: 'यो हप्ता', es: 'Esta semana', fr: 'Cette semaine', de: 'Diese Woche', ja: '今週', zh: '本周', it: 'Questa settimana');
+  String get filterLast30Days => _t('Last 30 Days', ne: 'पछिल्लो ३० दिन', es: 'Últimos 30 días', fr: '30 derniers jours', de: 'Letzte 30 Tage', ja: '過去30日間', zh: '最近30天', it: 'Ultimi 30 giorni');
+  String get filterThisYear => _t('This Year', ne: 'यो वर्ष', es: 'Este año', fr: 'Cette année', de: 'Dieses Jahr', ja: '今年', zh: '今年', it: 'Quest\'anno');
+  String get filterCustomRange => _t('Custom Range', ne: 'कस्टम अवधि', es: 'Rango personalizado', fr: 'Période personnalisée', de: 'Eigener Zeitraum', ja: '期間を指定', zh: '自定义范围', it: 'Periodo personalizzato');
+  String get filter3Months => _t('3 months', ne: '३ महिना', es: '3 meses', fr: '3 mois', de: '3 Monate', ja: '3ヶ月', zh: '3个月', it: '3 mesi');
+  String get filterYear => _t('Year', ne: 'वर्ष', es: 'Año', fr: 'Année', de: 'Jahr', ja: '年', zh: '年', it: 'Anno');
+  String transactionsRecordedCount(int count) {
+    final c = formatNumber(count);
+    return _t(
+      '$c ${count == 1 ? 'transaction' : 'transactions'} recorded',
+      ne: '$c कारोबार दर्ता गरिएको छ',
+      es: '$c ${count == 1 ? 'transacción registrada' : 'transacciones registradas'}',
+      fr: '$c ${count == 1 ? 'transaction enregistrée' : 'transactions enregistrées'}',
+      de: '$c ${count == 1 ? 'Transaktion erfasst' : 'Transaktionen erfasst'}',
+      ja: '$c 件の取引を記録',
+      zh: '已记录 $c 笔交易',
+      it: '$c ${count == 1 ? 'transazione registrata' : 'transazioni registrate'}',
+    );
+  }
+  String txCountShort(int count) {
+    final c = formatNumber(count);
+    return _t(
+      '$c ${count == 1 ? 'tx' : 'txs'}',
+      ne: '$c कारोबार',
+      es: '$c ${count == 1 ? 'mov.' : 'movs.'}',
+      fr: '$c ${count == 1 ? 'op.' : 'ops.'}',
+      de: '$c ${count == 1 ? 'Buchung' : 'Buchungen'}',
+      ja: '$c 件',
+      zh: '$c 笔',
+      it: '$c ${count == 1 ? 'op.' : 'ops.'}',
+    );
+  }
+  String weekShortLabel(int weekIndex) {
+    final w = formatNumber(weekIndex);
+    return _t('W$w', ne: 'हप्ता $w', es: 'S$w', fr: 'S$w', de: 'W$w', ja: '第$w週', zh: '第$w周', it: 'S$w');
+  }
+
+  // Money & Transactions Screen
+  String get expenses => _t('Expenses', ne: 'खर्चहरू', es: 'Gastos', fr: 'Dépenses', de: 'Ausgaben', ja: '支出', zh: '支出', it: 'Spese');
+  String get spending => _t('Spending', ne: 'खर्च', es: 'Gastos', fr: 'Dépenses', de: 'Ausgaben', ja: '支出', zh: '支出', it: 'Spesa');
+  String get periodLabel => _t('Period', ne: 'अवधि', es: 'Período', fr: 'Période', de: 'Zeitraum', ja: '期間', zh: '周期', it: 'Periodo');
+  String get total => _t('Total', ne: 'जम्मा', es: 'Total', fr: 'Total', de: 'Gesamt', ja: '合計', zh: '总计', it: 'Totale');
+  String get otherOption => _t('Other', ne: 'अन्य', es: 'Otro', fr: 'Autre', de: 'Sonstiges', ja: 'その他', zh: '其他', it: 'Altro');
+  String get note => _t('Note', ne: 'नोट', es: 'Nota', fr: 'Note', de: 'Notiz', ja: 'メモ', zh: '备注', it: 'Nota');
+  String get optional => _t('Optional', ne: 'वैकल्पिक', es: 'Opcional', fr: 'Optionnel', de: 'Optional', ja: '任意', zh: '选填', it: 'Opzionale');
+  String convertForeignAmountIntoBase(String curr) => _t('Convert foreign amount into $curr', ne: 'विदेशी रकमलाई $curr मा रूपान्तरण गर्नुहोस्', es: 'Convertir importe extranjero a $curr', fr: 'Convertir le montant étranger en $curr', de: 'Fremdwährung in $curr umrechnen', ja: '外貨金額を $curr に換算', zh: '将外币金额换算为 $curr', it: 'Converti importo estero in $curr');
+  String get liveInstitutionalRates => _t('Live institutional benchmark rates', ne: 'प्रत्यक्ष विनिमय दरहरू', es: 'Tasas de cambio en tiempo real', fr: 'Taux de change en temps réel', de: 'Live-Wechselkurse', ja: 'リアルタイム為替レート', zh: '实时基准汇率', it: 'Tassi di cambio in tempo reale');
+  String get billTagLabel => _t('Bill', ne: 'बिल', es: 'Factura', fr: 'Facture', de: 'Rechnung', ja: '請求書', zh: '账单', it: 'Bolletta');
+  String get searchTransactionsHint => _t('Search notes, merchants, categories...', ne: 'नोट, पसल वा श्रेणी खोज्नुहोस्...', es: 'Buscar notas, comercios, categorías...', fr: 'Rechercher notes, commerçants, catégories...', de: 'Notizen, Händler, Kategorien suchen...', ja: 'メモ、店舗、カテゴリを検索...', zh: '搜索备注、商户、类别...', it: 'Cerca note, esercenti, categorie...');
+  String transactionsFoundCount(int count) {
+    final c = formatNumber(count);
+    return _t(
+      '$c ${count == 1 ? 'transaction' : 'transactions'} found',
+      ne: '$c कारोबार फेला पर्‍यो',
+      es: '$c ${count == 1 ? 'transacción encontrada' : 'transacciones encontradas'}',
+      fr: '$c ${count == 1 ? 'transaction trouvée' : 'transactions trouvées'}',
+      de: '$c ${count == 1 ? 'Transaktion gefunden' : 'Transaktionen gefunden'}',
+      ja: '$c 件の取引が見つかりました',
+      zh: '找到 $c 笔交易',
+      it: '$c ${count == 1 ? 'transazione trovata' : 'transazioni trovate'}',
+    );
+  }
+  String get clearFilters => _t('Clear filters', ne: 'फिल्टर हटाउनुहोस्', es: 'Limpiar filtros', fr: 'Effacer les filtres', de: 'Filter zurücksetzen', ja: 'フィルターをクリア', zh: '清除筛选', it: 'Cancella filtri');
+  String get noMatchingTransactions => _t('No matching transactions', ne: 'कुनै मिल्दो कारोबार भेटिएन', es: 'Sin transacciones coincidentes', fr: 'Aucune transaction correspondante', de: 'Keine passenden Transaktionen', ja: '一致する取引がありません', zh: '未找到匹配的交易', it: 'Nessuna transazione corrispondente');
+  String get tryAdjustingSearchOrFilters => _t('Try adjusting your search or category filters.', ne: 'आफ्नो खोज वा श्रेणी फिल्टर परिवर्तन गरी हेर्नुहोस्।', es: 'Prueba a ajustar tu búsqueda o filtros.', fr: 'Essayez de modifier votre recherche ou vos filtres.', de: 'Passen Sie Ihre Suche oder Kategorie-Filter an.', ja: '検索条件やカテゴリフィルターを変更してみてください。', zh: '请尝试调整搜索词或类别筛选条件。', it: 'Prova a modificare la ricerca o i filtri.');
+  String get tapAddToRecordFirstTransaction => _t('Tap + to record your first income or expense.', ne: 'आफ्नो पहिलो आम्दानी वा खर्च दर्ता गर्न + थिच्नुहोस्।', es: 'Toca + para registrar tu primer ingreso o gasto.', fr: 'Appuyez sur + pour enregistrer votre première opération.', de: 'Tippen Sie auf +, um Ihre erste Buchung zu erfassen.', ja: '＋をタップして最初の収支を記録しましょう。', zh: '点击 + 记录您的第一笔收入或支出。', it: 'Tocca + per registrare la tua prima operazione.');
+  String get whereQuestion => _t('Where?', ne: 'कहाँ?', es: '¿Dónde?', fr: 'Où ?', de: 'Wo?', ja: 'どこで？', zh: '在哪里？', it: 'Dove?');
+  String get newLabel => _t('New', ne: 'नयाँ', es: 'Nuevo', fr: 'Nouveau', de: 'Neu', ja: '新規', zh: '新增', it: 'Nuovo');
+  String get addCustomExpenseCategory => _t('Add Custom Expense Category', ne: 'नयाँ खर्च श्रेणी थप्नुहोस्', es: 'Añadir categoría de gasto', fr: 'Ajouter une catégorie de dépense', de: 'Eigene Ausgabenkategorie', ja: 'カスタム支出カテゴリを追加', zh: '添加自定义支出类别', it: 'Aggiungi categoria di spesa');
+  String get addCustomIncomeCategory => _t('Add Custom Income Category', ne: 'नयाँ आम्दानी श्रेणी थप्नुहोस्', es: 'Añadir categoría de ingreso', fr: 'Ajouter une catégorie de revenu', de: 'Eigene Einnahmenkategorie', ja: 'カスタム収入カテゴリを追加', zh: '添加自定义收入类别', it: 'Aggiungi categoria di entrata');
+  String get categoryNameLabel => _t('Category name', ne: 'श्रेणीको नाम', es: 'Nombre de la categoría', fr: 'Nom de la catégorie', de: 'Kategoriename', ja: 'カテゴリ名', zh: '类别名称', it: 'Nome categoria');
+  String get addCategoryButton => _t('Add Category', ne: 'श्रेणी थप्नुहोस्', es: 'Añadir categoría', fr: 'Ajouter la catégorie', de: 'Kategorie hinzufügen', ja: 'カテゴリを追加', zh: '添加类别', it: 'Aggiungi categoria');
+  String get multiCurrencyProTitle => _t('Multi-Currency is a Pro Feature', ne: 'बहु-मुद्रा प्रो सुविधा हो', es: 'Multimoneda es una función Pro', fr: 'Le multi-devises est une fonction Pro', de: 'Multi-Währung ist eine Pro-Funktion', ja: '複数通貨はPro機能です', zh: '多币种是 Pro 专属功能', it: 'Multi-valuta è una funzione Pro');
+  String get multiCurrencyProMessage => _t(
+        'Recording transactions in foreign currencies with live exchange rates requires Hyprwise Pro.',
+        ne: 'विदेशी मुद्रामा प्रत्यक्ष विनिमय दरसहित कारोबार दर्ता गर्न हाइपरवाइज प्रो आवश्यक पर्दछ।',
+        es: 'Registrar transacciones en moneda extranjera con tasas en vivo requiere Hyprwise Pro.',
+        fr: 'L\'enregistrement en devises étrangères avec taux en direct nécessite Hyprwise Pro.',
+        de: 'Transaktionen in Fremdwährungen mit Live-Kursen erfordern Hyprwise Pro.',
+        ja: '外貨でのリアルタイム換算記録にはHyprwise Proが必要です。',
+        zh: '使用实时汇率记录外币交易需要升级至 Hyprwise Pro。',
+        it: 'Registrare transazioni in valuta estera con tassi live richiede Hyprwise Pro.',
+      );
+
+  // Calendar Screen
+  String itemsScheduledCount(int count) {
+    final c = formatNumber(count);
+    return _t(
+      '$c ${count == 1 ? 'item' : 'items'} scheduled',
+      ne: '$c कार्य तालिकाबद्ध',
+      es: '$c ${count == 1 ? 'elemento programado' : 'elementos programados'}',
+      fr: '$c ${count == 1 ? 'élément prévu' : 'éléments prévus'}',
+      de: '$c ${count == 1 ? 'Eintrag geplant' : 'Einträge geplant'}',
+      ja: '$c 件の予定',
+      zh: '$c 项日程安排',
+      it: '$c ${count == 1 ? 'elemento in programma' : 'elementi in programma'}',
+    );
+  }
+  String hoursDurationLabel(String hours) => _t('$hours hours duration', ne: '$hours घण्टा अवधि', es: '$hours horas de duración', fr: 'Durée de $hours heures', de: '$hours Stunden Dauer', ja: '所要時間 $hours 時間', zh: '时长 $hours 小时', it: 'Durata $hours ore');
+  String amountWithValue(String formattedAmount) => _t('Amount: $formattedAmount', ne: 'रकम: $formattedAmount', es: 'Importe: $formattedAmount', fr: 'Montant : $formattedAmount', de: 'Betrag: $formattedAmount', ja: '金額: $formattedAmount', zh: '金额：$formattedAmount', it: 'Importo: $formattedAmount');
+  String get recurringBillDue => _t('Recurring bill due', ne: 'नियमित बिल तिर्ने मिति', es: 'Vencimiento de factura recurrente', fr: 'Facture récurrente due', de: 'Wiederkehrende Rechnung fällig', ja: '定期請求の期日', zh: '定期账单到期', it: 'Scadenza bolletta ricorrente');
+  String get goalContributionPlanned => _t('Goal contribution planned', ne: 'लक्ष्य बचत योजना', es: 'Aporte a meta planificado', fr: 'Contribution à l\'objectif prévue', de: 'Geplanter Sparbeitrag', ja: '目標への積立予定', zh: '计划目标存入', it: 'Contributo obiettivo pianificato');
+  String get scheduledShiftSubtitle => _t('Scheduled shift', ne: 'तालिकाबद्ध सिफ्ट', es: 'Turno programado', fr: 'Quart planifié', de: 'Geplante Schicht', ja: '予定シフト', zh: '计划班次', it: 'Turno programmato');
+  String jobShiftTitle(String jobName) => _t('$jobName shift', ne: '$jobName सिफ्ट', es: 'Turno de $jobName', fr: 'Quart $jobName', de: '$jobName-Schicht', ja: '$jobName シフト', zh: '$jobName 班次', it: 'Turno $jobName');
+
+  // Work & Shift Rate Slider
+  String get activeBadge => _t('Active', ne: 'सक्रिय', es: 'Activo', fr: 'Actif', de: 'Aktiv', ja: '稼働中', zh: '进行中', it: 'Attivo');
+  String get hrsUnit => _t('hrs', ne: 'घण्टा', es: 'h', fr: 'h', de: 'Std.', ja: '時間', zh: '小时', it: 'ore');
+  String get perHourSuffix => _t('/ hr', ne: '/ घण्टा', es: '/ h', fr: '/ h', de: '/ Std.', ja: '/ 時間', zh: '/ 小时', it: '/ ora');
+  String get regularRateShort => _t('reg', ne: 'नियमित', es: 'reg', fr: 'norm', de: 'Reg', ja: '通常', zh: '常规', it: 'ord');
+  String get overtimeShort => _t('OT', ne: 'ओभरटाइम', es: 'Extra', fr: 'HS', de: 'ÜS', ja: '残業', zh: '加班', it: 'Str');
+  String get avgShort => _t('avg', ne: 'औसत', es: 'prom', fr: 'moy', de: 'Ø', ja: '平均', zh: '平均', it: 'med');
+  String regularHoursSummary(String hours) => _t('Regular: $hours', ne: 'नियमित: $hours', es: 'Regular: $hours', fr: 'Normal : $hours', de: 'Regulär: $hours', ja: '通常: $hours', zh: '常规：$hours', it: 'Ordinario: $hours');
+  String overtimeSummary(String mult, String afterHours) => _t('OT ($mult): after $afterHours', ne: 'ओभरटाइम ($mult): $afterHours पछि', es: 'Extra ($mult): tras $afterHours', fr: 'HS ($mult) : après $afterHours', de: 'ÜS ($mult): nach $afterHours', ja: '残業 ($mult): $afterHours 以降', zh: '加班 ($mult)：$afterHours 后', it: 'Straord. ($mult): dopo $afterHours');
+
+  // Export & Backup Dialogs
+  String get csvFormatTitle => _t('CSV Spreadsheet (.csv)', ne: 'CSV स्प्रेडसिट (.csv)', es: 'Hoja de cálculo CSV (.csv)', fr: 'Feuille de calcul CSV (.csv)', de: 'CSV-Tabelle (.csv)', ja: 'CSVスプレッドシート (.csv)', zh: 'CSV 电子表格 (.csv)', it: 'Foglio di calcolo CSV (.csv)');
+  String get csvFormatDesc => _t('Transactions and work shifts in tabular format, compatible with Excel and Google Sheets.', ne: 'Excel र Google Sheets मा खुल्ने कारोबार र सिफ्टहरूको तालिका।', es: 'Transacciones y turnos en formato tabular para Excel y Google Sheets.', fr: 'Transactions et quarts au format tabulaire pour Excel et Google Sheets.', de: 'Transaktionen und Schichten im Tabellenformat für Excel und Google Sheets.', ja: 'ExcelやGoogleスプレッドシートに対応した表形式データ。', zh: '兼容 Excel 与 Google 表格的交易和排班记录。', it: 'Transazioni e turni in formato tabellare per Excel e Fogli Google.');
+  String get jsonFormatTitle => _t('Full System Backup (.json)', ne: 'पूर्ण प्रणाली ब्याकअप (.json)', es: 'Copia completa del sistema (.json)', fr: 'Sauvegarde complète (.json)', de: 'Vollständiges System-Backup (.json)', ja: '完全システムバックアップ (.json)', zh: '完整系统备份 (.json)', it: 'Backup completo di sistema (.json)');
+  String get jsonFormatDesc => _t('Complete database backup including accounts, shifts, jobs, goals, and exchange rates.', ne: 'खाता, सिफ्ट, काम, लक्ष्य र विनिमय दरसहितको पूर्ण ब्याकअप।', es: 'Copia completa de cuentas, turnos, empleos, metas y tasas.', fr: 'Sauvegarde complète incluant comptes, quarts, emplois et objectifs.', de: 'Komplettes Datenbank-Backup inkl. Konten, Schichten, Jobs und Zielen.', ja: '口座、シフト、仕事、目標を含む完全なバックアップデータ。', zh: '包含账户、排班、工作、目标和汇率的完整数据库备份。', it: 'Backup completo inclusi conti, turni, lavori e obiettivi.');
+  String get saveToDownloadsTitle => _t('Save to Downloads', ne: 'डाउनलोड फोल्डरमा सुरक्षित गर्नुहोस्', es: 'Guardar en Descargas', fr: 'Enregistrer dans Téléchargements', de: 'In Downloads speichern', ja: 'ダウンロードに保存', zh: '保存到下载目录', it: 'Salva in Download');
+  String get saveToDownloadsDesc => _t('Saves directly to your device Downloads folder for easy file access.', ne: 'तपाईंको फोनको Downloads फोल्डरमा सिधै सेभ हुन्छ।', es: 'Se guarda directamente en la carpeta Descargas de tu dispositivo.', fr: 'Enregistre directement dans le dossier Téléchargements de l\'appareil.', de: 'Speichert direkt im Downloads-Ordner Ihres Geräts.', ja: '端末のダウンロードフォルダに直接保存します。', zh: '直接保存到您设备的下载文件夹中。', it: 'Salva direttamente nella cartella Download del dispositivo.');
+  String get shareToAppsTitle => _t('Share to App', ne: 'अन्य एपमा सेयर गर्नुहोस्', es: 'Compartir en aplicación', fr: 'Partager vers une application', de: 'An App teilen', ja: '他のアプリで共有', zh: '分享到应用', it: 'Condividi con app');
+  String get shareToAppsDesc => _t('Send via WhatsApp, Email, Google Drive, or Save to Files.', ne: 'WhatsApp, इमेल, Google Drive वा फाइलमा पठाउनुहोस्।', es: 'Enviar por WhatsApp, correo, Google Drive o Guardar en Archivos.', fr: 'Envoyer via WhatsApp, e-mail, Google Drive ou Fichiers.', de: 'Über WhatsApp, E-Mail, Google Drive senden oder in Dateien speichern.', ja: 'メールやGoogleドライブ、ファイルアプリへ共有します。', zh: '通过邮件、Google 云端硬盘发送或保存到文件。', it: 'Invia tramite WhatsApp, Email, Google Drive o Salva su File.');
+  String get exportFinancialData => _t('Export Financial Data', ne: 'वित्तीय डाटा निर्यात गर्नुहोस्', es: 'Exportar datos financieros', fr: 'Exporter les données financières', de: 'Finanzdaten exportieren', ja: '財務データのエクスポート', zh: '导出财务数据', it: 'Esporta dati finanziari');
+  String get chooseExportFormatSub => _t('Choose the format and where you would like to place the export.', ne: 'निर्यात गर्ने ढाँचा र सुरक्षित गर्ने स्थान छान्नुहोस्।', es: 'Elige el formato y dónde deseas guardar la exportación.', fr: 'Choisissez le format et la destination de l\'exportation.', de: 'Wählen Sie das Format und das Ziel für den Export.', ja: '出力形式と保存先を選択してください。', zh: '选择导出的文件格式与保存位置。', it: 'Scegli il formato e la destinazione dell\'esportazione.');
+  String get chooseFormatLabel => _t('1. Choose Format', ne: '१. ढाँचा छान्नुहोस्', es: '1. Elegir formato', fr: '1. Choisir le format', de: '1. Format wählen', ja: '1. 形式を選択', zh: '1. 选择格式', it: '1. Scegli formato');
+  String get deliveryMethodLabel => _t('2. Choose Destination', ne: '२. माध्यम छान्नुहोस्', es: '2. Elegir destino', fr: '2. Choisir la destination', de: '2. Ziel wählen', ja: '2. 保存先を選択', zh: '2. 选择导出方式', it: '2. Scegli destinazione');
+  String get exportNowButton => _t('Export Now', ne: 'अहिले निर्यात गर्नुहोस्', es: 'Exportar ahora', fr: 'Exporter maintenant', de: 'Jetzt exportieren', ja: '今すぐエクスポート', zh: '立即导出', it: 'Esporta ora');
+  String get exportCompleteTitle => _t('Export Complete', ne: 'निर्यात सम्पन्न भयो', es: 'Exportación completada', fr: 'Exportation terminée', de: 'Export abgeschlossen', ja: 'エクスポート完了', zh: '导出完成', it: 'Esportazione completata');
+  String exportCompleteMsg(String kb) => _t('Your data was exported successfully ($kb KB).', ne: 'तपाईंको डाटा सफलतापूर्वक निर्यात गरियो ($kb KB)।', es: 'Tus datos se exportaron correctamente ($kb KB).', fr: 'Vos données ont été exportées avec succès ($kb Ko).', de: 'Ihre Daten wurden erfolgreich exportiert ($kb KB).', ja: 'データが正常にエクスポートされました ($kb KB)。', zh: '您的数据已成功导出 ($kb KB)。', it: 'I tuoi dati sono stati esportati con successo ($kb KB).');
+  String get fileLocationLabel => _t('File location:', ne: 'फाइल रहेको स्थान:', es: 'Ubicación del archivo:', fr: 'Emplacement du fichier :', de: 'Dateispeicherort:', ja: '保存先:', zh: '文件位置：', it: 'Posizione file:');
+  String get copyPathButton => _t('Copy path', ne: 'पाथ कपी गर्नुहोस्', es: 'Copiar ruta', fr: 'Copier le chemin', de: 'Pfad kopieren', ja: 'パスをコピー', zh: '复制路径', it: 'Copia percorso');
+  String get pathCopiedToast => _t('Path copied to clipboard', ne: 'फाइल पाथ कपी गरियो', es: 'Ruta copiada al portapapeles', fr: 'Chemin copié dans le presse-papiers', de: 'Pfad in die Zwischenablage kopiert', ja: 'パスをコピーしました', zh: '路径已复制到剪贴板', it: 'Percorso copiato negli appunti');
+  String get shareFileButton => _t('Share file', ne: 'फाइल सेयर गर्नुहोस्', es: 'Compartir archivo', fr: 'Partager le fichier', de: 'Datei teilen', ja: 'ファイルを共有', zh: '分享文件', it: 'Condividi file');
+
+  // Wizard Scaffold & Pro Dialogs
+  String get discardTitle => _t('Discard this?', ne: 'यो रद्द गर्ने हो?', es: '¿Descartar esto?', fr: 'Abandonner ?', de: 'Verwerfen?', ja: '破棄しますか？', zh: '要放弃吗？', it: 'Scartare le modifiche?');
+  String get discardMessage => _t('What you entered will be lost.', ne: 'तपाईंले भर्नुभएको विवरण हट्नेछ।', es: 'Lo que ingresaste se perderá.', fr: 'Ce que vous avez saisi sera perdu.', de: 'Ihre Eingaben gehen verloren.', ja: '入力した内容は失われます。', zh: '您输入的内容将会丢失。', it: 'I dati inseriti andranno persi.');
+  String get discardAction => _t('Discard', ne: 'रद्द गर्नुहोस्', es: 'Descartar', fr: 'Abandonner', de: 'Verwerfen', ja: '破棄する', zh: '放弃', it: 'Scarta');
+  String get keepEditing => _t('Keep editing', ne: 'सम्पादन जारी राख्नुहोस्', es: 'Seguir editando', fr: 'Continuer la saisie', de: 'Weiter bearbeiten', ja: '編集を続ける', zh: '继续编辑', it: 'Continua a modificare');
+  String get exploreProPlans => _t('Explore Pro Plans', ne: 'प्रो योजनाहरू हेर्नुहोस्', es: 'Explorar planes Pro', fr: 'Découvrir les offres Pro', de: 'Pro-Pläne entdecken', ja: 'Proプランを見る', zh: '查看 Pro 计划', it: 'Esplora i piani Pro');
+  String get maybeLater => _t('Maybe later', ne: 'पछि गरौँला', es: 'Quizás más tarde', fr: 'Peut-être plus tard', de: 'Vielleicht später', ja: 'あとで', zh: '以后再说', it: 'Forse più tardi');
+  String get proPerkMultiCurrency => _t('Unlimited Multi-Currency Tracking & Live Rates', ne: 'असीमित बहु-मुद्रा ट्र्याकिङ र प्रत्यक्ष विनिमय दर', es: 'Seguimiento multimoneda ilimitado y tasas en vivo', fr: 'Suivi multi-devises illimité et taux en direct', de: 'Unbegrenztes Multi-Währungs-Tracking & Live-Kurse', ja: '無制限の複数通貨管理とリアルタイム為替レート', zh: '无限制多币种追踪与实时汇率', it: 'Tracciamento multi-valuta illimitato e tassi live');
+  String get proPerkAiAssistant => _t('Hypr AI Financial Assistant & Smart Insights', ne: 'Hypr AI वित्तीय सहायक र स्मार्ट विश्लेषण', es: 'Asistente financiero Hypr AI e ideas inteligentes', fr: 'Assistant financier Hypr AI et analyses intelligentes', de: 'Hypr AI Finanzassistent & smarte Analysen', ja: 'Hypr AI アシスタント＆スマート分析', zh: 'Hypr AI 财务助手与智能洞察', it: 'Assistente finanziario Hypr AI e analisi smart');
+  String get proPerkCloudBackup => _t('Encrypted Cloud Backup & PDF/Excel Reports', ne: 'सुरक्षित क्लाउड ब्याकअप र PDF/Excel रिपोर्टहरू', es: 'Copia en la nube cifrada e informes PDF/Excel', fr: 'Sauvegarde cloud chiffrée et rapports PDF/Excel', de: 'Verschlüsseltes Cloud-Backup & PDF/Excel-Berichte', ja: '暗号化クラウドバックアップ＆PDF/Excelレポート', zh: '加密云备份与 PDF/Excel 报表导出', it: 'Backup cloud crittografato e report PDF/Excel');
+
+  // Settings & Auth Guard
+  String get accountAndDataDeleted => _t('Account and data deleted', ne: 'खाता र डाटा हटाइयो', es: 'Cuenta y datos eliminados', fr: 'Compte et données supprimés', de: 'Konto und Daten gelöscht', ja: 'アカウントとデータを削除しました', zh: '账户及数据已删除', it: 'Account e dati eliminati');
+  String get appVersionTagline => _t('v0.1.0 (preview) · personal finance & shift planner', ne: 'v०.१.० (पूर्वावलोकन) · व्यक्तिगत वित्त र सिफ्ट योजनाकार', es: 'v0.1.0 (preview) · finanzas personales y turnos', fr: 'v0.1.0 (aperçu) · finances personnelles et quarts', de: 'v0.1.0 (Vorschau) · Finanzen & Schichtplaner', ja: 'v0.1.0 (プレビュー) · 家計簿＆シフト管理', zh: 'v0.1.0 (预览版) · 个人财务与排班助手', it: 'v0.1.0 (anteprima) · finanze personali e turni');
+  String get proUnlockedSubtitle => _t('Cloud sync & Hypr AI unlocked', ne: 'क्लाउड सिंक र Hypr AI सक्रिय छ', es: 'Sincronización en la nube y Hypr AI desbloqueados', fr: 'Sync cloud et Hypr AI débloqués', de: 'Cloud-Sync & Hypr AI freigeschaltet', ja: 'クラウド同期＆Hypr AI 利用可能', zh: '云同步与 Hypr AI 已解锁', it: 'Sync cloud e Hypr AI sbloccati');
+  String get proUpgradeSubtitle => _t('Cloud sync, Hypr AI, multi-currency & PDF export', ne: 'क्लाउड सिंक, Hypr AI, बहु-मुद्रा र PDF निर्यात', es: 'Nube, Hypr AI, multimoneda y exportación PDF', fr: 'Cloud, Hypr AI, multi-devises et export PDF', de: 'Cloud-Sync, Hypr AI, Multi-Währung & PDF-Export', ja: 'クラウド同期・Hypr AI・複数通貨・PDF出力', zh: '云同步、Hypr AI、多币种与 PDF 导出', it: 'Cloud, Hypr AI, multi-valuta ed esportazione PDF');
+  String get cloudAccount => _t('Cloud Account', ne: 'क्लाउड खाता', es: 'Cuenta en la nube', fr: 'Compte Cloud', de: 'Cloud-Konto', ja: 'クラウドアカウント', zh: '云端账户', it: 'Account Cloud');
+  String get signInToSyncSubtitle => _t('Sign in to synchronize backups & unlock Pro across devices', ne: 'ब्याकअप सिंक गर्न र सबै डिभाइसमा प्रो चलाउन साइन इन गर्नुहोस्', es: 'Inicia sesión para sincronizar copias y activar Pro', fr: 'Connectez-vous pour synchroniser vos sauvegardes et Pro', de: 'Anmelden, um Backups & Pro geräteübergreifend zu nutzen', ja: 'サインインしてバックアップとProを端末間で同期', zh: '登录以同步云备份并在多设备间解锁 Pro', it: 'Accedi per sincronizzare i backup e sbloccare Pro');
+  String get signedInWithGoogle => _t('Signed in with Google', ne: 'Google बाट साइन इन गरिएको', es: 'Conectado con Google', fr: 'Connecté avec Google', de: 'Mit Google angemeldet', ja: 'Googleでサインイン中', zh: '已通过 Google 登录', it: 'Accesso effettuato con Google');
+  String get signedInWithApple => _t('Signed in with Apple', ne: 'Apple बाट साइन इन गरिएको', es: 'Conectado con Apple', fr: 'Connecté avec Apple', de: 'Mit Apple angemeldet', ja: 'Appleでサインイン中', zh: '已通过 Apple 登录', it: 'Accesso effettuato con Apple');
+  String get signInToLinkProTitle => _t('Sign In to Link Data & Purchase Pro', ne: 'डाटा लिंक गर्न र प्रो खरिद गर्न साइन इन गर्नुहोस्', es: 'Inicia sesión para vincular datos y comprar Pro', fr: 'Connectez-vous pour lier vos données et acheter Pro', de: 'Anmelden, um Daten zu verknüpfen & Pro zu kaufen', ja: 'サインインしてデータを連携＆Proを購入', zh: '登录以绑定数据并购买 Pro', it: 'Accedi per collegare i dati e acquistare Pro');
+  String get signInToLinkProDesc => _t(
+        'To protect your subscription across devices and securely bind your local records to your cloud account, please sign in before upgrading to Hyprwise Pro.',
+        ne: 'तपाईंको सदस्यता सुरक्षित राख्न र फोनको डाटालाई क्लाउड खातामा जोड्न कृपया हाइपरवाइज प्रो लिनुअघि साइन इन गर्नुहोस्।',
+        es: 'Para proteger tu suscripción entre dispositivos y vincular tus datos locales, inicia sesión antes de actualizar a Hyprwise Pro.',
+        fr: 'Pour protéger votre abonnement sur tous vos appareils, veuillez vous connecter avant de passer à Hyprwise Pro.',
+        de: 'Um Ihr Abo geräteübergreifend zu schützen, melden Sie sich bitte vor dem Upgrade auf Hyprwise Pro an.',
+        ja: '複数の端末でサブスクリプションを保護しデータを安全に連携するため、アップグレード前にサインインしてください。',
+        zh: '为了跨设备保护您的订阅并将本地记录安全绑定到云账户，请在升级 Hyprwise Pro 前登录。',
+        it: 'Per proteggere il tuo abbonamento su tutti i dispositivi, accedi prima di passare a Hyprwise Pro.',
+      );
+
+  // Advice Engine Alerts
+  String alertGoalMayFallShort(String goalName) => _t('$goalName may fall short', ne: '$goalName लक्ष्य अपूरो हुन सक्छ', es: '$goalName podría quedarse corto', fr: '$goalName risque d\'être insuffisant', de: '$goalName könnte verfehlt werden', ja: '$goalName が目標に届かない可能性', zh: '$goalName 可能无法按期达成', it: '$goalName potrebbe non essere raggiunto');
+  String alertGoalProjectedMsg(String projected, String target, String date) => _t('Projected $projected against a $target target by $date', ne: '$date सम्म $target लक्ष्यको तुलनामा अनुमानित $projected', es: 'Proyectado $projected frente a $target para el $date', fr: 'Projeté $projected sur un objectif de $target d\'ici le $date', de: 'Prognose $projected bei $target Ziel bis $date', ja: '$date までに目標 $target に対し予測 $projected', zh: '预计到 $date 为 $projected（目标 $target）', it: 'Previsti $projected su un obiettivo di $target entro il $date');
+  String get alertBalanceNegativeTitle => _t('Projected balance goes negative', ne: 'अनुमानित मौज्दात ऋणात्मक हुँदैछ', es: 'El saldo proyectado se vuelve negativo', fr: 'Le solde projeté devient négatif', de: 'Prognostizierter Kontostand wird negativ', ja: '予測残高がマイナスになります', zh: '预计余额将变为负数', it: 'Il saldo previsto diventa negativo');
+  String alertBalanceNegativeMsg(String date) => _t('At the current pace you run out around $date', ne: 'हालको गतिमा $date तिर रकम अपुग हुन सक्छ', es: 'Al ritmo actual te quedarás sin fondos hacia el $date', fr: 'Au rythme actuel, vous serez à découvert vers le $date', de: 'Beim aktuellen Tempo reicht das Guthaben bis ca. $date', ja: '現在のペースでは $date 頃に資金が不足します', zh: '按目前的速度，预计在 $date 左右余额耗尽', it: 'Al ritmo attuale finirai i fondi intorno al $date');
+  String alertBillDueTitle(String billName, String date) => _t('$billName due $date', ne: '$billName तिर्ने मिति $date', es: '$billName vence el $date', fr: '$billName dû le $date', de: '$billName fällig am $date', ja: '$billName の支払期日 $date', zh: '$billName 将于 $date 到期', it: '$billName in scadenza il $date');
+  String alertBillLeavesBalanceMsg(String amount, String remaining) => _t('$amount leaves your account on $remaining', ne: '$amount तिरेपछि खातामा $remaining बाँकी रहनेछ', es: '$amount deja tu cuenta en $remaining', fr: '$amount laisse votre compte à $remaining', de: '$amount lässt $remaining auf Ihrem Konto', ja: '$amount の支払い後、残高は $remaining になります', zh: '支付 $amount 后账户剩余 $remaining', it: '$amount lascia il conto a $remaining');
 }
 
 extension AppStringsExtension on BuildContext {

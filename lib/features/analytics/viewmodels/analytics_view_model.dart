@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/analytics/data/insights_engine.dart';
 import 'package:finance_tracker/features/debts/data/model/debt.dart';
@@ -8,14 +9,22 @@ import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 
 enum AnalyticsDateFilter {
-  thisMonth('This month'),
-  thisWeek('This week'),
-  last30Days('Last 30 days'),
-  thisYear('This year'),
-  custom('Custom');
+  thisMonth,
+  thisWeek,
+  last30Days,
+  thisYear,
+  custom;
 
-  const AnalyticsDateFilter(this.label);
-  final String label;
+  String get label {
+    final tr = AppStrings.current();
+    return switch (this) {
+      AnalyticsDateFilter.thisMonth => tr.filterThisMonth,
+      AnalyticsDateFilter.thisWeek => tr.filterThisWeek,
+      AnalyticsDateFilter.last30Days => tr.filterLast30Days,
+      AnalyticsDateFilter.thisYear => tr.filterThisYear,
+      AnalyticsDateFilter.custom => tr.customOption,
+    };
+  }
 }
 
 class AnalyticsMerchantSpend {
@@ -303,7 +312,7 @@ class AnalyticsViewModel extends ChangeNotifier {
       final key = AppDate.dateOnly(day).millisecondsSinceEpoch;
       final val = dayBuckets[key] ?? 0.0;
       values.add(val);
-      labels.add(totalDays <= 7 ? AppDate.weekday(day) : '${day.day}');
+      labels.add(totalDays <= 7 ? AppDate.weekday(day) : DateFormatter.day(day));
       day = day.add(Duration(days: step));
       if (step > 1 && values.length >= 12) break;
     }
@@ -319,14 +328,15 @@ class AnalyticsViewModel extends ChangeNotifier {
     for (final t in filteredTransactions) {
       if (t.type != _activeType.value) continue;
       final rawName = t.note?.split('·').first.trim();
+      final locCat = TransactionCategories.localizedCategoryName(t.category);
       final name =
-          (rawName != null && rawName.isNotEmpty) ? rawName : t.category;
+          (rawName != null && rawName.isNotEmpty) ? rawName : locCat;
       final amt = financeStore.snapshot.convert(
         t.amountMinor,
         financeStore.snapshot.currencyOf(t.accountId),
       );
 
-      final current = map[name] ?? (0, 0, t.category);
+      final current = map[name] ?? (0, 0, locCat);
       map[name] = (current.$1 + amt, current.$2 + 1, current.$3);
     }
 
