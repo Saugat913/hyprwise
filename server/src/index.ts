@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
@@ -95,7 +95,7 @@ export interface UserRow {
   createdAt: number;
 }
 
-async function resolveUser(c: any): Promise<UserRow | null> {
+async function resolveUser(c: Context<{ Bindings: Bindings }>): Promise<UserRow | null> {
   const authHeader = c.req.header('Authorization');
   if (!authHeader) return null;
   const token = authHeader.replace('Bearer ', '');
@@ -141,7 +141,7 @@ app.post('/api/auth/firebase', async (c) => {
 
     const user: UserRow = {
       id: userId,
-      email: verifiedEmail || existing?.email || `${userId}@firebase.tilvane`,
+      email: verifiedEmail || existing?.email || `${userId}@firebase.hyprwise`,
       displayName: verifiedName || existing?.displayName || 'Hyprwise User',
       photoUrl: verifiedPhoto || existing?.photoUrl || null,
       provider: (provider === 'apple' ? 'apple' : 'google') as 'google' | 'apple' | 'offline',
@@ -489,7 +489,7 @@ app.post('/api/export/csv', async (c) => {
       }
     }
 
-    const filename = `tilvane_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    const filename = `hyprwise_export_${new Date().toISOString().slice(0, 10)}.csv`;
     return c.json({
       success: true,
       filename,

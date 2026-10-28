@@ -37,7 +37,7 @@ class SettingsScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(AppSpace.page, AppSpace.md, AppSpace.page, AppSpace.xxxl),
               children: [
-                // Tilvane Pro & Account Section
+                // Hyprwise Pro & Account Section
                 const _SubscriptionBanner(),
                 const SizedBox(height: AppSpace.md),
                 const _AccountAuthCard(),

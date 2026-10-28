@@ -86,7 +86,7 @@ class AuthService extends ChangeNotifier {
         }
       }
 
-      // Synchronize with Tilvane Cloudflare Server
+      // Synchronize with Hyprwise Cloudflare Server
       bool isPro = false;
       try {
         final serverRes = await ApiClient.instance.authenticateFirebase(
@@ -155,7 +155,7 @@ class AuthService extends ChangeNotifier {
         }
       }
 
-      // Synchronize with Tilvane Cloudflare Server
+      // Synchronize with Hyprwise Cloudflare Server
       bool isPro = false;
       try {
         final serverRes = await ApiClient.instance.authenticateFirebase(

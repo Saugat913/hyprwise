@@ -20,6 +20,7 @@ class ShiftNotificationService {
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _isAvailable = false;
 
   static const int shiftNotificationId = 9001;
   static const String shiftChannelId = 'hyprwise_active_shift_channel';
@@ -129,13 +130,21 @@ class ShiftNotificationService {
       }
 
       _initialized = true;
+      _isAvailable = true;
     } catch (e) {
-      debugPrint('Failed to initialize notifications: $e');
+      _initialized = true;
+      _isAvailable = false;
+      if (!e.toString().contains('LateInitializationError') &&
+          !e.toString().contains('MissingPluginException')) {
+        debugPrint('Failed to initialize notifications: $e');
+      }
     }
   }
 
   /// Explicitly requests notification permission with user context (e.g. clocking in, toggling alerts).
   Future<bool> requestPermission() async {
+    if (!_initialized) await initialize();
+    if (!_isAvailable) return false;
     try {
       final android = _notifications.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
@@ -159,7 +168,7 @@ class ShiftNotificationService {
     int breakMinutes = 0,
   }) async {
     if (!_initialized) await initialize();
-    if (!_initialized) return;
+    if (!_isAvailable) return;
 
     final isNe = _isNepali;
     final breakInfo = isOnBreak
@@ -225,7 +234,7 @@ class ShiftNotificationService {
   }
 
   Future<void> cancelShiftNotification() async {
-    if (!_initialized) return;
+    if (!_initialized || !_isAvailable) return;
     try {
       await _notifications.cancel(id: shiftNotificationId);
     } catch (e) {
@@ -241,6 +250,7 @@ class ShiftNotificationService {
     int minutesBefore = 30,
   }) async {
     if (!_initialized) await initialize();
+    if (!_isAvailable) return;
     final reminderTime = startAt.subtract(Duration(minutes: minutesBefore));
     if (reminderTime.isBefore(DateTime.now())) return;
 
@@ -285,6 +295,7 @@ class ShiftNotificationService {
     required DateTime dueDate,
   }) async {
     if (!_initialized) await initialize();
+    if (!_isAvailable) return;
     final reminderTime = DateTime(dueDate.year, dueDate.month, dueDate.day, 9, 0); // 9:00 AM on due day
     if (reminderTime.isBefore(DateTime.now())) return;
 
@@ -330,6 +341,7 @@ class ShiftNotificationService {
     required bool isLent,
   }) async {
     if (!_initialized) await initialize();
+    if (!_isAvailable) return;
     final reminderTime = DateTime(dueDate.year, dueDate.month, dueDate.day, 10, 0); // 10:00 AM on due day
     if (reminderTime.isBefore(DateTime.now())) return;
 
@@ -377,7 +389,7 @@ class ShiftNotificationService {
 
   /// Cancels any scheduled or active notification by ID
   Future<void> cancelNotification(int id) async {
-    if (!_initialized) return;
+    if (!_initialized || !_isAvailable) return;
     try {
       await _notifications.cancel(id: id);
     } catch (e) {

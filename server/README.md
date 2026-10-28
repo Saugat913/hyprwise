@@ -1,8 +1,8 @@
-# Tilvane Backend Server
+# Hyprwise Backend Server
 
 A decoupled, lightweight [Hono](https://hono.dev) backend server powering:
 - **User Authentication**: Google Sign-In & Apple Sign-In token verification and sessions.
-- **Tilvane Cloud Sync Engine (Pro Plan)**: End-to-end encrypted backup, snapshot sync, and multi-device restoration.
+- **Hyprwise Cloud Sync Engine (Pro Plan)**: End-to-end encrypted backup, snapshot sync, and multi-device restoration.
 - **Gemini AI MCP Proxy**: Secure server-side gateway to Google Gemini AI (1.5 Flash), executing Model Context Protocol (MCP) function calling tools locally on the client without exposing API keys.
 
 ## Quick Start

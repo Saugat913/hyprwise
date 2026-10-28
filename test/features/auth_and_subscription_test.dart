@@ -80,9 +80,9 @@ void main() {
   });
 
   test('Signing out clears currentUser and resets session in storage', () async {
-    await authService.signInWithGoogle(email: 'dev@tilvane.com', displayName: 'Tilvane Dev');
+    await authService.signInWithGoogle(email: 'dev@hyprwise.com', displayName: 'Hyprwise Dev');
     expect(authService.isAuthenticated, isTrue);
-    expect(authService.currentUser?.email, equals('dev@tilvane.com'));
+    expect(authService.currentUser?.email, equals('dev@hyprwise.com'));
 
     await authService.signOut();
     expect(authService.isAuthenticated, isFalse);

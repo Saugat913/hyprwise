@@ -66,7 +66,7 @@ class ApiClient {
           final data = jsonDecode(res.body);
           if (data['status'] == 'ok') {
             _resolvedBaseUrl = host;
-            debugPrint('Connected to Tilvane server at $host');
+            debugPrint('Connected to Hyprwise server at $host');
             return host;
           }
         }
