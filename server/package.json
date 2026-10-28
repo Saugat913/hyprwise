@@ -1,5 +1,5 @@
 {
-  "name": "hyprwise-server",
+  "name": "hyprwise",
   "version": "1.0.0",
   "description": "Hyprwise Backend Server - Cloud Sync, Authentication, and Gemini AI MCP Gateway",
   "main": "src/index.ts",
