@@ -47,10 +47,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify Hyprwise brand title and buttons
+    // Verify Hyprwise brand title and buttons (on Android, Apple login is hidden)
     expect(find.text('hyprwise'), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Continue with Apple'), findsOneWidget);
+    expect(find.text('Continue with Apple'), findsNothing);
     expect(find.text('Continue as Guest (Offline)'), findsOneWidget);
 
     // Verify SVG logos are rendered

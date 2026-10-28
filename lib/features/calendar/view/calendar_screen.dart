@@ -335,7 +335,7 @@ class _WeekDayPill extends StatelessWidget {
                 color: isSelected ? scheme.primary : Colors.transparent,
                 shape: BoxShape.circle,
                 border: isToday && !isSelected
-                    ? Border.all(color: scheme.primary, width: 1.5)
+                    ? Border.all(color: colors.brand, width: 1.5)
                     : null,
               ),
               child: Text(
@@ -352,7 +352,7 @@ class _WeekDayPill extends StatelessWidget {
               width: 5,
               height: 5,
               decoration: BoxDecoration(
-                color: hasDot ? colors.income : Colors.transparent,
+                color: hasDot ? colors.brand : Colors.transparent,
                 shape: BoxShape.circle,
               ),
             ),

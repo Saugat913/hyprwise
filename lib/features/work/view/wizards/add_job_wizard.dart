@@ -25,9 +25,15 @@ class _AddJobWizardState extends State<AddJobWizard> {
   int _step = 0;
   final _nameController = TextEditingController();
   final _rateController = TextEditingController(text: '25.00');
+  final _customBreakController = TextEditingController();
+  final _customAlertHoursController = TextEditingController();
 
   String _payType = 'hourly';
   final Set<int> _selectedDays = {1, 5}; // Monday and Friday default
+  int _defaultBreakMinutes = 30;
+  bool _useCustomBreak = false;
+  int _longShiftAlertMinutes = 360; // 6 hours default
+  bool _useCustomAlertHours = false;
   String? _nameError;
   String? _rateError;
 
@@ -42,6 +48,8 @@ class _AddJobWizardState extends State<AddJobWizard> {
   void dispose() {
     _nameController.dispose();
     _rateController.dispose();
+    _customBreakController.dispose();
+    _customAlertHoursController.dispose();
     super.dispose();
   }
 
@@ -82,6 +90,8 @@ class _AddJobWizardState extends State<AddJobWizard> {
     await viewModel.addJob(
       name: _nameController.text.trim(),
       hourlyRateMinor: rateMinor,
+      defaultBreakMinutes: _defaultBreakMinutes,
+      longShiftAlertMinutes: _longShiftAlertMinutes,
     );
 
     if (mounted) {
@@ -270,6 +280,121 @@ class _AddJobWizardState extends State<AddJobWizard> {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
+              const SizedBox(height: AppSpace.xl),
+
+              // Default Break Duration selector (presets + Custom minutes)
+              Text(
+                tr.defaultBreakDurationLabel,
+                style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              Wrap(
+                spacing: AppSpace.sm,
+                runSpacing: AppSpace.xs,
+                children: [
+                  for (final b in [0, 15, 30, 45, 60])
+                    ChoicePill(
+                      b == 0 ? tr.noBreak : tr.minsBreak(b),
+                      selected: !_useCustomBreak && _defaultBreakMinutes == b,
+                      onTap: () => setState(() {
+                        _useCustomBreak = false;
+                        _defaultBreakMinutes = b;
+                      }),
+                    ),
+                  ChoicePill(
+                    tr.customOption,
+                    selected: _useCustomBreak,
+                    onTap: () => setState(() {
+                      _useCustomBreak = true;
+                      if (_customBreakController.text.isEmpty) {
+                        _customBreakController.text = _defaultBreakMinutes.toString();
+                      }
+                    }),
+                  ),
+                ],
+              ),
+              if (_useCustomBreak) ...[
+                const SizedBox(height: AppSpace.sm),
+                UnderlineField(
+                  label: tr.customBreakMinutesLabel,
+                  hint: '20',
+                  controller: _customBreakController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (val) {
+                    final parsed = int.tryParse(val.trim());
+                    if (parsed != null && parsed >= 0) {
+                      setState(() => _defaultBreakMinutes = parsed);
+                    }
+                  },
+                ),
+              ],
+              const SizedBox(height: AppSpace.xl),
+
+              // Selectable Long-Shift Notification Threshold
+              Text(
+                tr.longShiftNotificationLabel,
+                style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                tr.longShiftNotificationSubtitle,
+                style: text.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              Wrap(
+                spacing: AppSpace.sm,
+                runSpacing: AppSpace.xs,
+                children: [
+                  ChoicePill(
+                    tr.offOption,
+                    selected: !_useCustomAlertHours && _longShiftAlertMinutes == 0,
+                    onTap: () => setState(() {
+                      _useCustomAlertHours = false;
+                      _longShiftAlertMinutes = 0;
+                    }),
+                  ),
+                  for (final h in [4, 6, 8, 10, 12])
+                    ChoicePill(
+                      tr.notifyAfterHours(h),
+                      selected: !_useCustomAlertHours && _longShiftAlertMinutes == h * 60,
+                      onTap: () => setState(() {
+                        _useCustomAlertHours = false;
+                        _longShiftAlertMinutes = h * 60;
+                      }),
+                    ),
+                  ChoicePill(
+                    tr.customOption,
+                    selected: _useCustomAlertHours,
+                    onTap: () => setState(() {
+                      _useCustomAlertHours = true;
+                      if (_customAlertHoursController.text.isEmpty) {
+                        final curHours = _longShiftAlertMinutes > 0
+                            ? (_longShiftAlertMinutes / 60).round()
+                            : 6;
+                        _customAlertHoursController.text = curHours.toString();
+                        _longShiftAlertMinutes = curHours * 60;
+                      }
+                    }),
+                  ),
+                ],
+              ),
+              if (_useCustomAlertHours) ...[
+                const SizedBox(height: AppSpace.sm),
+                UnderlineField(
+                  label: tr.customHoursLabel,
+                  hint: '6',
+                  controller: _customAlertHoursController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (val) {
+                    final parsed = double.tryParse(val.trim());
+                    if (parsed != null && parsed >= 0) {
+                      setState(() => _longShiftAlertMinutes = (parsed * 60).round());
+                    }
+                  },
+                ),
+              ],
             ],
           ),
         ),

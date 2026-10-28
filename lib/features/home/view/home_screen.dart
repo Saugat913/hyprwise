@@ -9,6 +9,7 @@ import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/features/home/view/widgets/home_insight_widgets.dart';
 import 'package:finance_tracker/features/home/view/widgets/home_transaction_row.dart';
 import 'package:finance_tracker/features/home/view/widgets/upcoming_event_row.dart';
 import 'package:finance_tracker/features/home/viewmodels/home_view_model.dart';
@@ -192,7 +193,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     if (viewModel.sparklinePoints.isNotEmpty) ...[
                       const SizedBox(height: AppSpace.md),
-                      Sparkline(viewModel.sparklinePoints, color: colors.income, height: 48),
+                      Sparkline(viewModel.sparklinePoints, color: colors.brand, height: 48),
                     ],
                     const SizedBox(height: AppSpace.lg),
                     Row(
@@ -407,19 +408,35 @@ class HomeScreen extends StatelessWidget {
 
             // Quick actions
             const SizedBox(height: AppSpace.xl),
-            workViewModel.isClockedIn
-                ? AppButton(
-                    tr.activeShift,
-                    icon: HugeIcons.strokeRoundedClock01,
-                    kind: AppButtonKind.success,
-                    onPressed: () => context.push(AppRoutes.liveShift),
-                  )
-                : AppButton(
-                    tr.startShift,
-                    icon: HugeIcons.strokeRoundedPlay,
-                    kind: AppButtonKind.secondary,
-                    onPressed: () => context.push(AppRoutes.startShift),
+            Row(
+              children: [
+                Expanded(
+                  child: workViewModel.isClockedIn
+                      ? AppButton(
+                          tr.activeShift,
+                          icon: HugeIcons.strokeRoundedClock01,
+                          kind: AppButtonKind.success,
+                          onPressed: () => context.push(AppRoutes.liveShift),
+                        )
+                      : AppButton(
+                          tr.startShift,
+                          icon: HugeIcons.strokeRoundedPlay,
+                          kind: AppButtonKind.secondary,
+                          onPressed: () => context.push(AppRoutes.startShift),
+                        ),
+                ),
+                const SizedBox(width: AppSpace.md),
+                Expanded(
+                  child: AppButton(
+                    tr.hyprAi,
+                    icon: HugeIcons.strokeRoundedChatBot,
+                    onPressed: () => context.push(AppRoutes.assistant),
                   ),
+                ),
+              ],
+            ),
+
+            if (viewModel.hasAccounts) HomeInsights(viewModel: viewModel),
 
             // This week section
             const SizedBox(height: AppSpace.xxl),

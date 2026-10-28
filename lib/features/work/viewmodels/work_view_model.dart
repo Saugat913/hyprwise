@@ -36,6 +36,9 @@ class WorkViewModel extends ChangeNotifier {
   bool get isOnBreak => _isOnBreak;
   DateTime? _breakStartTime;
   int _accumulatedBreakSeconds = 0;
+  int? _activeBreakId;
+
+  Future<List<ShiftBreak>> breaksForShift(int shiftId) => shiftRepo.breaksFor(shiftId);
 
   int get currentBreakSeconds {
     var totalSec = _accumulatedBreakSeconds;
@@ -70,15 +73,29 @@ class WorkViewModel extends ChangeNotifier {
   }
 
   void toggleBreak() {
+    final now = DateTime.now();
+    final shift = activeShift;
     if (_isOnBreak) {
       if (_breakStartTime != null) {
-        _accumulatedBreakSeconds += DateTime.now().difference(_breakStartTime!).inSeconds;
+        _accumulatedBreakSeconds += now.difference(_breakStartTime!).inSeconds;
         _breakStartTime = null;
+      }
+      if (_activeBreakId != null) {
+        final breakId = _activeBreakId!;
+        _activeBreakId = null;
+        unawaited(shiftRepo.endBreak(breakId, now));
       }
       _isOnBreak = false;
     } else {
       _isOnBreak = true;
-      _breakStartTime = DateTime.now();
+      _breakStartTime = now;
+      if (shift != null) {
+        unawaited(
+          shiftRepo.startBreak(shift.id, now).then((id) {
+            _activeBreakId = id;
+          }),
+        );
+      }
     }
     _syncNotification();
     notifyListeners();
@@ -233,13 +250,11 @@ class WorkViewModel extends ChangeNotifier {
     if (job == null) return null;
 
     final rate = shift.rateOverrideMinor ?? job.hourlyRateMinor;
-    final workedMinutes = activeShiftWorkedDuration.inMinutes;
-    final earnings = (rate * workedMinutes / 60).round();
-
-    return ShiftEarnings(
-      workedMinutes: workedMinutes,
-      earningsMinor: earnings,
-      hourlyRateMinor: rate,
+    return ShiftEarnings.compute(
+      workedSeconds: activeShiftWorkedDuration.inSeconds,
+      rateMinor: rate,
+      overtimeThresholdMinutes: shift.overtimeThresholdMinutes,
+      overtimeRateMinor: shift.overtimeRateMinor,
     );
   }
 
@@ -285,6 +300,8 @@ class WorkViewModel extends ChangeNotifier {
     String? employer,
     String? currencyCode,
     int colorIndex = 0,
+    int defaultBreakMinutes = 0,
+    int longShiftAlertMinutes = 360,
   }) async {
     final id = await jobRepo.add(
       name: name,
@@ -292,6 +309,8 @@ class WorkViewModel extends ChangeNotifier {
       employer: employer,
       currencyCode: currencyCode ?? baseCurrency,
       colorIndex: colorIndex,
+      defaultBreakMinutes: defaultBreakMinutes,
+      longShiftAlertMinutes: longShiftAlertMinutes,
     );
     TelemetryService.instance.trackEvent('job_added', {'name': name});
     return id;
@@ -303,6 +322,8 @@ class WorkViewModel extends ChangeNotifier {
     required int hourlyRateMinor,
     String? employer,
     int colorIndex = 0,
+    int? defaultBreakMinutes,
+    int? longShiftAlertMinutes,
   }) async {
     final existingJob = jobsById[id];
     if (existingJob != null && existingJob.hourlyRateMinor != hourlyRateMinor) {
@@ -320,6 +341,8 @@ class WorkViewModel extends ChangeNotifier {
       currencyCode: existingJob?.currencyCode ?? baseCurrency,
       employer: employer,
       colorIndex: colorIndex,
+      defaultBreakMinutes: defaultBreakMinutes,
+      longShiftAlertMinutes: longShiftAlertMinutes,
     );
     TelemetryService.instance.trackEvent('job_updated', {'id': id, 'name': name});
   }
@@ -331,6 +354,9 @@ class WorkViewModel extends ChangeNotifier {
     int breakMinutes = 0,
     String? note,
     int? rateOverrideMinor,
+    int? overtimeThresholdMinutes,
+    int? overtimeRateMinor,
+    int? longShiftAlertMinutes,
   }) async {
     final id = await shiftRepo.add(
       jobId: jobId,
@@ -340,6 +366,9 @@ class WorkViewModel extends ChangeNotifier {
       status: ShiftStatus.scheduled,
       note: note,
       rateOverrideMinor: rateOverrideMinor,
+      overtimeThresholdMinutes: overtimeThresholdMinutes,
+      overtimeRateMinor: overtimeRateMinor,
+      longShiftAlertMinutes: longShiftAlertMinutes,
     );
     TelemetryService.instance.trackEvent('shift_scheduled', {'jobId': jobId});
 
@@ -364,6 +393,9 @@ class WorkViewModel extends ChangeNotifier {
     ShiftStatus? status,
     String? note,
     int? rateOverrideMinor,
+    int? overtimeThresholdMinutes,
+    int? overtimeRateMinor,
+    int? longShiftAlertMinutes,
   }) async {
     await shiftRepo.update(
       id,
@@ -374,6 +406,9 @@ class WorkViewModel extends ChangeNotifier {
       status: status,
       note: note,
       rateOverrideMinor: rateOverrideMinor,
+      overtimeThresholdMinutes: overtimeThresholdMinutes,
+      overtimeRateMinor: overtimeRateMinor,
+      longShiftAlertMinutes: longShiftAlertMinutes,
     );
     TelemetryService.instance.trackEvent('shift_updated', {'id': id});
   }
@@ -392,6 +427,9 @@ class WorkViewModel extends ChangeNotifier {
     int breakMinutes = 0,
     String? note,
     int? rateOverrideMinor,
+    int? overtimeThresholdMinutes,
+    int? overtimeRateMinor,
+    int? longShiftAlertMinutes,
   }) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -421,6 +459,9 @@ class WorkViewModel extends ChangeNotifier {
             breakMinutes: breakMinutes,
             note: note,
             rateOverrideMinor: rateOverrideMinor,
+            overtimeThresholdMinutes: overtimeThresholdMinutes,
+            overtimeRateMinor: overtimeRateMinor,
+            longShiftAlertMinutes: longShiftAlertMinutes,
           );
           createdIds.add(id);
         }
@@ -433,11 +474,17 @@ class WorkViewModel extends ChangeNotifier {
     required int jobId,
     DateTime? startAt,
     int? rateOverrideMinor,
+    int? overtimeThresholdMinutes,
+    int? overtimeRateMinor,
+    int? longShiftAlertMinutes,
   }) async {
     _isOnBreak = false;
     _breakStartTime = null;
     _accumulatedBreakSeconds = 0;
+    _activeBreakId = null;
 
+    final job = jobsById[jobId];
+    final effectiveAlertMinutes = longShiftAlertMinutes ?? job?.longShiftAlertMinutes ?? 360;
     final start = startAt ?? DateTime.now();
     final id = await shiftRepo.add(
       jobId: jobId,
@@ -445,10 +492,12 @@ class WorkViewModel extends ChangeNotifier {
       breakMinutes: 0,
       status: ShiftStatus.inProgress,
       rateOverrideMinor: rateOverrideMinor,
+      overtimeThresholdMinutes: overtimeThresholdMinutes,
+      overtimeRateMinor: overtimeRateMinor,
+      longShiftAlertMinutes: effectiveAlertMinutes,
     );
     TelemetryService.instance.trackEvent('shift_started', {'jobId': jobId});
 
-    final job = jobsById[jobId];
     if (job != null) {
       await ShiftNotificationService.instance.requestPermission();
       ShiftNotificationService.instance.showActiveShiftNotification(
@@ -458,12 +507,24 @@ class WorkViewModel extends ChangeNotifier {
         earningsFormatted: MoneyFormatter.format(0, job.currencyCode),
         isOnBreak: false,
       );
+      if (effectiveAlertMinutes > 0 && financeStore.settingsRepo.settings.clockOutReminder) {
+        final hours = (effectiveAlertMinutes / 60).round();
+        await ShiftNotificationService.instance.scheduleLongShiftAlert(
+          title: '⏰ Long Shift · ${job.name}',
+          body: 'You have been clocked in for ${hours > 0 ? "$hours hours" : "$effectiveAlertMinutes mins"}. Remember to take a break or clock out.',
+          at: start.add(Duration(minutes: effectiveAlertMinutes)),
+        );
+      }
     }
     return id;
   }
 
   Future<ShiftEarnings> endShift(int shiftId, {int breakMinutes = 0, DateTime? endAt}) async {
     final endTime = endAt ?? DateTime.now();
+    if (_activeBreakId != null) {
+      await shiftRepo.endBreak(_activeBreakId!, endTime);
+      _activeBreakId = null;
+    }
     await shiftRepo.finish(shiftId, breakMinutes: breakMinutes, endAt: endTime);
 
     final shift = shifts.firstWhere((s) => s.id == shiftId, orElse: () => shifts.first);
@@ -477,6 +538,9 @@ class WorkViewModel extends ChangeNotifier {
       status: ShiftStatus.completed.value,
       note: shift.note,
       rateOverrideMinor: shift.rateOverrideMinor,
+      overtimeThresholdMinutes: shift.overtimeThresholdMinutes,
+      overtimeRateMinor: shift.overtimeRateMinor,
+      longShiftAlertMinutes: shift.longShiftAlertMinutes,
       createdAt: shift.createdAt,
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
@@ -486,6 +550,7 @@ class WorkViewModel extends ChangeNotifier {
     _breakStartTime = null;
     _accumulatedBreakSeconds = 0;
     ShiftNotificationService.instance.cancelShiftNotification();
+    ShiftNotificationService.instance.cancelLongShiftAlert();
 
     TelemetryService.instance.trackEvent('shift_ended', {
       'jobId': shift.jobId,

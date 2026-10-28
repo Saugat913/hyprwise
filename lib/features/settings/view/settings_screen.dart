@@ -129,17 +129,9 @@ class SettingsScreen extends StatelessWidget {
                       ListRow(
                         title: tr.askAiAssistant,
                         subtitle: tr.financialInsightsAdvice,
-                        leading: const IconTile(HugeIcons.strokeRoundedSparkles),
+                        leading: const IconTile(HugeIcons.strokeRoundedChatBot),
                         trailing: const Chevron(),
                         onTap: () => context.push(AppRoutes.assistant),
-                      ),
-                      const RowDivider(),
-                      SwitchListTile.adaptive(
-                        title: Text(tr.floatingAssistantButton, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                        subtitle: Text(tr.floatingAssistantDesc, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-                        value: viewModel.settings.showAssistantFab,
-                        onChanged: (val) => viewModel.setShowAssistantFab(val),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xs),
                       ),
                     ],
                   ),
@@ -410,8 +402,8 @@ class _SubscriptionBanner extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         isPro
-                            ? 'Cloud sync & AI Assistant unlocked'
-                            : 'Cloud sync, Gemini AI, multi-currency & PDF export',
+                            ? 'Cloud sync & Hypr AI unlocked'
+                            : 'Cloud sync, Hypr AI, multi-currency & PDF export',
                         style: text.bodySmall?.copyWith(
                           color: Colors.white.withValues(alpha: 0.75),
                         ),
@@ -504,20 +496,23 @@ class _AccountAuthCard extends StatelessWidget {
                       },
                     ),
                   ),
-                  const SizedBox(width: AppSpace.sm),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                  if (Theme.of(context).platform == TargetPlatform.iOS ||
+                      Theme.of(context).platform == TargetPlatform.macOS) ...[
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        icon: const Icon(Icons.apple, size: 18),
+                        label: const Text('Apple', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          await authService.signInWithApple();
+                          if (context.mounted) showToast(context, 'Signed in with Apple');
+                        },
                       ),
-                      icon: const Icon(Icons.apple, size: 18),
-                      label: const Text('Apple', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      onPressed: () async {
-                        await authService.signInWithApple();
-                        if (context.mounted) showToast(context, 'Signed in with Apple');
-                      },
                     ),
-                  ),
+                  ],
                 ],
               ),
             ],

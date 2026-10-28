@@ -2962,6 +2962,28 @@ class $JobsTable extends Jobs with TableInfo<$JobsTable, Job> {
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _defaultBreakMinutesMeta =
+      const VerificationMeta('defaultBreakMinutes');
+  @override
+  late final GeneratedColumn<int> defaultBreakMinutes = GeneratedColumn<int>(
+    'default_break_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _longShiftAlertMinutesMeta =
+      const VerificationMeta('longShiftAlertMinutes');
+  @override
+  late final GeneratedColumn<int> longShiftAlertMinutes = GeneratedColumn<int>(
+    'long_shift_alert_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(360),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2993,6 +3015,8 @@ class $JobsTable extends Jobs with TableInfo<$JobsTable, Job> {
     currencyCode,
     colorIndex,
     isActive,
+    defaultBreakMinutes,
+    longShiftAlertMinutes,
     createdAt,
     updatedAt,
   ];
@@ -3059,6 +3083,24 @@ class $JobsTable extends Jobs with TableInfo<$JobsTable, Job> {
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('default_break_minutes')) {
+      context.handle(
+        _defaultBreakMinutesMeta,
+        defaultBreakMinutes.isAcceptableOrUnknown(
+          data['default_break_minutes']!,
+          _defaultBreakMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('long_shift_alert_minutes')) {
+      context.handle(
+        _longShiftAlertMinutesMeta,
+        longShiftAlertMinutes.isAcceptableOrUnknown(
+          data['long_shift_alert_minutes']!,
+          _longShiftAlertMinutesMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3118,6 +3160,16 @@ class $JobsTable extends Jobs with TableInfo<$JobsTable, Job> {
             DriftSqlType.bool,
             data['${effectivePrefix}is_active'],
           )!,
+      defaultBreakMinutes:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}default_break_minutes'],
+          )!,
+      longShiftAlertMinutes:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}long_shift_alert_minutes'],
+          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -3147,6 +3199,12 @@ class Job extends DataClass implements Insertable<Job> {
   /// Index into the categorical chart palette, for a stable per-job color.
   final int colorIndex;
   final bool isActive;
+
+  /// Default unpaid break (minutes) applied to new shifts of this job.
+  final int defaultBreakMinutes;
+
+  /// Alert after this many minutes on a live shift. 0 turns the alert off.
+  final int longShiftAlertMinutes;
   final int createdAt;
   final int updatedAt;
   const Job({
@@ -3157,6 +3215,8 @@ class Job extends DataClass implements Insertable<Job> {
     required this.currencyCode,
     required this.colorIndex,
     required this.isActive,
+    required this.defaultBreakMinutes,
+    required this.longShiftAlertMinutes,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -3172,6 +3232,8 @@ class Job extends DataClass implements Insertable<Job> {
     map['currency_code'] = Variable<String>(currencyCode);
     map['color_index'] = Variable<int>(colorIndex);
     map['is_active'] = Variable<bool>(isActive);
+    map['default_break_minutes'] = Variable<int>(defaultBreakMinutes);
+    map['long_shift_alert_minutes'] = Variable<int>(longShiftAlertMinutes);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -3189,6 +3251,8 @@ class Job extends DataClass implements Insertable<Job> {
       currencyCode: Value(currencyCode),
       colorIndex: Value(colorIndex),
       isActive: Value(isActive),
+      defaultBreakMinutes: Value(defaultBreakMinutes),
+      longShiftAlertMinutes: Value(longShiftAlertMinutes),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -3207,6 +3271,12 @@ class Job extends DataClass implements Insertable<Job> {
       currencyCode: serializer.fromJson<String>(json['currencyCode']),
       colorIndex: serializer.fromJson<int>(json['colorIndex']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      defaultBreakMinutes: serializer.fromJson<int>(
+        json['defaultBreakMinutes'],
+      ),
+      longShiftAlertMinutes: serializer.fromJson<int>(
+        json['longShiftAlertMinutes'],
+      ),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -3222,6 +3292,8 @@ class Job extends DataClass implements Insertable<Job> {
       'currencyCode': serializer.toJson<String>(currencyCode),
       'colorIndex': serializer.toJson<int>(colorIndex),
       'isActive': serializer.toJson<bool>(isActive),
+      'defaultBreakMinutes': serializer.toJson<int>(defaultBreakMinutes),
+      'longShiftAlertMinutes': serializer.toJson<int>(longShiftAlertMinutes),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -3235,6 +3307,8 @@ class Job extends DataClass implements Insertable<Job> {
     String? currencyCode,
     int? colorIndex,
     bool? isActive,
+    int? defaultBreakMinutes,
+    int? longShiftAlertMinutes,
     int? createdAt,
     int? updatedAt,
   }) => Job(
@@ -3245,6 +3319,8 @@ class Job extends DataClass implements Insertable<Job> {
     currencyCode: currencyCode ?? this.currencyCode,
     colorIndex: colorIndex ?? this.colorIndex,
     isActive: isActive ?? this.isActive,
+    defaultBreakMinutes: defaultBreakMinutes ?? this.defaultBreakMinutes,
+    longShiftAlertMinutes: longShiftAlertMinutes ?? this.longShiftAlertMinutes,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -3264,6 +3340,14 @@ class Job extends DataClass implements Insertable<Job> {
       colorIndex:
           data.colorIndex.present ? data.colorIndex.value : this.colorIndex,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      defaultBreakMinutes:
+          data.defaultBreakMinutes.present
+              ? data.defaultBreakMinutes.value
+              : this.defaultBreakMinutes,
+      longShiftAlertMinutes:
+          data.longShiftAlertMinutes.present
+              ? data.longShiftAlertMinutes.value
+              : this.longShiftAlertMinutes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -3279,6 +3363,8 @@ class Job extends DataClass implements Insertable<Job> {
           ..write('currencyCode: $currencyCode, ')
           ..write('colorIndex: $colorIndex, ')
           ..write('isActive: $isActive, ')
+          ..write('defaultBreakMinutes: $defaultBreakMinutes, ')
+          ..write('longShiftAlertMinutes: $longShiftAlertMinutes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3294,6 +3380,8 @@ class Job extends DataClass implements Insertable<Job> {
     currencyCode,
     colorIndex,
     isActive,
+    defaultBreakMinutes,
+    longShiftAlertMinutes,
     createdAt,
     updatedAt,
   );
@@ -3308,6 +3396,8 @@ class Job extends DataClass implements Insertable<Job> {
           other.currencyCode == this.currencyCode &&
           other.colorIndex == this.colorIndex &&
           other.isActive == this.isActive &&
+          other.defaultBreakMinutes == this.defaultBreakMinutes &&
+          other.longShiftAlertMinutes == this.longShiftAlertMinutes &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -3320,6 +3410,8 @@ class JobsCompanion extends UpdateCompanion<Job> {
   final Value<String> currencyCode;
   final Value<int> colorIndex;
   final Value<bool> isActive;
+  final Value<int> defaultBreakMinutes;
+  final Value<int> longShiftAlertMinutes;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   const JobsCompanion({
@@ -3330,6 +3422,8 @@ class JobsCompanion extends UpdateCompanion<Job> {
     this.currencyCode = const Value.absent(),
     this.colorIndex = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.defaultBreakMinutes = const Value.absent(),
+    this.longShiftAlertMinutes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -3341,6 +3435,8 @@ class JobsCompanion extends UpdateCompanion<Job> {
     required String currencyCode,
     this.colorIndex = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.defaultBreakMinutes = const Value.absent(),
+    this.longShiftAlertMinutes = const Value.absent(),
     required int createdAt,
     required int updatedAt,
   }) : name = Value(name),
@@ -3356,6 +3452,8 @@ class JobsCompanion extends UpdateCompanion<Job> {
     Expression<String>? currencyCode,
     Expression<int>? colorIndex,
     Expression<bool>? isActive,
+    Expression<int>? defaultBreakMinutes,
+    Expression<int>? longShiftAlertMinutes,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
   }) {
@@ -3367,6 +3465,10 @@ class JobsCompanion extends UpdateCompanion<Job> {
       if (currencyCode != null) 'currency_code': currencyCode,
       if (colorIndex != null) 'color_index': colorIndex,
       if (isActive != null) 'is_active': isActive,
+      if (defaultBreakMinutes != null)
+        'default_break_minutes': defaultBreakMinutes,
+      if (longShiftAlertMinutes != null)
+        'long_shift_alert_minutes': longShiftAlertMinutes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -3380,6 +3482,8 @@ class JobsCompanion extends UpdateCompanion<Job> {
     Value<String>? currencyCode,
     Value<int>? colorIndex,
     Value<bool>? isActive,
+    Value<int>? defaultBreakMinutes,
+    Value<int>? longShiftAlertMinutes,
     Value<int>? createdAt,
     Value<int>? updatedAt,
   }) {
@@ -3391,6 +3495,9 @@ class JobsCompanion extends UpdateCompanion<Job> {
       currencyCode: currencyCode ?? this.currencyCode,
       colorIndex: colorIndex ?? this.colorIndex,
       isActive: isActive ?? this.isActive,
+      defaultBreakMinutes: defaultBreakMinutes ?? this.defaultBreakMinutes,
+      longShiftAlertMinutes:
+          longShiftAlertMinutes ?? this.longShiftAlertMinutes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -3420,6 +3527,14 @@ class JobsCompanion extends UpdateCompanion<Job> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (defaultBreakMinutes.present) {
+      map['default_break_minutes'] = Variable<int>(defaultBreakMinutes.value);
+    }
+    if (longShiftAlertMinutes.present) {
+      map['long_shift_alert_minutes'] = Variable<int>(
+        longShiftAlertMinutes.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -3439,6 +3554,8 @@ class JobsCompanion extends UpdateCompanion<Job> {
           ..write('currencyCode: $currencyCode, ')
           ..write('colorIndex: $colorIndex, ')
           ..write('isActive: $isActive, ')
+          ..write('defaultBreakMinutes: $defaultBreakMinutes, ')
+          ..write('longShiftAlertMinutes: $longShiftAlertMinutes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3539,6 +3656,38 @@ class $ShiftsTable extends Shifts with TableInfo<$ShiftsTable, Shift> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _overtimeThresholdMinutesMeta =
+      const VerificationMeta('overtimeThresholdMinutes');
+  @override
+  late final GeneratedColumn<int> overtimeThresholdMinutes =
+      GeneratedColumn<int>(
+        'overtime_threshold_minutes',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _overtimeRateMinorMeta = const VerificationMeta(
+    'overtimeRateMinor',
+  );
+  @override
+  late final GeneratedColumn<int> overtimeRateMinor = GeneratedColumn<int>(
+    'overtime_rate_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longShiftAlertMinutesMeta =
+      const VerificationMeta('longShiftAlertMinutes');
+  @override
+  late final GeneratedColumn<int> longShiftAlertMinutes = GeneratedColumn<int>(
+    'long_shift_alert_minutes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3571,6 +3720,9 @@ class $ShiftsTable extends Shifts with TableInfo<$ShiftsTable, Shift> {
     status,
     note,
     rateOverrideMinor,
+    overtimeThresholdMinutes,
+    overtimeRateMinor,
+    longShiftAlertMinutes,
     createdAt,
     updatedAt,
   ];
@@ -3643,6 +3795,33 @@ class $ShiftsTable extends Shifts with TableInfo<$ShiftsTable, Shift> {
         ),
       );
     }
+    if (data.containsKey('overtime_threshold_minutes')) {
+      context.handle(
+        _overtimeThresholdMinutesMeta,
+        overtimeThresholdMinutes.isAcceptableOrUnknown(
+          data['overtime_threshold_minutes']!,
+          _overtimeThresholdMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('overtime_rate_minor')) {
+      context.handle(
+        _overtimeRateMinorMeta,
+        overtimeRateMinor.isAcceptableOrUnknown(
+          data['overtime_rate_minor']!,
+          _overtimeRateMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('long_shift_alert_minutes')) {
+      context.handle(
+        _longShiftAlertMinutesMeta,
+        longShiftAlertMinutes.isAcceptableOrUnknown(
+          data['long_shift_alert_minutes']!,
+          _longShiftAlertMinutesMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3705,6 +3884,18 @@ class $ShiftsTable extends Shifts with TableInfo<$ShiftsTable, Shift> {
         DriftSqlType.int,
         data['${effectivePrefix}rate_override_minor'],
       ),
+      overtimeThresholdMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}overtime_threshold_minutes'],
+      ),
+      overtimeRateMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}overtime_rate_minor'],
+      ),
+      longShiftAlertMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}long_shift_alert_minutes'],
+      ),
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -3737,6 +3928,15 @@ class Shift extends DataClass implements Insertable<Shift> {
 
   /// Rate override for this shift only; falls back to the job rate when null.
   final int? rateOverrideMinor;
+
+  /// Overtime begins after this many worked minutes (null = no overtime).
+  final int? overtimeThresholdMinutes;
+
+  /// Hourly rate paid for overtime minutes (null = no overtime).
+  final int? overtimeRateMinor;
+
+  /// Per-shift long-shift alert override in minutes (null = job default, 0 = off).
+  final int? longShiftAlertMinutes;
   final int createdAt;
   final int updatedAt;
   const Shift({
@@ -3748,6 +3948,9 @@ class Shift extends DataClass implements Insertable<Shift> {
     required this.status,
     this.note,
     this.rateOverrideMinor,
+    this.overtimeThresholdMinutes,
+    this.overtimeRateMinor,
+    this.longShiftAlertMinutes,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -3768,6 +3971,17 @@ class Shift extends DataClass implements Insertable<Shift> {
     if (!nullToAbsent || rateOverrideMinor != null) {
       map['rate_override_minor'] = Variable<int>(rateOverrideMinor);
     }
+    if (!nullToAbsent || overtimeThresholdMinutes != null) {
+      map['overtime_threshold_minutes'] = Variable<int>(
+        overtimeThresholdMinutes,
+      );
+    }
+    if (!nullToAbsent || overtimeRateMinor != null) {
+      map['overtime_rate_minor'] = Variable<int>(overtimeRateMinor);
+    }
+    if (!nullToAbsent || longShiftAlertMinutes != null) {
+      map['long_shift_alert_minutes'] = Variable<int>(longShiftAlertMinutes);
+    }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -3787,6 +4001,18 @@ class Shift extends DataClass implements Insertable<Shift> {
           rateOverrideMinor == null && nullToAbsent
               ? const Value.absent()
               : Value(rateOverrideMinor),
+      overtimeThresholdMinutes:
+          overtimeThresholdMinutes == null && nullToAbsent
+              ? const Value.absent()
+              : Value(overtimeThresholdMinutes),
+      overtimeRateMinor:
+          overtimeRateMinor == null && nullToAbsent
+              ? const Value.absent()
+              : Value(overtimeRateMinor),
+      longShiftAlertMinutes:
+          longShiftAlertMinutes == null && nullToAbsent
+              ? const Value.absent()
+              : Value(longShiftAlertMinutes),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -3806,6 +4032,13 @@ class Shift extends DataClass implements Insertable<Shift> {
       status: serializer.fromJson<String>(json['status']),
       note: serializer.fromJson<String?>(json['note']),
       rateOverrideMinor: serializer.fromJson<int?>(json['rateOverrideMinor']),
+      overtimeThresholdMinutes: serializer.fromJson<int?>(
+        json['overtimeThresholdMinutes'],
+      ),
+      overtimeRateMinor: serializer.fromJson<int?>(json['overtimeRateMinor']),
+      longShiftAlertMinutes: serializer.fromJson<int?>(
+        json['longShiftAlertMinutes'],
+      ),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -3822,6 +4055,11 @@ class Shift extends DataClass implements Insertable<Shift> {
       'status': serializer.toJson<String>(status),
       'note': serializer.toJson<String?>(note),
       'rateOverrideMinor': serializer.toJson<int?>(rateOverrideMinor),
+      'overtimeThresholdMinutes': serializer.toJson<int?>(
+        overtimeThresholdMinutes,
+      ),
+      'overtimeRateMinor': serializer.toJson<int?>(overtimeRateMinor),
+      'longShiftAlertMinutes': serializer.toJson<int?>(longShiftAlertMinutes),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -3836,6 +4074,9 @@ class Shift extends DataClass implements Insertable<Shift> {
     String? status,
     Value<String?> note = const Value.absent(),
     Value<int?> rateOverrideMinor = const Value.absent(),
+    Value<int?> overtimeThresholdMinutes = const Value.absent(),
+    Value<int?> overtimeRateMinor = const Value.absent(),
+    Value<int?> longShiftAlertMinutes = const Value.absent(),
     int? createdAt,
     int? updatedAt,
   }) => Shift(
@@ -3850,6 +4091,18 @@ class Shift extends DataClass implements Insertable<Shift> {
         rateOverrideMinor.present
             ? rateOverrideMinor.value
             : this.rateOverrideMinor,
+    overtimeThresholdMinutes:
+        overtimeThresholdMinutes.present
+            ? overtimeThresholdMinutes.value
+            : this.overtimeThresholdMinutes,
+    overtimeRateMinor:
+        overtimeRateMinor.present
+            ? overtimeRateMinor.value
+            : this.overtimeRateMinor,
+    longShiftAlertMinutes:
+        longShiftAlertMinutes.present
+            ? longShiftAlertMinutes.value
+            : this.longShiftAlertMinutes,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -3869,6 +4122,18 @@ class Shift extends DataClass implements Insertable<Shift> {
           data.rateOverrideMinor.present
               ? data.rateOverrideMinor.value
               : this.rateOverrideMinor,
+      overtimeThresholdMinutes:
+          data.overtimeThresholdMinutes.present
+              ? data.overtimeThresholdMinutes.value
+              : this.overtimeThresholdMinutes,
+      overtimeRateMinor:
+          data.overtimeRateMinor.present
+              ? data.overtimeRateMinor.value
+              : this.overtimeRateMinor,
+      longShiftAlertMinutes:
+          data.longShiftAlertMinutes.present
+              ? data.longShiftAlertMinutes.value
+              : this.longShiftAlertMinutes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -3885,6 +4150,9 @@ class Shift extends DataClass implements Insertable<Shift> {
           ..write('status: $status, ')
           ..write('note: $note, ')
           ..write('rateOverrideMinor: $rateOverrideMinor, ')
+          ..write('overtimeThresholdMinutes: $overtimeThresholdMinutes, ')
+          ..write('overtimeRateMinor: $overtimeRateMinor, ')
+          ..write('longShiftAlertMinutes: $longShiftAlertMinutes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3901,6 +4169,9 @@ class Shift extends DataClass implements Insertable<Shift> {
     status,
     note,
     rateOverrideMinor,
+    overtimeThresholdMinutes,
+    overtimeRateMinor,
+    longShiftAlertMinutes,
     createdAt,
     updatedAt,
   );
@@ -3916,6 +4187,9 @@ class Shift extends DataClass implements Insertable<Shift> {
           other.status == this.status &&
           other.note == this.note &&
           other.rateOverrideMinor == this.rateOverrideMinor &&
+          other.overtimeThresholdMinutes == this.overtimeThresholdMinutes &&
+          other.overtimeRateMinor == this.overtimeRateMinor &&
+          other.longShiftAlertMinutes == this.longShiftAlertMinutes &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -3929,6 +4203,9 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
   final Value<String> status;
   final Value<String?> note;
   final Value<int?> rateOverrideMinor;
+  final Value<int?> overtimeThresholdMinutes;
+  final Value<int?> overtimeRateMinor;
+  final Value<int?> longShiftAlertMinutes;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   const ShiftsCompanion({
@@ -3940,6 +4217,9 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
     this.status = const Value.absent(),
     this.note = const Value.absent(),
     this.rateOverrideMinor = const Value.absent(),
+    this.overtimeThresholdMinutes = const Value.absent(),
+    this.overtimeRateMinor = const Value.absent(),
+    this.longShiftAlertMinutes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -3952,6 +4232,9 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
     required String status,
     this.note = const Value.absent(),
     this.rateOverrideMinor = const Value.absent(),
+    this.overtimeThresholdMinutes = const Value.absent(),
+    this.overtimeRateMinor = const Value.absent(),
+    this.longShiftAlertMinutes = const Value.absent(),
     required int createdAt,
     required int updatedAt,
   }) : jobId = Value(jobId),
@@ -3968,6 +4251,9 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
     Expression<String>? status,
     Expression<String>? note,
     Expression<int>? rateOverrideMinor,
+    Expression<int>? overtimeThresholdMinutes,
+    Expression<int>? overtimeRateMinor,
+    Expression<int>? longShiftAlertMinutes,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
   }) {
@@ -3980,6 +4266,11 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
       if (status != null) 'status': status,
       if (note != null) 'note': note,
       if (rateOverrideMinor != null) 'rate_override_minor': rateOverrideMinor,
+      if (overtimeThresholdMinutes != null)
+        'overtime_threshold_minutes': overtimeThresholdMinutes,
+      if (overtimeRateMinor != null) 'overtime_rate_minor': overtimeRateMinor,
+      if (longShiftAlertMinutes != null)
+        'long_shift_alert_minutes': longShiftAlertMinutes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -3994,6 +4285,9 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
     Value<String>? status,
     Value<String?>? note,
     Value<int?>? rateOverrideMinor,
+    Value<int?>? overtimeThresholdMinutes,
+    Value<int?>? overtimeRateMinor,
+    Value<int?>? longShiftAlertMinutes,
     Value<int>? createdAt,
     Value<int>? updatedAt,
   }) {
@@ -4006,6 +4300,11 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
       status: status ?? this.status,
       note: note ?? this.note,
       rateOverrideMinor: rateOverrideMinor ?? this.rateOverrideMinor,
+      overtimeThresholdMinutes:
+          overtimeThresholdMinutes ?? this.overtimeThresholdMinutes,
+      overtimeRateMinor: overtimeRateMinor ?? this.overtimeRateMinor,
+      longShiftAlertMinutes:
+          longShiftAlertMinutes ?? this.longShiftAlertMinutes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -4038,6 +4337,19 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
     if (rateOverrideMinor.present) {
       map['rate_override_minor'] = Variable<int>(rateOverrideMinor.value);
     }
+    if (overtimeThresholdMinutes.present) {
+      map['overtime_threshold_minutes'] = Variable<int>(
+        overtimeThresholdMinutes.value,
+      );
+    }
+    if (overtimeRateMinor.present) {
+      map['overtime_rate_minor'] = Variable<int>(overtimeRateMinor.value);
+    }
+    if (longShiftAlertMinutes.present) {
+      map['long_shift_alert_minutes'] = Variable<int>(
+        longShiftAlertMinutes.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -4058,6 +4370,9 @@ class ShiftsCompanion extends UpdateCompanion<Shift> {
           ..write('status: $status, ')
           ..write('note: $note, ')
           ..write('rateOverrideMinor: $rateOverrideMinor, ')
+          ..write('overtimeThresholdMinutes: $overtimeThresholdMinutes, ')
+          ..write('overtimeRateMinor: $overtimeRateMinor, ')
+          ..write('longShiftAlertMinutes: $longShiftAlertMinutes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -7423,6 +7738,881 @@ class DebtsCompanion extends UpdateCompanion<Debt> {
   }
 }
 
+class $ShiftBreaksTable extends ShiftBreaks
+    with TableInfo<$ShiftBreaksTable, ShiftBreak> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ShiftBreaksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _shiftIdMeta = const VerificationMeta(
+    'shiftId',
+  );
+  @override
+  late final GeneratedColumn<int> shiftId = GeneratedColumn<int>(
+    'shift_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startAtMeta = const VerificationMeta(
+    'startAt',
+  );
+  @override
+  late final GeneratedColumn<int> startAt = GeneratedColumn<int>(
+    'start_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endAtMeta = const VerificationMeta('endAt');
+  @override
+  late final GeneratedColumn<int> endAt = GeneratedColumn<int>(
+    'end_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, shiftId, startAt, endAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'shift_breaks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ShiftBreak> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('shift_id')) {
+      context.handle(
+        _shiftIdMeta,
+        shiftId.isAcceptableOrUnknown(data['shift_id']!, _shiftIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shiftIdMeta);
+    }
+    if (data.containsKey('start_at')) {
+      context.handle(
+        _startAtMeta,
+        startAt.isAcceptableOrUnknown(data['start_at']!, _startAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startAtMeta);
+    }
+    if (data.containsKey('end_at')) {
+      context.handle(
+        _endAtMeta,
+        endAt.isAcceptableOrUnknown(data['end_at']!, _endAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ShiftBreak map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ShiftBreak(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      shiftId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}shift_id'],
+          )!,
+      startAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}start_at'],
+          )!,
+      endAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}end_at'],
+      ),
+    );
+  }
+
+  @override
+  $ShiftBreaksTable createAlias(String alias) {
+    return $ShiftBreaksTable(attachedDatabase, alias);
+  }
+}
+
+class ShiftBreak extends DataClass implements Insertable<ShiftBreak> {
+  final int id;
+  final int shiftId;
+  final int startAt;
+
+  /// Null while the break is still running.
+  final int? endAt;
+  const ShiftBreak({
+    required this.id,
+    required this.shiftId,
+    required this.startAt,
+    this.endAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['shift_id'] = Variable<int>(shiftId);
+    map['start_at'] = Variable<int>(startAt);
+    if (!nullToAbsent || endAt != null) {
+      map['end_at'] = Variable<int>(endAt);
+    }
+    return map;
+  }
+
+  ShiftBreaksCompanion toCompanion(bool nullToAbsent) {
+    return ShiftBreaksCompanion(
+      id: Value(id),
+      shiftId: Value(shiftId),
+      startAt: Value(startAt),
+      endAt:
+          endAt == null && nullToAbsent ? const Value.absent() : Value(endAt),
+    );
+  }
+
+  factory ShiftBreak.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ShiftBreak(
+      id: serializer.fromJson<int>(json['id']),
+      shiftId: serializer.fromJson<int>(json['shiftId']),
+      startAt: serializer.fromJson<int>(json['startAt']),
+      endAt: serializer.fromJson<int?>(json['endAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'shiftId': serializer.toJson<int>(shiftId),
+      'startAt': serializer.toJson<int>(startAt),
+      'endAt': serializer.toJson<int?>(endAt),
+    };
+  }
+
+  ShiftBreak copyWith({
+    int? id,
+    int? shiftId,
+    int? startAt,
+    Value<int?> endAt = const Value.absent(),
+  }) => ShiftBreak(
+    id: id ?? this.id,
+    shiftId: shiftId ?? this.shiftId,
+    startAt: startAt ?? this.startAt,
+    endAt: endAt.present ? endAt.value : this.endAt,
+  );
+  ShiftBreak copyWithCompanion(ShiftBreaksCompanion data) {
+    return ShiftBreak(
+      id: data.id.present ? data.id.value : this.id,
+      shiftId: data.shiftId.present ? data.shiftId.value : this.shiftId,
+      startAt: data.startAt.present ? data.startAt.value : this.startAt,
+      endAt: data.endAt.present ? data.endAt.value : this.endAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShiftBreak(')
+          ..write('id: $id, ')
+          ..write('shiftId: $shiftId, ')
+          ..write('startAt: $startAt, ')
+          ..write('endAt: $endAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, shiftId, startAt, endAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ShiftBreak &&
+          other.id == this.id &&
+          other.shiftId == this.shiftId &&
+          other.startAt == this.startAt &&
+          other.endAt == this.endAt);
+}
+
+class ShiftBreaksCompanion extends UpdateCompanion<ShiftBreak> {
+  final Value<int> id;
+  final Value<int> shiftId;
+  final Value<int> startAt;
+  final Value<int?> endAt;
+  const ShiftBreaksCompanion({
+    this.id = const Value.absent(),
+    this.shiftId = const Value.absent(),
+    this.startAt = const Value.absent(),
+    this.endAt = const Value.absent(),
+  });
+  ShiftBreaksCompanion.insert({
+    this.id = const Value.absent(),
+    required int shiftId,
+    required int startAt,
+    this.endAt = const Value.absent(),
+  }) : shiftId = Value(shiftId),
+       startAt = Value(startAt);
+  static Insertable<ShiftBreak> custom({
+    Expression<int>? id,
+    Expression<int>? shiftId,
+    Expression<int>? startAt,
+    Expression<int>? endAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (shiftId != null) 'shift_id': shiftId,
+      if (startAt != null) 'start_at': startAt,
+      if (endAt != null) 'end_at': endAt,
+    });
+  }
+
+  ShiftBreaksCompanion copyWith({
+    Value<int>? id,
+    Value<int>? shiftId,
+    Value<int>? startAt,
+    Value<int?>? endAt,
+  }) {
+    return ShiftBreaksCompanion(
+      id: id ?? this.id,
+      shiftId: shiftId ?? this.shiftId,
+      startAt: startAt ?? this.startAt,
+      endAt: endAt ?? this.endAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (shiftId.present) {
+      map['shift_id'] = Variable<int>(shiftId.value);
+    }
+    if (startAt.present) {
+      map['start_at'] = Variable<int>(startAt.value);
+    }
+    if (endAt.present) {
+      map['end_at'] = Variable<int>(endAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShiftBreaksCompanion(')
+          ..write('id: $id, ')
+          ..write('shiftId: $shiftId, ')
+          ..write('startAt: $startAt, ')
+          ..write('endAt: $endAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ReminderRulesTable extends ReminderRules
+    with TableInfo<$ReminderRulesTable, ReminderRule> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReminderRulesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 16,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 80),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _offsetMinutesMeta = const VerificationMeta(
+    'offsetMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> offsetMinutes = GeneratedColumn<int>(
+    'offset_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _timeOfDayMinutesMeta = const VerificationMeta(
+    'timeOfDayMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> timeOfDayMinutes = GeneratedColumn<int>(
+    'time_of_day_minutes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _repeatDaysMeta = const VerificationMeta(
+    'repeatDays',
+  );
+  @override
+  late final GeneratedColumn<int> repeatDays = GeneratedColumn<int>(
+    'repeat_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isEnabledMeta = const VerificationMeta(
+    'isEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> isEnabled = GeneratedColumn<bool>(
+    'is_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    type,
+    title,
+    offsetMinutes,
+    timeOfDayMinutes,
+    repeatDays,
+    isEnabled,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reminder_rules';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReminderRule> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('offset_minutes')) {
+      context.handle(
+        _offsetMinutesMeta,
+        offsetMinutes.isAcceptableOrUnknown(
+          data['offset_minutes']!,
+          _offsetMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('time_of_day_minutes')) {
+      context.handle(
+        _timeOfDayMinutesMeta,
+        timeOfDayMinutes.isAcceptableOrUnknown(
+          data['time_of_day_minutes']!,
+          _timeOfDayMinutesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('repeat_days')) {
+      context.handle(
+        _repeatDaysMeta,
+        repeatDays.isAcceptableOrUnknown(data['repeat_days']!, _repeatDaysMeta),
+      );
+    }
+    if (data.containsKey('is_enabled')) {
+      context.handle(
+        _isEnabledMeta,
+        isEnabled.isAcceptableOrUnknown(data['is_enabled']!, _isEnabledMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReminderRule map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReminderRule(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      type:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}type'],
+          )!,
+      title:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}title'],
+          )!,
+      offsetMinutes:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}offset_minutes'],
+          )!,
+      timeOfDayMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}time_of_day_minutes'],
+      ),
+      repeatDays:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}repeat_days'],
+          )!,
+      isEnabled:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_enabled'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $ReminderRulesTable createAlias(String alias) {
+    return $ReminderRulesTable(attachedDatabase, alias);
+  }
+}
+
+class ReminderRule extends DataClass implements Insertable<ReminderRule> {
+  final int id;
+  final String type;
+  final String title;
+  final int offsetMinutes;
+  final int? timeOfDayMinutes;
+  final int repeatDays;
+  final bool isEnabled;
+  final int createdAt;
+  final int updatedAt;
+  const ReminderRule({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.offsetMinutes,
+    this.timeOfDayMinutes,
+    required this.repeatDays,
+    required this.isEnabled,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['type'] = Variable<String>(type);
+    map['title'] = Variable<String>(title);
+    map['offset_minutes'] = Variable<int>(offsetMinutes);
+    if (!nullToAbsent || timeOfDayMinutes != null) {
+      map['time_of_day_minutes'] = Variable<int>(timeOfDayMinutes);
+    }
+    map['repeat_days'] = Variable<int>(repeatDays);
+    map['is_enabled'] = Variable<bool>(isEnabled);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  ReminderRulesCompanion toCompanion(bool nullToAbsent) {
+    return ReminderRulesCompanion(
+      id: Value(id),
+      type: Value(type),
+      title: Value(title),
+      offsetMinutes: Value(offsetMinutes),
+      timeOfDayMinutes:
+          timeOfDayMinutes == null && nullToAbsent
+              ? const Value.absent()
+              : Value(timeOfDayMinutes),
+      repeatDays: Value(repeatDays),
+      isEnabled: Value(isEnabled),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ReminderRule.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReminderRule(
+      id: serializer.fromJson<int>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      title: serializer.fromJson<String>(json['title']),
+      offsetMinutes: serializer.fromJson<int>(json['offsetMinutes']),
+      timeOfDayMinutes: serializer.fromJson<int?>(json['timeOfDayMinutes']),
+      repeatDays: serializer.fromJson<int>(json['repeatDays']),
+      isEnabled: serializer.fromJson<bool>(json['isEnabled']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'type': serializer.toJson<String>(type),
+      'title': serializer.toJson<String>(title),
+      'offsetMinutes': serializer.toJson<int>(offsetMinutes),
+      'timeOfDayMinutes': serializer.toJson<int?>(timeOfDayMinutes),
+      'repeatDays': serializer.toJson<int>(repeatDays),
+      'isEnabled': serializer.toJson<bool>(isEnabled),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  ReminderRule copyWith({
+    int? id,
+    String? type,
+    String? title,
+    int? offsetMinutes,
+    Value<int?> timeOfDayMinutes = const Value.absent(),
+    int? repeatDays,
+    bool? isEnabled,
+    int? createdAt,
+    int? updatedAt,
+  }) => ReminderRule(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    title: title ?? this.title,
+    offsetMinutes: offsetMinutes ?? this.offsetMinutes,
+    timeOfDayMinutes:
+        timeOfDayMinutes.present
+            ? timeOfDayMinutes.value
+            : this.timeOfDayMinutes,
+    repeatDays: repeatDays ?? this.repeatDays,
+    isEnabled: isEnabled ?? this.isEnabled,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ReminderRule copyWithCompanion(ReminderRulesCompanion data) {
+    return ReminderRule(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      title: data.title.present ? data.title.value : this.title,
+      offsetMinutes:
+          data.offsetMinutes.present
+              ? data.offsetMinutes.value
+              : this.offsetMinutes,
+      timeOfDayMinutes:
+          data.timeOfDayMinutes.present
+              ? data.timeOfDayMinutes.value
+              : this.timeOfDayMinutes,
+      repeatDays:
+          data.repeatDays.present ? data.repeatDays.value : this.repeatDays,
+      isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReminderRule(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('title: $title, ')
+          ..write('offsetMinutes: $offsetMinutes, ')
+          ..write('timeOfDayMinutes: $timeOfDayMinutes, ')
+          ..write('repeatDays: $repeatDays, ')
+          ..write('isEnabled: $isEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    type,
+    title,
+    offsetMinutes,
+    timeOfDayMinutes,
+    repeatDays,
+    isEnabled,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReminderRule &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.title == this.title &&
+          other.offsetMinutes == this.offsetMinutes &&
+          other.timeOfDayMinutes == this.timeOfDayMinutes &&
+          other.repeatDays == this.repeatDays &&
+          other.isEnabled == this.isEnabled &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ReminderRulesCompanion extends UpdateCompanion<ReminderRule> {
+  final Value<int> id;
+  final Value<String> type;
+  final Value<String> title;
+  final Value<int> offsetMinutes;
+  final Value<int?> timeOfDayMinutes;
+  final Value<int> repeatDays;
+  final Value<bool> isEnabled;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  const ReminderRulesCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.title = const Value.absent(),
+    this.offsetMinutes = const Value.absent(),
+    this.timeOfDayMinutes = const Value.absent(),
+    this.repeatDays = const Value.absent(),
+    this.isEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ReminderRulesCompanion.insert({
+    this.id = const Value.absent(),
+    required String type,
+    this.title = const Value.absent(),
+    this.offsetMinutes = const Value.absent(),
+    this.timeOfDayMinutes = const Value.absent(),
+    this.repeatDays = const Value.absent(),
+    this.isEnabled = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+  }) : type = Value(type),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ReminderRule> custom({
+    Expression<int>? id,
+    Expression<String>? type,
+    Expression<String>? title,
+    Expression<int>? offsetMinutes,
+    Expression<int>? timeOfDayMinutes,
+    Expression<int>? repeatDays,
+    Expression<bool>? isEnabled,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (title != null) 'title': title,
+      if (offsetMinutes != null) 'offset_minutes': offsetMinutes,
+      if (timeOfDayMinutes != null) 'time_of_day_minutes': timeOfDayMinutes,
+      if (repeatDays != null) 'repeat_days': repeatDays,
+      if (isEnabled != null) 'is_enabled': isEnabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ReminderRulesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? type,
+    Value<String>? title,
+    Value<int>? offsetMinutes,
+    Value<int?>? timeOfDayMinutes,
+    Value<int>? repeatDays,
+    Value<bool>? isEnabled,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+  }) {
+    return ReminderRulesCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      title: title ?? this.title,
+      offsetMinutes: offsetMinutes ?? this.offsetMinutes,
+      timeOfDayMinutes: timeOfDayMinutes ?? this.timeOfDayMinutes,
+      repeatDays: repeatDays ?? this.repeatDays,
+      isEnabled: isEnabled ?? this.isEnabled,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (offsetMinutes.present) {
+      map['offset_minutes'] = Variable<int>(offsetMinutes.value);
+    }
+    if (timeOfDayMinutes.present) {
+      map['time_of_day_minutes'] = Variable<int>(timeOfDayMinutes.value);
+    }
+    if (repeatDays.present) {
+      map['repeat_days'] = Variable<int>(repeatDays.value);
+    }
+    if (isEnabled.present) {
+      map['is_enabled'] = Variable<bool>(isEnabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReminderRulesCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('title: $title, ')
+          ..write('offsetMinutes: $offsetMinutes, ')
+          ..write('timeOfDayMinutes: $timeOfDayMinutes, ')
+          ..write('repeatDays: $repeatDays, ')
+          ..write('isEnabled: $isEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7440,6 +8630,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AlertRulesTable alertRules = $AlertRulesTable(this);
   late final $ExchangeRatesTable exchangeRates = $ExchangeRatesTable(this);
   late final $DebtsTable debts = $DebtsTable(this);
+  late final $ShiftBreaksTable shiftBreaks = $ShiftBreaksTable(this);
+  late final $ReminderRulesTable reminderRules = $ReminderRulesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7458,6 +8650,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     alertRules,
     exchangeRates,
     debts,
+    shiftBreaks,
+    reminderRules,
   ];
 }
 
@@ -8868,6 +10062,8 @@ typedef $$JobsTableCreateCompanionBuilder =
       required String currencyCode,
       Value<int> colorIndex,
       Value<bool> isActive,
+      Value<int> defaultBreakMinutes,
+      Value<int> longShiftAlertMinutes,
       required int createdAt,
       required int updatedAt,
     });
@@ -8880,6 +10076,8 @@ typedef $$JobsTableUpdateCompanionBuilder =
       Value<String> currencyCode,
       Value<int> colorIndex,
       Value<bool> isActive,
+      Value<int> defaultBreakMinutes,
+      Value<int> longShiftAlertMinutes,
       Value<int> createdAt,
       Value<int> updatedAt,
     });
@@ -8924,6 +10122,16 @@ class $$JobsTableFilterComposer extends Composer<_$AppDatabase, $JobsTable> {
 
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get defaultBreakMinutes => $composableBuilder(
+    column: $table.defaultBreakMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get longShiftAlertMinutes => $composableBuilder(
+    column: $table.longShiftAlertMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8981,6 +10189,16 @@ class $$JobsTableOrderingComposer extends Composer<_$AppDatabase, $JobsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get defaultBreakMinutes => $composableBuilder(
+    column: $table.defaultBreakMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get longShiftAlertMinutes => $composableBuilder(
+    column: $table.longShiftAlertMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9028,6 +10246,16 @@ class $$JobsTableAnnotationComposer
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
 
+  GeneratedColumn<int> get defaultBreakMinutes => $composableBuilder(
+    column: $table.defaultBreakMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get longShiftAlertMinutes => $composableBuilder(
+    column: $table.longShiftAlertMinutes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -9070,6 +10298,8 @@ class $$JobsTableTableManager
                 Value<String> currencyCode = const Value.absent(),
                 Value<int> colorIndex = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<int> defaultBreakMinutes = const Value.absent(),
+                Value<int> longShiftAlertMinutes = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
               }) => JobsCompanion(
@@ -9080,6 +10310,8 @@ class $$JobsTableTableManager
                 currencyCode: currencyCode,
                 colorIndex: colorIndex,
                 isActive: isActive,
+                defaultBreakMinutes: defaultBreakMinutes,
+                longShiftAlertMinutes: longShiftAlertMinutes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -9092,6 +10324,8 @@ class $$JobsTableTableManager
                 required String currencyCode,
                 Value<int> colorIndex = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<int> defaultBreakMinutes = const Value.absent(),
+                Value<int> longShiftAlertMinutes = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
               }) => JobsCompanion.insert(
@@ -9102,6 +10336,8 @@ class $$JobsTableTableManager
                 currencyCode: currencyCode,
                 colorIndex: colorIndex,
                 isActive: isActive,
+                defaultBreakMinutes: defaultBreakMinutes,
+                longShiftAlertMinutes: longShiftAlertMinutes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -9144,6 +10380,9 @@ typedef $$ShiftsTableCreateCompanionBuilder =
       required String status,
       Value<String?> note,
       Value<int?> rateOverrideMinor,
+      Value<int?> overtimeThresholdMinutes,
+      Value<int?> overtimeRateMinor,
+      Value<int?> longShiftAlertMinutes,
       required int createdAt,
       required int updatedAt,
     });
@@ -9157,6 +10396,9 @@ typedef $$ShiftsTableUpdateCompanionBuilder =
       Value<String> status,
       Value<String?> note,
       Value<int?> rateOverrideMinor,
+      Value<int?> overtimeThresholdMinutes,
+      Value<int?> overtimeRateMinor,
+      Value<int?> longShiftAlertMinutes,
       Value<int> createdAt,
       Value<int> updatedAt,
     });
@@ -9207,6 +10449,21 @@ class $$ShiftsTableFilterComposer
 
   ColumnFilters<int> get rateOverrideMinor => $composableBuilder(
     column: $table.rateOverrideMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get overtimeThresholdMinutes => $composableBuilder(
+    column: $table.overtimeThresholdMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get overtimeRateMinor => $composableBuilder(
+    column: $table.overtimeRateMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get longShiftAlertMinutes => $composableBuilder(
+    column: $table.longShiftAlertMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9270,6 +10527,21 @@ class $$ShiftsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get overtimeThresholdMinutes => $composableBuilder(
+    column: $table.overtimeThresholdMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get overtimeRateMinor => $composableBuilder(
+    column: $table.overtimeRateMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get longShiftAlertMinutes => $composableBuilder(
+    column: $table.longShiftAlertMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9318,6 +10590,21 @@ class $$ShiftsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get overtimeThresholdMinutes => $composableBuilder(
+    column: $table.overtimeThresholdMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get overtimeRateMinor => $composableBuilder(
+    column: $table.overtimeRateMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get longShiftAlertMinutes => $composableBuilder(
+    column: $table.longShiftAlertMinutes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -9361,6 +10648,9 @@ class $$ShiftsTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<int?> rateOverrideMinor = const Value.absent(),
+                Value<int?> overtimeThresholdMinutes = const Value.absent(),
+                Value<int?> overtimeRateMinor = const Value.absent(),
+                Value<int?> longShiftAlertMinutes = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
               }) => ShiftsCompanion(
@@ -9372,6 +10662,9 @@ class $$ShiftsTableTableManager
                 status: status,
                 note: note,
                 rateOverrideMinor: rateOverrideMinor,
+                overtimeThresholdMinutes: overtimeThresholdMinutes,
+                overtimeRateMinor: overtimeRateMinor,
+                longShiftAlertMinutes: longShiftAlertMinutes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -9385,6 +10678,9 @@ class $$ShiftsTableTableManager
                 required String status,
                 Value<String?> note = const Value.absent(),
                 Value<int?> rateOverrideMinor = const Value.absent(),
+                Value<int?> overtimeThresholdMinutes = const Value.absent(),
+                Value<int?> overtimeRateMinor = const Value.absent(),
+                Value<int?> longShiftAlertMinutes = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
               }) => ShiftsCompanion.insert(
@@ -9396,6 +10692,9 @@ class $$ShiftsTableTableManager
                 status: status,
                 note: note,
                 rateOverrideMinor: rateOverrideMinor,
+                overtimeThresholdMinutes: overtimeThresholdMinutes,
+                overtimeRateMinor: overtimeRateMinor,
+                longShiftAlertMinutes: longShiftAlertMinutes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -11086,6 +12385,476 @@ typedef $$DebtsTableProcessedTableManager =
       Debt,
       PrefetchHooks Function()
     >;
+typedef $$ShiftBreaksTableCreateCompanionBuilder =
+    ShiftBreaksCompanion Function({
+      Value<int> id,
+      required int shiftId,
+      required int startAt,
+      Value<int?> endAt,
+    });
+typedef $$ShiftBreaksTableUpdateCompanionBuilder =
+    ShiftBreaksCompanion Function({
+      Value<int> id,
+      Value<int> shiftId,
+      Value<int> startAt,
+      Value<int?> endAt,
+    });
+
+class $$ShiftBreaksTableFilterComposer
+    extends Composer<_$AppDatabase, $ShiftBreaksTable> {
+  $$ShiftBreaksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get shiftId => $composableBuilder(
+    column: $table.shiftId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startAt => $composableBuilder(
+    column: $table.startAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get endAt => $composableBuilder(
+    column: $table.endAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ShiftBreaksTableOrderingComposer
+    extends Composer<_$AppDatabase, $ShiftBreaksTable> {
+  $$ShiftBreaksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get shiftId => $composableBuilder(
+    column: $table.shiftId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startAt => $composableBuilder(
+    column: $table.startAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get endAt => $composableBuilder(
+    column: $table.endAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ShiftBreaksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ShiftBreaksTable> {
+  $$ShiftBreaksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get shiftId =>
+      $composableBuilder(column: $table.shiftId, builder: (column) => column);
+
+  GeneratedColumn<int> get startAt =>
+      $composableBuilder(column: $table.startAt, builder: (column) => column);
+
+  GeneratedColumn<int> get endAt =>
+      $composableBuilder(column: $table.endAt, builder: (column) => column);
+}
+
+class $$ShiftBreaksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ShiftBreaksTable,
+          ShiftBreak,
+          $$ShiftBreaksTableFilterComposer,
+          $$ShiftBreaksTableOrderingComposer,
+          $$ShiftBreaksTableAnnotationComposer,
+          $$ShiftBreaksTableCreateCompanionBuilder,
+          $$ShiftBreaksTableUpdateCompanionBuilder,
+          (
+            ShiftBreak,
+            BaseReferences<_$AppDatabase, $ShiftBreaksTable, ShiftBreak>,
+          ),
+          ShiftBreak,
+          PrefetchHooks Function()
+        > {
+  $$ShiftBreaksTableTableManager(_$AppDatabase db, $ShiftBreaksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$ShiftBreaksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$ShiftBreaksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () =>
+                  $$ShiftBreaksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> shiftId = const Value.absent(),
+                Value<int> startAt = const Value.absent(),
+                Value<int?> endAt = const Value.absent(),
+              }) => ShiftBreaksCompanion(
+                id: id,
+                shiftId: shiftId,
+                startAt: startAt,
+                endAt: endAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int shiftId,
+                required int startAt,
+                Value<int?> endAt = const Value.absent(),
+              }) => ShiftBreaksCompanion.insert(
+                id: id,
+                shiftId: shiftId,
+                startAt: startAt,
+                endAt: endAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ShiftBreaksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ShiftBreaksTable,
+      ShiftBreak,
+      $$ShiftBreaksTableFilterComposer,
+      $$ShiftBreaksTableOrderingComposer,
+      $$ShiftBreaksTableAnnotationComposer,
+      $$ShiftBreaksTableCreateCompanionBuilder,
+      $$ShiftBreaksTableUpdateCompanionBuilder,
+      (
+        ShiftBreak,
+        BaseReferences<_$AppDatabase, $ShiftBreaksTable, ShiftBreak>,
+      ),
+      ShiftBreak,
+      PrefetchHooks Function()
+    >;
+typedef $$ReminderRulesTableCreateCompanionBuilder =
+    ReminderRulesCompanion Function({
+      Value<int> id,
+      required String type,
+      Value<String> title,
+      Value<int> offsetMinutes,
+      Value<int?> timeOfDayMinutes,
+      Value<int> repeatDays,
+      Value<bool> isEnabled,
+      required int createdAt,
+      required int updatedAt,
+    });
+typedef $$ReminderRulesTableUpdateCompanionBuilder =
+    ReminderRulesCompanion Function({
+      Value<int> id,
+      Value<String> type,
+      Value<String> title,
+      Value<int> offsetMinutes,
+      Value<int?> timeOfDayMinutes,
+      Value<int> repeatDays,
+      Value<bool> isEnabled,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+    });
+
+class $$ReminderRulesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReminderRulesTable> {
+  $$ReminderRulesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get offsetMinutes => $composableBuilder(
+    column: $table.offsetMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timeOfDayMinutes => $composableBuilder(
+    column: $table.timeOfDayMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repeatDays => $composableBuilder(
+    column: $table.repeatDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isEnabled => $composableBuilder(
+    column: $table.isEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReminderRulesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReminderRulesTable> {
+  $$ReminderRulesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get offsetMinutes => $composableBuilder(
+    column: $table.offsetMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timeOfDayMinutes => $composableBuilder(
+    column: $table.timeOfDayMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get repeatDays => $composableBuilder(
+    column: $table.repeatDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isEnabled => $composableBuilder(
+    column: $table.isEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReminderRulesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReminderRulesTable> {
+  $$ReminderRulesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<int> get offsetMinutes => $composableBuilder(
+    column: $table.offsetMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get timeOfDayMinutes => $composableBuilder(
+    column: $table.timeOfDayMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get repeatDays => $composableBuilder(
+    column: $table.repeatDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isEnabled =>
+      $composableBuilder(column: $table.isEnabled, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ReminderRulesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReminderRulesTable,
+          ReminderRule,
+          $$ReminderRulesTableFilterComposer,
+          $$ReminderRulesTableOrderingComposer,
+          $$ReminderRulesTableAnnotationComposer,
+          $$ReminderRulesTableCreateCompanionBuilder,
+          $$ReminderRulesTableUpdateCompanionBuilder,
+          (
+            ReminderRule,
+            BaseReferences<_$AppDatabase, $ReminderRulesTable, ReminderRule>,
+          ),
+          ReminderRule,
+          PrefetchHooks Function()
+        > {
+  $$ReminderRulesTableTableManager(_$AppDatabase db, $ReminderRulesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$ReminderRulesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () =>
+                  $$ReminderRulesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$ReminderRulesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<int> offsetMinutes = const Value.absent(),
+                Value<int?> timeOfDayMinutes = const Value.absent(),
+                Value<int> repeatDays = const Value.absent(),
+                Value<bool> isEnabled = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+              }) => ReminderRulesCompanion(
+                id: id,
+                type: type,
+                title: title,
+                offsetMinutes: offsetMinutes,
+                timeOfDayMinutes: timeOfDayMinutes,
+                repeatDays: repeatDays,
+                isEnabled: isEnabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String type,
+                Value<String> title = const Value.absent(),
+                Value<int> offsetMinutes = const Value.absent(),
+                Value<int?> timeOfDayMinutes = const Value.absent(),
+                Value<int> repeatDays = const Value.absent(),
+                Value<bool> isEnabled = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+              }) => ReminderRulesCompanion.insert(
+                id: id,
+                type: type,
+                title: title,
+                offsetMinutes: offsetMinutes,
+                timeOfDayMinutes: timeOfDayMinutes,
+                repeatDays: repeatDays,
+                isEnabled: isEnabled,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReminderRulesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReminderRulesTable,
+      ReminderRule,
+      $$ReminderRulesTableFilterComposer,
+      $$ReminderRulesTableOrderingComposer,
+      $$ReminderRulesTableAnnotationComposer,
+      $$ReminderRulesTableCreateCompanionBuilder,
+      $$ReminderRulesTableUpdateCompanionBuilder,
+      (
+        ReminderRule,
+        BaseReferences<_$AppDatabase, $ReminderRulesTable, ReminderRule>,
+      ),
+      ReminderRule,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11115,4 +12884,8 @@ class $AppDatabaseManager {
       $$ExchangeRatesTableTableManager(_db, _db.exchangeRates);
   $$DebtsTableTableManager get debts =>
       $$DebtsTableTableManager(_db, _db.debts);
+  $$ShiftBreaksTableTableManager get shiftBreaks =>
+      $$ShiftBreaksTableTableManager(_db, _db.shiftBreaks);
+  $$ReminderRulesTableTableManager get reminderRules =>
+      $$ReminderRulesTableTableManager(_db, _db.reminderRules);
 }

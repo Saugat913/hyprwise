@@ -32,6 +32,15 @@ class ShiftRateConfig {
           ? overtimeFixedRate
           : (customHourlyRate * overtimeMultiplier);
 
+  int? get overtimeThresholdMinutes =>
+      isCustom && hasOvertime ? (overtimeThresholdHours * 60).round() : null;
+
+  int? get overtimeRateMinor =>
+      isCustom && hasOvertime ? (effectiveOvertimeHourlyRate * 100).round() : null;
+
+  int? get baseRateOverrideMinor =>
+      isCustom ? (customHourlyRate * 100).round() : null;
+
   int calculateEffectiveHourlyRateMinor({
     required int baseHourlyRateMinor,
     double durationHours = 8.0,
@@ -89,6 +98,7 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
   late OvertimePricingType _overtimeType;
   late double _overtimeMultiplier;
   late double _overtimeFixedRate;
+  late final TextEditingController _otFixedController;
 
   double get _baseRateDouble => widget.baseHourlyRateMinor / 100.0;
 
@@ -102,6 +112,15 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
     _overtimeType = widget.initialConfig?.overtimeType ?? OvertimePricingType.multiplier;
     _overtimeMultiplier = widget.initialConfig?.overtimeMultiplier ?? 1.5;
     _overtimeFixedRate = widget.initialConfig?.overtimeFixedRate ?? (_customHourlyRate * 1.5);
+    _otFixedController = TextEditingController(
+      text: _overtimeFixedRate > 0 ? _overtimeFixedRate.toStringAsFixed(2) : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _otFixedController.dispose();
+    super.dispose();
   }
 
   @override
@@ -110,6 +129,7 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
     if (oldWidget.baseHourlyRateMinor != widget.baseHourlyRateMinor && !_isCustom) {
       _customHourlyRate = _baseRateDouble;
       _overtimeFixedRate = _baseRateDouble * _overtimeMultiplier;
+      _otFixedController.text = _overtimeFixedRate.toStringAsFixed(2);
     }
   }
 
@@ -145,10 +165,6 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
     final minRate = math.max(5.0, (_baseRateDouble * 0.4).floorToDouble());
     final maxRate = math.max(120.0, (_baseRateDouble * 3.0).ceilToDouble());
     final currentSliderVal = _customHourlyRate.clamp(minRate, maxRate);
-
-    final otMinFixed = minRate;
-    final otMaxFixed = math.max(150.0, (_customHourlyRate * 3.5).ceilToDouble());
-    final currentOtFixedVal = _overtimeFixedRate.clamp(otMinFixed, otMaxFixed);
 
     final duration = widget.shiftDurationHours ?? 8.0;
     final config = ShiftRateConfig(
@@ -403,6 +419,7 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                                 _overtimeType = OvertimePricingType.fixedRate;
                                 if (_overtimeFixedRate <= 0) {
                                   _overtimeFixedRate = (_customHourlyRate * 1.5);
+                                  _otFixedController.text = _overtimeFixedRate.toStringAsFixed(2);
                                 }
                               });
                               _notify();
@@ -467,7 +484,7 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                         },
                       ),
                     ] else ...[
-                      // Fixed hourly rate slider for overtime
+                      // Direct numeric input for fixed overtime hourly rate
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -491,46 +508,67 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: AppSpace.xs),
                       Row(
                         children: [
                           IconButton.filledTonal(
-                            icon: const Icon(Icons.remove, size: 14),
+                            icon: const Icon(Icons.remove, size: 16),
                             visualDensity: VisualDensity.compact,
-                            onPressed: _overtimeFixedRate > otMinFixed
+                            onPressed: _overtimeFixedRate > 1.0
                                 ? () {
                                     setState(() {
-                                      _overtimeFixedRate = math.max(otMinFixed, _overtimeFixedRate - 1.0);
+                                      _overtimeFixedRate = math.max(0.0, _overtimeFixedRate - 1.0);
+                                      _otFixedController.text = _overtimeFixedRate.toStringAsFixed(2);
                                     });
                                     _notify();
                                   }
                                 : null,
                           ),
+                          const SizedBox(width: AppSpace.xs),
                           Expanded(
-                            child: Slider(
-                              value: currentOtFixedVal,
-                              min: otMinFixed,
-                              max: otMaxFixed,
-                              divisions: ((otMaxFixed - otMinFixed) * 2).round(),
-                              onChanged: (val) {
-                                setState(() => _overtimeFixedRate = val);
-                                _notify();
+                            child: TextField(
+                              controller: _otFixedController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              style: text.bodyMedium?.copyWith(
+                                fontFamily: 'RedditMono',
+                                fontWeight: FontWeight.w700,
+                              ),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                prefixText: '${widget.currencyCode} ',
+                                suffixText: '/ ${tr.hourAbbr}',
+                                hintText: (_customHourlyRate * 1.5).toStringAsFixed(2),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpace.sm,
+                                  vertical: 10,
+                                ),
+                              ),
+                              onChanged: (raw) {
+                                final parsed = double.tryParse(raw.replaceAll(',', '.').trim());
+                                if (parsed != null && parsed >= 0) {
+                                  setState(() {
+                                    _overtimeFixedRate = parsed;
+                                  });
+                                  _notify();
+                                }
                               },
                             ),
                           ),
+                          const SizedBox(width: AppSpace.xs),
                           IconButton.filledTonal(
-                            icon: const Icon(Icons.add, size: 14),
+                            icon: const Icon(Icons.add, size: 16),
                             visualDensity: VisualDensity.compact,
-                            onPressed: _overtimeFixedRate < otMaxFixed
-                                ? () {
-                                    setState(() {
-                                      _overtimeFixedRate = math.min(otMaxFixed, _overtimeFixedRate + 1.0);
-                                    });
-                                    _notify();
-                                  }
-                                : null,
+                            onPressed: () {
+                              setState(() {
+                                _overtimeFixedRate += 1.0;
+                                _otFixedController.text = _overtimeFixedRate.toStringAsFixed(2);
+                              });
+                              _notify();
+                            },
                           ),
                         ],
                       ),
+                      const SizedBox(height: AppSpace.sm),
                     ],
 
                     // Rate Breakdown Pill

@@ -18,6 +18,12 @@ class Jobs extends Table {
 
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
+  /// Default unpaid break (minutes) applied to new shifts of this job.
+  IntColumn get defaultBreakMinutes => integer().withDefault(const Constant(0))();
+
+  /// Alert after this many minutes on a live shift. 0 turns the alert off.
+  IntColumn get longShiftAlertMinutes => integer().withDefault(const Constant(360))();
+
   IntColumn get createdAt => integer()();
 
   IntColumn get updatedAt => integer()();
@@ -44,7 +50,28 @@ class Shifts extends Table {
   /// Rate override for this shift only; falls back to the job rate when null.
   IntColumn get rateOverrideMinor => integer().nullable()();
 
+  /// Overtime begins after this many worked minutes (null = no overtime).
+  IntColumn get overtimeThresholdMinutes => integer().nullable()();
+
+  /// Hourly rate paid for overtime minutes (null = no overtime).
+  IntColumn get overtimeRateMinor => integer().nullable()();
+
+  /// Per-shift long-shift alert override in minutes (null = job default, 0 = off).
+  IntColumn get longShiftAlertMinutes => integer().nullable()();
+
   IntColumn get createdAt => integer()();
 
   IntColumn get updatedAt => integer()();
+}
+
+/// A break taken during a shift, with real clock times for the shift log.
+class ShiftBreaks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get shiftId => integer().references(Shifts, #id)();
+
+  IntColumn get startAt => integer()();
+
+  /// Null while the break is still running.
+  IntColumn get endAt => integer().nullable()();
 }

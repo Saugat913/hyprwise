@@ -52,7 +52,16 @@ class AssistantEngine {
     if (text.isEmpty) return _overview(snapshot);
 
     // Greetings & assistant identity
-    if (_hasAny(text, ['hello', 'hi', 'hey', 'namaste', 'good morning', 'good evening', 'who are you', 'what can you do'])) {
+    if (_hasAny(text, [
+      'hello',
+      'hi',
+      'hey',
+      'namaste',
+      'good morning',
+      'good evening',
+      'who are you',
+      'what can you do',
+    ])) {
       return _greeting(snapshot);
     }
 
@@ -132,7 +141,7 @@ class AssistantEngine {
     return const AssistantAnswer(
       headline: 'Hello!',
       body:
-          'I am Hyprwise, your personal finance and shift management assistant. I can check your account balances, summarize your spending, track upcoming shifts, or record transactions.',
+          'I am Hypr AI, your personal finance and shift management assistant. I can check your account balances, summarize your spending, track upcoming shifts, or record transactions.',
       suggestions: [
         'How much money do I have right now?',
         'Where am I overspending?',
@@ -162,25 +171,28 @@ class AssistantEngine {
       }
     }
 
-    final matchingTxs = snapshot.transactions.where((t) {
-      if (t.type != TransactionType.expense.value) return false;
-      final cat = t.category.toLowerCase();
-      final note = (t.note ?? '').toLowerCase();
-      if (matchedCategory != null &&
-          (cat.contains(matchedCategory) ||
-              (matchedCategory == 'food' &&
-                  (cat.contains('dining') || cat.contains('groceries'))))) {
-        return true;
-      }
-      return text.contains(cat) || (note.isNotEmpty && text.contains(note));
-    }).toList();
+    final matchingTxs =
+        snapshot.transactions.where((t) {
+          if (t.type != TransactionType.expense.value) return false;
+          final cat = t.category.toLowerCase();
+          final note = (t.note ?? '').toLowerCase();
+          if (matchedCategory != null &&
+              (cat.contains(matchedCategory) ||
+                  (matchedCategory == 'food' &&
+                      (cat.contains('dining') || cat.contains('groceries'))))) {
+            return true;
+          }
+          return text.contains(cat) || (note.isNotEmpty && text.contains(note));
+        }).toList();
 
-    final label = matchedCategory != null ? _pretty(matchedCategory) : 'that category';
+    final label =
+        matchedCategory != null ? _pretty(matchedCategory) : 'that category';
 
     if (matchingTxs.isEmpty) {
       return AssistantAnswer(
         headline: 'No records found',
-        body: "I don't have any recorded transactions for '$label' in your accounts.",
+        body:
+            "I don't have any recorded transactions for '$label' in your accounts.",
         suggestions: const [
           'How much do I have right now?',
           'Where am I overspending?',
@@ -190,9 +202,14 @@ class AssistantEngine {
 
     final totalMinor = matchingTxs.fold<int>(
       0,
-      (sum, t) => sum + snapshot.convert(t.amountMinor, snapshot.currencyOf(t.accountId)),
+      (sum, t) =>
+          sum +
+          snapshot.convert(t.amountMinor, snapshot.currencyOf(t.accountId)),
     );
-    final formattedTotal = MoneyFormatter.format(totalMinor, snapshot.baseCurrency);
+    final formattedTotal = MoneyFormatter.format(
+      totalMinor,
+      snapshot.baseCurrency,
+    );
 
     return AssistantAnswer(
       headline: 'Spending on $label',
@@ -207,11 +224,12 @@ class AssistantEngine {
 
   AssistantAnswer _shiftsSummary(FinanceSnapshot snapshot) {
     final now = snapshot.now;
-    final upcoming = snapshot.shifts.where((s) {
-      final st = DateTime.fromMillisecondsSinceEpoch(s.startAt);
-      return st.isAfter(now.subtract(const Duration(hours: 2))) &&
-          s.status != ShiftStatus.cancelled.value;
-    }).toList();
+    final upcoming =
+        snapshot.shifts.where((s) {
+          final st = DateTime.fromMillisecondsSinceEpoch(s.startAt);
+          return st.isAfter(now.subtract(const Duration(hours: 2))) &&
+              s.status != ShiftStatus.cancelled.value;
+        }).toList();
 
     if (upcoming.isEmpty) {
       return const AssistantAnswer(
@@ -222,15 +240,19 @@ class AssistantEngine {
     }
 
     final jobsById = {for (final j in snapshot.jobs) j.id: j};
-    final items = upcoming.take(3).map((s) {
-      final job = jobsById[s.jobId];
-      final st = DateTime.fromMillisecondsSinceEpoch(s.startAt);
-      return '${job?.name ?? "Work"}: ${DateFormatter.numeric(st)} at ${st.hour}:${st.minute.toString().padLeft(2, '0')}';
-    }).join('; ');
+    final items = upcoming
+        .take(3)
+        .map((s) {
+          final job = jobsById[s.jobId];
+          final st = DateTime.fromMillisecondsSinceEpoch(s.startAt);
+          return '${job?.name ?? "Work"}: ${DateFormatter.numeric(st)} at ${st.hour}:${st.minute.toString().padLeft(2, '0')}';
+        })
+        .join('; ');
 
     return AssistantAnswer(
       headline: 'Upcoming Work Shifts',
-      body: 'You have ${upcoming.length} upcoming shift${upcoming.length == 1 ? "" : "s"}: $items.',
+      body:
+          'You have ${upcoming.length} upcoming shift${upcoming.length == 1 ? "" : "s"}: $items.',
       suggestions: ['What happens if I work 5 more hours a week?'],
     );
   }

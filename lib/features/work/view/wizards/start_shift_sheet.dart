@@ -22,8 +22,16 @@ class StartShiftSheet extends StatefulWidget {
 
 class _StartShiftSheetState extends State<StartShiftSheet> {
   int? _selectedJobId;
-  bool _remindClockOut = true;
+  int? _longShiftAlertMinutes;
+  bool _useCustomAlertHours = false;
+  final _customAlertHoursController = TextEditingController();
   ShiftRateConfig? _rateConfig;
+
+  @override
+  void dispose() {
+    _customAlertHoursController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +104,11 @@ class _StartShiftSheetState extends State<StartShiftSheet> {
                 return _JobSelectionGridCard(
                   job: j,
                   isSelected: isSelected,
-                  onTap: () => setState(() => _selectedJobId = j.id),
+                  onTap: () => setState(() {
+                    _selectedJobId = j.id;
+                    _longShiftAlertMinutes = j.longShiftAlertMinutes;
+                    _useCustomAlertHours = ![0, 240, 360, 480, 600, 720].contains(j.longShiftAlertMinutes);
+                  }),
                 );
               },
             ),
@@ -136,11 +148,82 @@ class _StartShiftSheetState extends State<StartShiftSheet> {
             ),
             const SizedBox(height: AppSpace.md),
 
-            SwitchRow(
-              title: tr.remindMeClockOut,
-              subtitle: tr.alertAfter6Hours,
-              value: _remindClockOut,
-              onChanged: (val) => setState(() => _remindClockOut = val),
+            // Selectable Long-Shift Notification Threshold
+            Builder(
+              builder: (context) {
+                final effectiveAlertMinutes = _longShiftAlertMinutes ?? selectedJob.longShiftAlertMinutes;
+                return AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr.longShiftNotificationLabel,
+                        style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        tr.longShiftNotificationSubtitle,
+                        style: text.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.sm),
+                      Wrap(
+                        spacing: AppSpace.xs,
+                        runSpacing: AppSpace.xs,
+                        children: [
+                          ChoicePill(
+                            tr.offOption,
+                            selected: !_useCustomAlertHours && effectiveAlertMinutes == 0,
+                            onTap: () => setState(() {
+                              _useCustomAlertHours = false;
+                              _longShiftAlertMinutes = 0;
+                            }),
+                          ),
+                          for (final h in [4, 6, 8, 10, 12])
+                            ChoicePill(
+                              tr.notifyAfterHours(h),
+                              selected: !_useCustomAlertHours && effectiveAlertMinutes == h * 60,
+                              onTap: () => setState(() {
+                                _useCustomAlertHours = false;
+                                _longShiftAlertMinutes = h * 60;
+                              }),
+                            ),
+                          ChoicePill(
+                            tr.customOption,
+                            selected: _useCustomAlertHours,
+                            onTap: () => setState(() {
+                              _useCustomAlertHours = true;
+                              if (_customAlertHoursController.text.isEmpty) {
+                                final curH = effectiveAlertMinutes > 0
+                                    ? (effectiveAlertMinutes / 60).round()
+                                    : 6;
+                                _customAlertHoursController.text = curH.toString();
+                                _longShiftAlertMinutes = curH * 60;
+                              }
+                            }),
+                          ),
+                        ],
+                      ),
+                      if (_useCustomAlertHours) ...[
+                        const SizedBox(height: AppSpace.sm),
+                        UnderlineField(
+                          label: tr.customHoursLabel,
+                          hint: '6',
+                          controller: _customAlertHoursController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          onChanged: (val) {
+                            final parsed = double.tryParse(val.trim());
+                            if (parsed != null && parsed >= 0) {
+                              setState(() => _longShiftAlertMinutes = (parsed * 60).round());
+                            }
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
             ),
             const SizedBox(height: AppSpace.lg),
           ],
@@ -157,14 +240,15 @@ class _StartShiftSheetState extends State<StartShiftSheet> {
                 icon: HugeIcons.strokeRoundedPlay,
                 onPressed: () async {
                   final rateOverride = (_rateConfig != null && _rateConfig!.isCustom)
-                      ? _rateConfig!.getRateOverrideMinor(
-                          baseHourlyRateMinor: selectedJob.hourlyRateMinor,
-                          durationHours: 8.0,
-                        )
+                      ? _rateConfig!.baseRateOverrideMinor
                       : null;
+                  final effectiveAlertMinutes = _longShiftAlertMinutes ?? selectedJob.longShiftAlertMinutes;
                   await viewModel.startShift(
                     jobId: selectedJob.id,
                     rateOverrideMinor: rateOverride,
+                    overtimeThresholdMinutes: _rateConfig?.overtimeThresholdMinutes,
+                    overtimeRateMinor: _rateConfig?.overtimeRateMinor,
+                    longShiftAlertMinutes: effectiveAlertMinutes,
                   );
                   if (context.mounted) {
                     context.go(AppRoutes.liveShift);

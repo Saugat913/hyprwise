@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/shared/widgets/app_button.dart';
 
@@ -88,6 +89,6 @@ class AssistantPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: AppSpace.sm),
-        child: AppButton('Assistant', onPressed: onPressed, icon: HugeIcons.strokeRoundedAiMagic, compact: true),
+        child: AppButton(context.strings.hyprAi, onPressed: onPressed, icon: HugeIcons.strokeRoundedChatBot, compact: true),
       );
 }

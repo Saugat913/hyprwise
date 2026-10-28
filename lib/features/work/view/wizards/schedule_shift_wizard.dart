@@ -40,6 +40,11 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
   TimeOfDay _endTime = const TimeOfDay(hour: 17, minute: 0);
   bool _fixedEnd = true;
   int _breakMinutes = 30;
+  bool _useCustomBreak = false;
+  int _longShiftAlertMinutes = 360;
+  bool _useCustomAlertHours = false;
+  final _customBreakController = TextEditingController();
+  final _customAlertHoursController = TextEditingController();
   ShiftRateConfig? _rateConfig;
 
   static const _horizonOptions = {
@@ -56,13 +61,23 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
     super.initState();
     final vm = getIt<WorkViewModel>();
     if (vm.jobs.isNotEmpty) {
-      _jobId = vm.jobs.first.id;
+      final first = vm.jobs.first;
+      _jobId = first.id;
+      _breakMinutes = first.defaultBreakMinutes;
+      _longShiftAlertMinutes = first.longShiftAlertMinutes;
     }
     if (widget.initialDate != null) {
       _mode = _ScheduleMode.specificDates;
       _selectedDates.clear();
       _selectedDates.add(AppDate.dateOnly(widget.initialDate!));
     }
+  }
+
+  @override
+  void dispose() {
+    _customBreakController.dispose();
+    _customAlertHoursController.dispose();
+    super.dispose();
   }
 
   void _toggleWeekday(int day) {
@@ -164,6 +179,8 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
             durationHours: _hoursPerShift,
           )
         : null;
+    final otThresholdMin = _rateConfig?.overtimeThresholdMinutes;
+    final otRateMinor = _rateConfig?.overtimeRateMinor;
 
     List<int> createdIds = [];
 
@@ -176,6 +193,9 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
         weeksCount: _repeatWeeks,
         breakMinutes: _breakMinutes,
         rateOverrideMinor: effectiveRateMinor,
+        overtimeThresholdMinutes: otThresholdMin,
+        overtimeRateMinor: otRateMinor,
+        longShiftAlertMinutes: _longShiftAlertMinutes,
       );
     } else {
       for (final date in _selectedDates) {
@@ -207,6 +227,9 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
           endAt: endAt,
           breakMinutes: _breakMinutes,
           rateOverrideMinor: effectiveRateMinor,
+          overtimeThresholdMinutes: otThresholdMin,
+          overtimeRateMinor: otRateMinor,
+          longShiftAlertMinutes: _longShiftAlertMinutes,
         );
         createdIds.add(id);
       }
@@ -308,7 +331,19 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
                   return _JobWorkCard(
                     job: job,
                     isSelected: isSelected,
-                    onTap: () => setState(() => _jobId = job.id),
+                    onTap: () => setState(() {
+                      _jobId = job.id;
+                      _breakMinutes = job.defaultBreakMinutes;
+                      _useCustomBreak = ![0, 15, 30, 45, 60].contains(job.defaultBreakMinutes);
+                      if (_useCustomBreak) {
+                        _customBreakController.text = job.defaultBreakMinutes.toString();
+                      }
+                      _longShiftAlertMinutes = job.longShiftAlertMinutes;
+                      _useCustomAlertHours = ![0, 240, 360, 480, 600, 720].contains(job.longShiftAlertMinutes);
+                      if (_useCustomAlertHours) {
+                        _customAlertHoursController.text = (job.longShiftAlertMinutes / 60).toStringAsFixed(0);
+                      }
+                    }),
                   );
                 },
               ),
@@ -572,15 +607,99 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
               const SizedBox(height: AppSpace.xs),
               Wrap(
                 spacing: AppSpace.sm,
+                runSpacing: AppSpace.xs,
                 children: [
                   for (final b in [0, 15, 30, 45, 60])
                     ChoicePill(
                       b == 0 ? tr.noBreak : tr.minsBreak(b),
-                      selected: _breakMinutes == b,
-                      onTap: () => setState(() => _breakMinutes = b),
+                      selected: !_useCustomBreak && _breakMinutes == b,
+                      onTap: () => setState(() {
+                        _useCustomBreak = false;
+                        _breakMinutes = b;
+                      }),
                     ),
+                  ChoicePill(
+                    tr.customOption,
+                    selected: _useCustomBreak,
+                    onTap: () => setState(() {
+                      _useCustomBreak = true;
+                      if (_customBreakController.text.isEmpty) {
+                        _customBreakController.text = _breakMinutes.toString();
+                      }
+                    }),
+                  ),
                 ],
               ),
+              if (_useCustomBreak) ...[
+                const SizedBox(height: AppSpace.sm),
+                UnderlineField(
+                  label: tr.customBreakMinutesLabel,
+                  hint: '20',
+                  controller: _customBreakController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (val) {
+                    final parsed = int.tryParse(val.trim());
+                    if (parsed != null && parsed >= 0) {
+                      setState(() => _breakMinutes = parsed);
+                    }
+                  },
+                ),
+              ],
+              const SizedBox(height: AppSpace.lg),
+
+              // Selectable Long-Shift Notification Threshold
+              Text(tr.longShiftNotificationLabel, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: AppSpace.xs),
+              Wrap(
+                spacing: AppSpace.sm,
+                runSpacing: AppSpace.xs,
+                children: [
+                  ChoicePill(
+                    tr.offOption,
+                    selected: !_useCustomAlertHours && _longShiftAlertMinutes == 0,
+                    onTap: () => setState(() {
+                      _useCustomAlertHours = false;
+                      _longShiftAlertMinutes = 0;
+                    }),
+                  ),
+                  for (final h in [4, 6, 8, 10, 12])
+                    ChoicePill(
+                      tr.notifyAfterHours(h),
+                      selected: !_useCustomAlertHours && _longShiftAlertMinutes == h * 60,
+                      onTap: () => setState(() {
+                        _useCustomAlertHours = false;
+                        _longShiftAlertMinutes = h * 60;
+                      }),
+                    ),
+                  ChoicePill(
+                    tr.customOption,
+                    selected: _useCustomAlertHours,
+                    onTap: () => setState(() {
+                      _useCustomAlertHours = true;
+                      if (_customAlertHoursController.text.isEmpty) {
+                        final curH = _longShiftAlertMinutes > 0 ? (_longShiftAlertMinutes / 60).round() : 6;
+                        _customAlertHoursController.text = curH.toString();
+                        _longShiftAlertMinutes = curH * 60;
+                      }
+                    }),
+                  ),
+                ],
+              ),
+              if (_useCustomAlertHours) ...[
+                const SizedBox(height: AppSpace.sm),
+                UnderlineField(
+                  label: tr.customHoursLabel,
+                  hint: '6',
+                  controller: _customAlertHoursController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (val) {
+                    final parsed = double.tryParse(val.trim());
+                    if (parsed != null && parsed >= 0) {
+                      setState(() => _longShiftAlertMinutes = (parsed * 60).round());
+                    }
+                  },
+                ),
+              ],
               const SizedBox(height: AppSpace.lg),
 
               SwitchRow(

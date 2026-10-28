@@ -234,6 +234,10 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
       text: (job.hourlyRateMinor / 100).toStringAsFixed(job.hourlyRateMinor % 100 == 0 ? 0 : 2),
     );
     final employerController = TextEditingController(text: job.employer ?? '');
+    final breakController = TextEditingController(text: job.defaultBreakMinutes.toString());
+    final alertHoursController = TextEditingController(
+      text: (job.longShiftAlertMinutes / 60).toStringAsFixed(job.longShiftAlertMinutes % 60 == 0 ? 0 : 1),
+    );
 
     showModalBottomSheet<void>(
       context: context,
@@ -310,18 +314,53 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
                 ),
               ),
+              const SizedBox(height: AppSpace.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: breakController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: tr.defaultBreakDurationLabel,
+                        suffixText: tr.minuteAbbr,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: TextField(
+                      controller: alertHoursController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: tr.longShiftNotificationLabel,
+                        suffixText: tr.hourAbbr,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: AppSpace.lg),
               AppButton(
                 tr.saveChanges,
                 onPressed: () async {
                   final newRate = double.tryParse(rateController.text.trim());
                   final newName = nameController.text.trim();
+                  final newBreak = int.tryParse(breakController.text.trim()) ?? job.defaultBreakMinutes;
+                  final newAlertHours = double.tryParse(alertHoursController.text.trim());
+                  final newAlertMin = newAlertHours != null
+                      ? (newAlertHours * 60).round()
+                      : job.longShiftAlertMinutes;
                   if (newRate != null && newRate > 0 && newName.isNotEmpty) {
                     await _viewModel.updateJob(
                       job.id,
                       name: newName,
                       hourlyRateMinor: (newRate * 100).round(),
                       employer: employerController.text.trim().isEmpty ? null : employerController.text.trim(),
+                      defaultBreakMinutes: newBreak,
+                      longShiftAlertMinutes: newAlertMin,
                     );
                     if (ctx.mounted) Navigator.pop(ctx);
                   }

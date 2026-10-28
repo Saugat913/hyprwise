@@ -171,13 +171,15 @@ Respond ONLY with a JSON object in this exact format:
           final jsonEnd = aiResult.lastIndexOf('}') + 1;
           final jsonStr = aiResult.substring(jsonStart, jsonEnd);
           final parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
-          if (parsed['merchant'] != null && parsed['merchant'].toString().trim().isNotEmpty) {
+          if (parsed['merchant'] != null &&
+              parsed['merchant'].toString().trim().isNotEmpty) {
             merchant = parsed['merchant'].toString().trim();
           }
           if (parsed['amount'] != null) {
             amount = (parsed['amount'] as num).toDouble();
           }
-          if (parsed['category'] != null && parsed['category'].toString().trim().isNotEmpty) {
+          if (parsed['category'] != null &&
+              parsed['category'].toString().trim().isNotEmpty) {
             category = parsed['category'].toString().trim();
           }
         } catch (_) {}
@@ -185,15 +187,22 @@ Respond ONLY with a JSON object in this exact format:
 
       // If AI did not return a valid amount or merchant, check if mock test image name hints exist
       if (amount <= 0 || merchant.isEmpty) {
-        if (filename.contains('woolworth') || filename.contains('coles') || filename.contains('aldi')) {
+        if (filename.contains('woolworth') ||
+            filename.contains('coles') ||
+            filename.contains('aldi')) {
           merchant = 'Woolworths';
           category = 'Groceries';
           amount = 48.20;
-        } else if (filename.contains('cafe') || filename.contains('coffee') || filename.contains('starbucks')) {
+        } else if (filename.contains('cafe') ||
+            filename.contains('coffee') ||
+            filename.contains('starbucks')) {
           merchant = 'Local Café';
           category = 'Dining';
           amount = 14.50;
-        } else if (filename.contains('fuel') || filename.contains('bp') || filename.contains('7-eleven') || filename.contains('shell')) {
+        } else if (filename.contains('fuel') ||
+            filename.contains('bp') ||
+            filename.contains('7-eleven') ||
+            filename.contains('shell')) {
           merchant = '7-Eleven Fuel';
           category = 'Transport';
           amount = 62.00;
@@ -203,7 +212,9 @@ Respond ONLY with a JSON object in this exact format:
       _messages.remove(analyzingMsg);
 
       // Strict validation: never create fake/hallucinated expenses for unrecognizable images
-      if (amount <= 0 || merchant.isEmpty || merchant.toLowerCase() == 'store') {
+      if (amount <= 0 ||
+          merchant.isEmpty ||
+          merchant.toLowerCase() == 'store') {
         _messages.add(
           AssistantMessage(
             isUser: false,
@@ -252,13 +263,19 @@ Respond ONLY with a JSON object in this exact format:
 
   ParsedTransactionIntent? _parseTransactionIntent(String text) {
     final lower = text.toLowerCase();
-    final hasActionVerb = RegExp(r'\b(add|spent|spend|paid|pay|record|bought|buy)\b').hasMatch(lower);
+    final hasActionVerb = RegExp(
+      r'\b(add|spent|spend|paid|pay|record|bought|buy)\b',
+    ).hasMatch(lower);
     if (!hasActionVerb) return null;
 
-    final isIncome = RegExp(r'\b(income|salary|wage|earned|earning|freelance|bonus)\b').hasMatch(lower);
+    final isIncome = RegExp(
+      r'\b(income|salary|wage|earned|earning|freelance|bonus)\b',
+    ).hasMatch(lower);
     final type = isIncome ? TransactionType.income : TransactionType.expense;
 
-    final amountMatch = RegExp(r'(?:[\$₹रुA-Za-z]\s*)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)(?:\s*[\$₹रुA-Za-z])?').firstMatch(text);
+    final amountMatch = RegExp(
+      r'(?:[\$₹रुA-Za-z]\s*)?(\d+(?:,\d{3})*(?:\.\d{1,2})?)(?:\s*[\$₹रुA-Za-z])?',
+    ).firstMatch(text);
     if (amountMatch == null) return null;
 
     final amountStr = amountMatch.group(1)!.replaceAll(',', '');
@@ -267,19 +284,33 @@ Respond ONLY with a JSON object in this exact format:
     final amountMinor = (amountVal * 100).round();
 
     String category = 'Groceries';
-    if (RegExp(r'\b(groceries|grocery|supermarket|mart|food\s*store)\b').hasMatch(lower)) {
+    if (RegExp(
+      r'\b(groceries|grocery|supermarket|mart|food\s*store)\b',
+    ).hasMatch(lower)) {
       category = 'Groceries';
-    } else if (RegExp(r'\b(dining|food|lunch|dinner|breakfast|cafe|coffee|restaurant|eats)\b').hasMatch(lower)) {
+    } else if (RegExp(
+      r'\b(dining|food|lunch|dinner|breakfast|cafe|coffee|restaurant|eats)\b',
+    ).hasMatch(lower)) {
       category = 'Dining';
-    } else if (RegExp(r'\b(transport|fuel|petrol|gas|uber|taxi|fare|bus|train)\b').hasMatch(lower)) {
+    } else if (RegExp(
+      r'\b(transport|fuel|petrol|gas|uber|taxi|fare|bus|train)\b',
+    ).hasMatch(lower)) {
       category = 'Transport';
-    } else if (RegExp(r'\b(utilities|utility|bill|bills|electricity|water|wifi|internet|recharge)\b').hasMatch(lower)) {
+    } else if (RegExp(
+      r'\b(utilities|utility|bill|bills|electricity|water|wifi|internet|recharge)\b',
+    ).hasMatch(lower)) {
       category = 'Utilities';
-    } else if (RegExp(r'\b(shopping|clothes|shoes|store|mall|electronics)\b').hasMatch(lower)) {
+    } else if (RegExp(
+      r'\b(shopping|clothes|shoes|store|mall|electronics)\b',
+    ).hasMatch(lower)) {
       category = 'Shopping';
-    } else if (RegExp(r'\b(health|medical|medicine|pharmacy|doctor|hospital)\b').hasMatch(lower)) {
+    } else if (RegExp(
+      r'\b(health|medical|medicine|pharmacy|doctor|hospital)\b',
+    ).hasMatch(lower)) {
       category = 'Health';
-    } else if (RegExp(r'\b(entertainment|movie|movies|netflix|games|fun)\b').hasMatch(lower)) {
+    } else if (RegExp(
+      r'\b(entertainment|movie|movies|netflix|games|fun)\b',
+    ).hasMatch(lower)) {
       category = 'Entertainment';
     } else if (isIncome) {
       category = 'Income';
@@ -288,11 +319,15 @@ Respond ONLY with a JSON object in this exact format:
     }
 
     String note = category;
-    final atMatch = RegExp(r'\b(?:at|from|in)\s+([A-Za-z0-9\s&]+?)(?:\s+(?:for|to|on)|\.|$)').firstMatch(text);
+    final atMatch = RegExp(
+      r'\b(?:at|from|in)\s+([A-Za-z0-9\s&]+?)(?:\s+(?:for|to|on)|\.|$)',
+    ).firstMatch(text);
     if (atMatch != null && atMatch.group(1)!.trim().isNotEmpty) {
       note = atMatch.group(1)!.trim();
     } else {
-      final forMatch = RegExp(r'\b(?:for|on|to)\s+([A-Za-z0-9\s&]+?)(?:\s+(?:at|from)|\.|$)').firstMatch(text);
+      final forMatch = RegExp(
+        r'\b(?:for|on|to)\s+([A-Za-z0-9\s&]+?)(?:\s+(?:at|from)|\.|$)',
+      ).firstMatch(text);
       if (forMatch != null && forMatch.group(1)!.trim().isNotEmpty) {
         note = forMatch.group(1)!.trim();
       }
@@ -315,7 +350,21 @@ Respond ONLY with a JSON object in this exact format:
     }
   }
 
+  bool _isTyping = false;
+  bool get isTyping => _isTyping;
+
   Future<void> sendMessage(String query) async {
+    if (query.trim().isEmpty) return;
+    _isTyping = true;
+    try {
+      await _sendMessage(query);
+    } finally {
+      _isTyping = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _sendMessage(String query) async {
     final text = query.trim();
     if (text.isEmpty) return;
 
@@ -327,8 +376,11 @@ Respond ONLY with a JSON object in this exact format:
     // 1. Direct Natural Language Action Command Execution (e.g. "Add 1500 to groceries expenses", "Paid 25 for lunch")
     final txIntent = _parseTransactionIntent(text);
     if (txIntent != null) {
-      final account = financeStore.everydayAccount ??
-          (financeStore.accounts.isNotEmpty ? financeStore.accounts.first : null);
+      final account =
+          financeStore.everydayAccount ??
+          (financeStore.accounts.isNotEmpty
+              ? financeStore.accounts.first
+              : null);
       final accountId = account?.id ?? 1;
 
       final txId = await transactionRepo.add(
@@ -341,7 +393,10 @@ Respond ONLY with a JSON object in this exact format:
       );
 
       final isExp = txIntent.type == TransactionType.expense;
-      final formattedAmt = MoneyFormatter.format(txIntent.amountMinor, baseCurrency);
+      final formattedAmt = MoneyFormatter.format(
+        txIntent.amountMinor,
+        baseCurrency,
+      );
 
       _messages.add(
         AssistantMessage(
@@ -351,8 +406,13 @@ Respond ONLY with a JSON object in this exact format:
               'Recorded **$formattedAmt** for **${txIntent.category}** (${txIntent.merchant}) to **${account?.name ?? "Everyday account"}**.\n\nYour active balances and budget analytics have been updated.',
           isConfirmed: true,
           createdTransactionId: txId,
-          confirmedSummary: '${isExp ? "Recorded expense" : "Recorded income"}: $formattedAmt · ${txIntent.category}',
-          suggestions: const ['Undo this transaction', 'How much did I spend this month?', 'Check balances'],
+          confirmedSummary:
+              '${isExp ? "Recorded expense" : "Recorded income"}: $formattedAmt · ${txIntent.category}',
+          suggestions: const [
+            'Undo this transaction',
+            'How much did I spend this month?',
+            'Check balances',
+          ],
         ),
       );
       notifyListeners();
@@ -360,7 +420,9 @@ Respond ONLY with a JSON object in this exact format:
     }
 
     // 2. Undo command
-    if (lower == 'undo' || lower == 'undo last' || lower == 'undo this transaction') {
+    if (lower == 'undo' ||
+        lower == 'undo last' ||
+        lower == 'undo this transaction') {
       final lastMsg = _messages.lastWhere(
         (m) => m.createdTransactionId != null,
         orElse: () => AssistantMessage(isUser: false, text: ''),
@@ -371,7 +433,8 @@ Respond ONLY with a JSON object in this exact format:
           AssistantMessage(
             isUser: false,
             headline: 'Transaction Undone',
-            text: 'Reverted the last transaction and restored your active account balance.',
+            text:
+                'Reverted the last transaction and restored your active account balance.',
           ),
         );
         notifyListeners();
@@ -380,17 +443,24 @@ Respond ONLY with a JSON object in this exact format:
     }
 
     // 3. Currency conversion query (e.g. "convert 25 aud" or "convert 100 usd to npr")
-    final convertRegex = RegExp(r'convert\s+(\d+(?:\.\d+)?)\s*([a-zA-Z]{3})', caseSensitive: false);
+    final convertRegex = RegExp(
+      r'convert\s+(\d+(?:\.\d+)?)\s*([a-zA-Z]{3})',
+      caseSensitive: false,
+    );
     final match = convertRegex.firstMatch(text);
     if (match != null) {
       final amount = double.tryParse(match.group(1)!) ?? 0.0;
       final fromCurr = match.group(2)!.toUpperCase();
-      final res = await mcpTools.execute('convert_currency', {'amount': amount, 'fromCurrency': fromCurr});
+      final res = await mcpTools.execute('convert_currency', {
+        'amount': amount,
+        'fromCurrency': fromCurr,
+      });
       _messages.add(
         AssistantMessage(
           isUser: false,
           headline: 'Live Currency Conversion',
-          text: '${res['from']} is approximately ${res['to']} in your base currency ($baseCurrency).',
+          text:
+              '${res['from']} is approximately ${res['to']} in your base currency ($baseCurrency).',
           explanation: 'Calculated using real-time benchmark exchange rates.',
         ),
       );
@@ -408,14 +478,18 @@ Respond ONLY with a JSON object in this exact format:
         lower.contains('iou')) {
       final res = await mcpTools.execute('get_debts_summary', {});
       final active = res['activeDebts'] as List<dynamic>? ?? [];
-      final details = active.isNotEmpty
-          ? active.map((d) => '• ${d['party']}: ${d['amount']} (${d['type']})').join('\n')
-          : 'No active debts recorded.';
+      final details =
+          active.isNotEmpty
+              ? active
+                  .map((d) => '• ${d['party']}: ${d['amount']} (${d['type']})')
+                  .join('\n')
+              : 'No active debts recorded.';
       _messages.add(
         AssistantMessage(
           isUser: false,
           headline: 'Debts & Loans Summary',
-          text: 'Total Lent: ${res['totalLent']}\nTotal Borrowed: ${res['totalBorrowed']}\nNet Balance: ${res['netDebt']}\n\n$details',
+          text:
+              'Total Lent: ${res['totalLent']}\nTotal Borrowed: ${res['totalBorrowed']}\nNet Balance: ${res['netDebt']}\n\n$details',
           explanation: 'Tracked directly from your Lending & Borrowing ledger.',
         ),
       );
@@ -424,14 +498,18 @@ Respond ONLY with a JSON object in this exact format:
     }
 
     // 5. Balance breakdown
-    if (lower.contains('balance') || lower.contains('how much do i have') || (lower.contains('everyday') && lower.contains('savings'))) {
+    if (lower.contains('balance') ||
+        lower.contains('how much do i have') ||
+        (lower.contains('everyday') && lower.contains('savings'))) {
       final res = await mcpTools.execute('get_balance_summary', {});
       _messages.add(
         AssistantMessage(
           isUser: false,
           headline: 'Account Balances',
-          text: 'Everyday Account: ${res['everydayBalance']}\nSavings Account: ${res['savingsBalance']}\nTotal Net Position: ${res['netPosition']}',
-          explanation: 'Your fixed 2-account structure keeps operational cash and goal reserves separated.',
+          text:
+              'Everyday Account: ${res['everydayBalance']}\nSavings Account: ${res['savingsBalance']}\nTotal Net Position: ${res['netPosition']}',
+          explanation:
+              'Your fixed 2-account structure keeps operational cash and goal reserves separated.',
         ),
       );
       notifyListeners();
@@ -444,16 +522,27 @@ Respond ONLY with a JSON object in this exact format:
         lower.contains('when is my') ||
         lower.contains('when do i work') ||
         lower.contains('my schedule') ||
-        (lower.contains('shifts') && (lower.contains('when') || lower.contains('list') || lower.contains('show') || lower.contains('upcoming')))) {
+        (lower.contains('shifts') &&
+            (lower.contains('when') ||
+                lower.contains('list') ||
+                lower.contains('show') ||
+                lower.contains('upcoming')))) {
       final res = await mcpTools.execute('list_upcoming_shifts', {});
       final shifts = res['shifts'] as List<dynamic>? ?? [];
-      final textShifts = shifts.isNotEmpty
-          ? shifts.map((s) => '• ${s['job']}: ${s['start']} (${s['estimatedEarnings']})').join('\n')
-          : 'You have no upcoming shifts scheduled in your shift planner.';
+      final textShifts =
+          shifts.isNotEmpty
+              ? shifts
+                  .map(
+                    (s) =>
+                        '• ${s['job']}: ${s['start']} (${s['estimatedEarnings']})',
+                  )
+                  .join('\n')
+              : 'You have no upcoming shifts scheduled in your shift planner.';
       _messages.add(
         AssistantMessage(
           isUser: false,
-          headline: shifts.isNotEmpty ? 'Upcoming Shifts' : 'No upcoming shifts',
+          headline:
+              shifts.isNotEmpty ? 'Upcoming Shifts' : 'No upcoming shifts',
           text: textShifts,
           explanation: 'Checked from your shift planner schedule.',
         ),
@@ -463,10 +552,13 @@ Respond ONLY with a JSON object in this exact format:
     }
 
     // 7. Specific category / merchant spending query (e.g. "how much did I spend at Gucci", "spending on groceries")
-    final spendRegex = RegExp(r'\b(spend on|spent on|spent at|spend at|how much.*(?:spent|spend|for))\b');
+    final spendRegex = RegExp(
+      r'\b(spend on|spent on|spent at|spend at|how much.*(?:spent|spend|for))\b',
+    );
     if (spendRegex.hasMatch(lower)) {
       final localAnswer = financeStore.ask(text);
-      if (localAnswer.headline.isNotEmpty && localAnswer.headline != 'Here is where you stand') {
+      if (localAnswer.headline.isNotEmpty &&
+          localAnswer.headline != 'Here is where you stand') {
         _messages.add(
           AssistantMessage(
             isUser: false,
@@ -487,7 +579,9 @@ Respond ONLY with a JSON object in this exact format:
     ).hasMatch(lower);
 
     if (!isFinancialOrAction &&
-        !RegExp(r'\b(hi|hello|hey|namaste|who are you|help|what can you do)\b').hasMatch(lower)) {
+        !RegExp(
+          r'\b(hi|hello|hey|namaste|who are you|help|what can you do)\b',
+        ).hasMatch(lower)) {
       _messages.add(
         AssistantMessage(
           isUser: false,
@@ -506,7 +600,10 @@ Respond ONLY with a JSON object in this exact format:
     }
 
     // 7. Actionable shift and goal commands
-    if (lower.contains('schedule a shift') || lower.contains('schedule shift') || lower.contains('add a shift') || lower.contains('add shift')) {
+    if (lower.contains('schedule a shift') ||
+        lower.contains('schedule shift') ||
+        lower.contains('add a shift') ||
+        lower.contains('add shift')) {
       final job = financeStore.jobs.isNotEmpty ? financeStore.jobs.first : null;
       _messages.add(
         AssistantMessage(
@@ -523,19 +620,26 @@ Respond ONLY with a JSON object in this exact format:
           ),
         ),
       );
-    } else if (lower.contains('emergency fund') || lower.contains('move money') || (lower.contains('save') && lower.contains('goal'))) {
-      final goal = financeStore.goals.isNotEmpty ? financeStore.goals.first : null;
+    } else if (lower.contains('emergency fund') ||
+        lower.contains('move money') ||
+        (lower.contains('save') && lower.contains('goal'))) {
+      final goal =
+          financeStore.goals.isNotEmpty ? financeStore.goals.first : null;
       _messages.add(
         AssistantMessage(
           isUser: false,
-          text: 'I can move money into your goal. Nothing changes until you confirm.',
+          text:
+              'I can move money into your goal. Nothing changes until you confirm.',
           pendingAction: AssistantActionPending(
             kind: AssistantActionKind.moveMoney,
             title: 'Move money',
             amountMinor: 5000,
             goalName: goal?.name ?? 'Emergency fund',
             goalId: goal?.id ?? 1,
-            fromAccountName: financeStore.accounts.isNotEmpty ? financeStore.accounts.first.name : 'Everyday account',
+            fromAccountName:
+                financeStore.accounts.isNotEmpty
+                    ? financeStore.accounts.first.name
+                    : 'Everyday account',
           ),
         ),
       );
@@ -544,55 +648,112 @@ Respond ONLY with a JSON object in this exact format:
       AiChatResult? serverAiResponse;
       try {
         final debts = financeStore.debts.where((d) => !d.isSettled).toList();
-        final debtsSummary = debts.isNotEmpty
-            ? debts.map((d) => '${d.personName}: ${d.type == 'lent' ? 'owes user' : 'user owes'} ${MoneyFormatter.format(d.amountMinor, d.currencyCode)} (${d.note ?? 'no note'})').join(', ')
-            : 'None';
+        final debtsSummary =
+            debts.isNotEmpty
+                ? debts
+                    .map(
+                      (d) =>
+                          '${d.personName}: ${d.type == 'lent' ? 'owes user' : 'user owes'} ${MoneyFormatter.format(d.amountMinor, d.currencyCode)} (${d.note ?? 'no note'})',
+                    )
+                    .join(', ')
+                : 'None';
         final everyday = financeStore.everydayAccount;
         final savings = financeStore.savingsAccount;
-        final evBal = everyday != null ? MoneyFormatter.format(financeStore.snapshot.balanceOf(everyday.id), everyday.currencyCode) : 'N/A';
-        final svBal = savings != null ? MoneyFormatter.format(financeStore.snapshot.balanceOf(savings.id), savings.currencyCode) : 'N/A';
-        final netPos = MoneyFormatter.format(financeStore.snapshot.netWorthMinor, financeStore.baseCurrency);
+        final evBal =
+            everyday != null
+                ? MoneyFormatter.format(
+                  financeStore.snapshot.balanceOf(everyday.id),
+                  everyday.currencyCode,
+                )
+                : 'N/A';
+        final svBal =
+            savings != null
+                ? MoneyFormatter.format(
+                  financeStore.snapshot.balanceOf(savings.id),
+                  savings.currencyCode,
+                )
+                : 'N/A';
+        final netPos = MoneyFormatter.format(
+          financeStore.snapshot.netWorthMinor,
+          financeStore.baseCurrency,
+        );
         final now = DateTime.now();
         final startOfMonth = DateTime(now.year, now.month);
-        final monthTxs = financeStore.transactions.where((t) {
-          final dt = DateTime.fromMillisecondsSinceEpoch(t.occurredAt);
-          return dt.isAfter(startOfMonth) && t.type == 'expense';
-        }).toList();
+        final monthTxs =
+            financeStore.transactions.where((t) {
+              final dt = DateTime.fromMillisecondsSinceEpoch(t.occurredAt);
+              return dt.isAfter(startOfMonth) && t.type == 'expense';
+            }).toList();
         final catSpending = <String, int>{};
         for (final t in monthTxs) {
-          catSpending[t.category] = (catSpending[t.category] ?? 0) + t.amountMinor;
+          catSpending[t.category] =
+              (catSpending[t.category] ?? 0) + t.amountMinor;
         }
-        final catSummary = catSpending.isNotEmpty
-            ? catSpending.entries
-                .map((e) => '${e.key}: ${MoneyFormatter.format(e.value, financeStore.baseCurrency)}')
-                .join(', ')
-            : 'None recorded yet this month';
-        final recentTxSummary = financeStore.transactions.isNotEmpty
-            ? financeStore.transactions.take(15).map((t) {
-                final dt = DateTime.fromMillisecondsSinceEpoch(t.occurredAt);
-                final dateStr = '${dt.month}/${dt.day}';
-                final sign = t.type == 'expense' ? '-' : '+';
-                return '$dateStr: $sign${MoneyFormatter.format(t.amountMinor, financeStore.baseCurrency)} (${t.category}${t.note != null && t.note!.isNotEmpty ? ' - ${t.note}' : ''})';
-              }).join('; ')
-            : 'None';
+        final catSummary =
+            catSpending.isNotEmpty
+                ? catSpending.entries
+                    .map(
+                      (e) =>
+                          '${e.key}: ${MoneyFormatter.format(e.value, financeStore.baseCurrency)}',
+                    )
+                    .join(', ')
+                : 'None recorded yet this month';
+        final recentTxSummary =
+            financeStore.transactions.isNotEmpty
+                ? financeStore.transactions
+                    .take(15)
+                    .map((t) {
+                      final dt = DateTime.fromMillisecondsSinceEpoch(
+                        t.occurredAt,
+                      );
+                      final dateStr = '${dt.month}/${dt.day}';
+                      final sign = t.type == 'expense' ? '-' : '+';
+                      return '$dateStr: $sign${MoneyFormatter.format(t.amountMinor, financeStore.baseCurrency)} (${t.category}${t.note != null && t.note!.isNotEmpty ? ' - ${t.note}' : ''})';
+                    })
+                    .join('; ')
+                : 'None';
 
-        final jobsSummary = financeStore.jobs.isNotEmpty
-            ? financeStore.jobs.map((j) => '${j.name} (Base: ${MoneyFormatter.format(j.hourlyRateMinor, j.currencyCode)}/hr)').join(', ')
-            : 'None';
+        final jobsSummary =
+            financeStore.jobs.isNotEmpty
+                ? financeStore.jobs
+                    .map(
+                      (j) =>
+                          '${j.name} (Base: ${MoneyFormatter.format(j.hourlyRateMinor, j.currencyCode)}/hr)',
+                    )
+                    .join(', ')
+                : 'None';
 
-        final upcomingShifts = financeStore.shifts.where((s) {
-          final st = DateTime.fromMillisecondsSinceEpoch(s.startAt);
-          return st.isAfter(now.subtract(const Duration(hours: 2))) && s.status != 'cancelled';
-        }).take(5).map((s) {
-          final st = DateTime.fromMillisecondsSinceEpoch(s.startAt);
-          final job = financeStore.jobs.where((j) => j.id == s.jobId).firstOrNull;
-          return '${job?.name ?? "Job"}: ${st.month}/${st.day} at ${st.hour}:${st.minute.toString().padLeft(2, "0")}';
-        }).toList();
-        final shiftsSummary = upcomingShifts.isNotEmpty ? upcomingShifts.join('; ') : 'None scheduled';
+        final upcomingShifts =
+            financeStore.shifts
+                .where((s) {
+                  final st = DateTime.fromMillisecondsSinceEpoch(s.startAt);
+                  return st.isAfter(now.subtract(const Duration(hours: 2))) &&
+                      s.status != 'cancelled';
+                })
+                .take(5)
+                .map((s) {
+                  final st = DateTime.fromMillisecondsSinceEpoch(s.startAt);
+                  final job =
+                      financeStore.jobs
+                          .where((j) => j.id == s.jobId)
+                          .firstOrNull;
+                  return '${job?.name ?? "Job"}: ${st.month}/${st.day} at ${st.hour}:${st.minute.toString().padLeft(2, "0")}';
+                })
+                .toList();
+        final shiftsSummary =
+            upcomingShifts.isNotEmpty
+                ? upcomingShifts.join('; ')
+                : 'None scheduled';
 
-        final goalsSummary = financeStore.goals.isNotEmpty
-            ? financeStore.goals.map((g) => '${g.name}: Target ${MoneyFormatter.format(g.targetAmountMinor, g.currencyCode)}').join(', ')
-            : 'None';
+        final goalsSummary =
+            financeStore.goals.isNotEmpty
+                ? financeStore.goals
+                    .map(
+                      (g) =>
+                          '${g.name}: Target ${MoneyFormatter.format(g.targetAmountMinor, g.currencyCode)}',
+                    )
+                    .join(', ')
+                : 'None';
 
         final systemPrompt = '''
 You are Hyprwise, the personal finance, budgeting, and shift management assistant for this user.
@@ -640,7 +801,8 @@ User Financial Snapshot (Live On-Device Ledger):
             final toolResult = await mcpTools.execute(call.name, call.args);
             if (call.name == 'record_transaction') {
               final txId = toolResult['transactionId'] as int?;
-              final msg = toolResult['message'] as String? ?? 'Transaction recorded.';
+              final msg =
+                  toolResult['message'] as String? ?? 'Transaction recorded.';
               _messages.add(
                 AssistantMessage(
                   isUser: false,
@@ -649,11 +811,16 @@ User Financial Snapshot (Live On-Device Ledger):
                   isConfirmed: true,
                   createdTransactionId: txId,
                   confirmedSummary: msg,
-                  suggestions: const ['Undo this transaction', 'Check balances', 'How much did I spend this month?'],
+                  suggestions: const [
+                    'Undo this transaction',
+                    'Check balances',
+                    'How much did I spend this month?',
+                  ],
                 ),
               );
             } else if (call.name == 'allocate_savings_goal') {
-              final msg = toolResult['message'] as String? ?? 'Savings allocated.';
+              final msg =
+                  toolResult['message'] as String? ?? 'Savings allocated.';
               _messages.add(
                 AssistantMessage(
                   isUser: false,
@@ -669,27 +836,41 @@ User Financial Snapshot (Live On-Device Ledger):
                 AssistantMessage(
                   isUser: false,
                   headline: 'Account Balances',
-                  text: 'Everyday Account: ${toolResult['everydayBalance']}\nSavings Account: ${toolResult['savingsBalance']}\nTotal Net Position: ${toolResult['netPosition']}',
+                  text:
+                      'Everyday Account: ${toolResult['everydayBalance']}\nSavings Account: ${toolResult['savingsBalance']}\nTotal Net Position: ${toolResult['netPosition']}',
                   explanation: 'Checked from your live accounts.',
                 ),
               );
             } else if (call.name == 'get_debts_summary') {
               final active = toolResult['activeDebts'] as List<dynamic>? ?? [];
-              final details = active.isNotEmpty
-                  ? active.map((d) => '• ${d['party']}: ${d['amount']} (${d['type']})').join('\n')
-                  : 'No active debts recorded.';
+              final details =
+                  active.isNotEmpty
+                      ? active
+                          .map(
+                            (d) =>
+                                '• ${d['party']}: ${d['amount']} (${d['type']})',
+                          )
+                          .join('\n')
+                      : 'No active debts recorded.';
               _messages.add(
                 AssistantMessage(
                   isUser: false,
                   headline: 'Debts & Loans Summary',
-                  text: 'Total Lent: ${toolResult['totalLent']}\nTotal Borrowed: ${toolResult['totalBorrowed']}\nNet Balance: ${toolResult['netDebt']}\n\n$details',
+                  text:
+                      'Total Lent: ${toolResult['totalLent']}\nTotal Borrowed: ${toolResult['totalBorrowed']}\nNet Balance: ${toolResult['netDebt']}\n\n$details',
                 ),
               );
             } else if (call.name == 'list_upcoming_shifts') {
               final shifts = toolResult['shifts'] as List<dynamic>? ?? [];
-              final shiftLines = shifts.isNotEmpty
-                  ? shifts.map((s) => '• ${s['job']}: ${s['start']} (${s['estimatedEarnings']})').join('\n')
-                  : 'No upcoming shifts scheduled.';
+              final shiftLines =
+                  shifts.isNotEmpty
+                      ? shifts
+                          .map(
+                            (s) =>
+                                '• ${s['job']}: ${s['start']} (${s['estimatedEarnings']})',
+                          )
+                          .join('\n')
+                      : 'No upcoming shifts scheduled.';
               _messages.add(
                 AssistantMessage(
                   isUser: false,
@@ -701,7 +882,7 @@ User Financial Snapshot (Live On-Device Ledger):
               _messages.add(
                 AssistantMessage(
                   isUser: false,
-                  headline: 'Hyprwise Intelligence',
+                  headline: 'Hypr AI',
                   text: serverAiResponse.content ?? 'Action executed.',
                 ),
               );
@@ -711,13 +892,14 @@ User Financial Snapshot (Live On-Device Ledger):
           return;
         }
 
-        if (serverAiResponse.content != null && serverAiResponse.content!.trim().isNotEmpty) {
+        if (serverAiResponse.content != null &&
+            serverAiResponse.content!.trim().isNotEmpty) {
           _messages.add(
             AssistantMessage(
               isUser: false,
               text: serverAiResponse.content!,
-              headline: 'Hyprwise Intelligence',
-              explanation: 'Powered by Hyprwise AI Engine.',
+              headline: 'Hypr AI',
+              explanation: 'Powered by Hypr AI engine.',
             ),
           );
           notifyListeners();
@@ -755,7 +937,8 @@ User Financial Snapshot (Live On-Device Ledger):
     final category = customCategory ?? action.category ?? 'Groceries';
 
     if (action.kind == AssistantActionKind.addExpense) {
-      final accountId = financeStore.accounts.isNotEmpty ? financeStore.accounts.first.id : 1;
+      final accountId =
+          financeStore.accounts.isNotEmpty ? financeStore.accounts.first.id : 1;
       await transactionRepo.add(
         accountId: accountId,
         amountMinor: amountMinor,
@@ -765,26 +948,34 @@ User Financial Snapshot (Live On-Device Ledger):
         occurredAt: DateTime.now(),
       );
       msg.isConfirmed = true;
-      msg.confirmedSummary = 'Done! Recorded ${MoneyFormatter.format(amountMinor, baseCurrency)} for $merchant ($category).';
+      msg.confirmedSummary =
+          'Done! Recorded ${MoneyFormatter.format(amountMinor, baseCurrency)} for $merchant ($category).';
     } else if (action.kind == AssistantActionKind.scheduleShift) {
       final now = DateTime.now();
       await shiftRepo.add(
-        jobId: action.jobId ?? (financeStore.jobs.isNotEmpty ? financeStore.jobs.first.id : 1),
+        jobId:
+            action.jobId ??
+            (financeStore.jobs.isNotEmpty ? financeStore.jobs.first.id : 1),
         startAt: DateTime(now.year, now.month, now.day + 2, 16, 0),
         endAt: DateTime(now.year, now.month, now.day + 2, 22, 0),
         status: ShiftStatus.scheduled,
       );
       msg.isConfirmed = true;
-      msg.confirmedSummary = 'Done! Scheduled ${action.jobName ?? "work"} shift.';
+      msg.confirmedSummary =
+          'Done! Scheduled ${action.jobName ?? "work"} shift.';
     } else if (action.kind == AssistantActionKind.moveMoney) {
-      final goalId = action.goalId ?? (financeStore.goals.isNotEmpty ? financeStore.goals.first.id : 1);
+      final goalId =
+          action.goalId ??
+          (financeStore.goals.isNotEmpty ? financeStore.goals.first.id : 1);
       await goalRepo.addContribution(
         goalId: goalId,
         amountMinor: amountMinor,
-        note: 'Transferred from ${action.fromAccountName ?? "Everyday account"}',
+        note:
+            'Transferred from ${action.fromAccountName ?? "Everyday account"}',
       );
       msg.isConfirmed = true;
-      msg.confirmedSummary = 'Done! Moved ${MoneyFormatter.format(amountMinor, baseCurrency)} into ${action.goalName ?? "goal"}.';
+      msg.confirmedSummary =
+          'Done! Moved ${MoneyFormatter.format(amountMinor, baseCurrency)} into ${action.goalName ?? "goal"}.';
     }
 
     notifyListeners();

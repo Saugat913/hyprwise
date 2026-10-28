@@ -11,6 +11,8 @@ void main() {
       currencyCode: 'AUD',
       colorIndex: 0,
       isActive: true,
+      defaultBreakMinutes: 0,
+      longShiftAlertMinutes: 360,
       createdAt: 0,
       updatedAt: 0,
     );

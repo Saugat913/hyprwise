@@ -21,7 +21,7 @@ abstract final class AppPalette {
   static const darkFill = Color(0xFF232326);
 
   // Hero card (the sleek neutral deep surface with subtle depth)
-  static const lightHero = Color(0xFF121816);
+  static const lightHero = Color(0xFF141417);
   static const darkHero = Color(0xFF18181C);
 
   // Brand Primary & Accent (Official Hyprwise Orange #FF6500)

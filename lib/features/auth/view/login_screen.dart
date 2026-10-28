@@ -87,6 +87,9 @@ class LoginScreen extends StatelessWidget {
                     listenable: authService,
                     builder: (context, _) {
                       final loading = authService.isLoading;
+                      final targetPlatform = Theme.of(context).platform;
+                      final showAppleSignIn = targetPlatform == TargetPlatform.iOS ||
+                          targetPlatform == TargetPlatform.macOS;
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -96,7 +99,7 @@ class LoginScreen extends StatelessWidget {
                             height: AppSize.button,
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
-                                backgroundColor: isDark ? const Color(0xFF1E2422) : Colors.white,
+                                backgroundColor: isDark ? const Color(0xFF18181B) : Colors.white,
                                 foregroundColor: scheme.onSurface,
                                 side: BorderSide(color: scheme.outlineVariant, width: 1.2),
                                 shape: RoundedRectangleBorder(
@@ -126,46 +129,48 @@ class LoginScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(height: AppSpace.md),
+                          if (showAppleSignIn) ...[
+                            const SizedBox(height: AppSpace.md),
 
-                          // Apple Sign In Button
-                          SizedBox(
-                            height: AppSize.button,
-                            child: FilledButton(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: isDark ? Colors.white : Colors.black,
-                                foregroundColor: isDark ? Colors.black : Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                                ),
-                                elevation: 0,
-                              ),
-                              onPressed: loading
-                                  ? null
-                                  : () async {
-                                      await authService.signInWithApple();
-                                      onAuthSuccess();
-                                    },
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.apple,
-                                    size: 22,
-                                    color: isDark ? Colors.black : Colors.white,
+                            // Apple Sign In Button (iOS / macOS only)
+                            SizedBox(
+                              height: AppSize.button,
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: isDark ? Colors.white : Colors.black,
+                                  foregroundColor: isDark ? Colors.black : Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
                                   ),
-                                  const SizedBox(width: AppSpace.xs),
-                                  Text(
-                                    tr.continueWithApple,
-                                    style: text.titleSmall?.copyWith(
-                                      fontWeight: FontWeight.w600,
+                                  elevation: 0,
+                                ),
+                                onPressed: loading
+                                    ? null
+                                    : () async {
+                                        await authService.signInWithApple();
+                                        onAuthSuccess();
+                                      },
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.apple,
+                                      size: 22,
                                       color: isDark ? Colors.black : Colors.white,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: AppSpace.xs),
+                                    Text(
+                                      tr.continueWithApple,
+                                      style: text.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? Colors.black : Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                           const SizedBox(height: AppSpace.lg),
 
                           // Divider "or"

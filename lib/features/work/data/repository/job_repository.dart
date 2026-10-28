@@ -18,6 +18,8 @@ class JobRepository {
     required String currencyCode,
     String? employer,
     int colorIndex = 0,
+    int defaultBreakMinutes = 0,
+    int longShiftAlertMinutes = 360,
   }) {
     _validate(name, hourlyRateMinor);
     return _db
@@ -29,6 +31,8 @@ class JobRepository {
             hourlyRateMinor: hourlyRateMinor,
             currencyCode: currencyCode.toUpperCase(),
             colorIndex: Value(colorIndex),
+            defaultBreakMinutes: Value(defaultBreakMinutes),
+            longShiftAlertMinutes: Value(longShiftAlertMinutes),
             createdAt: nowMs(),
             updatedAt: nowMs(),
           ),
@@ -42,6 +46,8 @@ class JobRepository {
     required String currencyCode,
     String? employer,
     int colorIndex = 0,
+    int? defaultBreakMinutes,
+    int? longShiftAlertMinutes,
   }) async {
     _validate(name, hourlyRateMinor);
     await (_db.update(_db.jobs)..where((j) => j.id.equals(id))).write(
@@ -51,6 +57,8 @@ class JobRepository {
         hourlyRateMinor: Value(hourlyRateMinor),
         currencyCode: Value(currencyCode.toUpperCase()),
         colorIndex: Value(colorIndex),
+        defaultBreakMinutes: defaultBreakMinutes != null ? Value(defaultBreakMinutes) : const Value.absent(),
+        longShiftAlertMinutes: longShiftAlertMinutes != null ? Value(longShiftAlertMinutes) : const Value.absent(),
         updatedAt: Value(nowMs()),
       ),
     );

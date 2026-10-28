@@ -28,7 +28,7 @@ abstract final class AppTheme {
       textTheme: text,
       scaffoldBackgroundColor: scheme.brightness == Brightness.light
           ? const Color(0xFFF6F6F6)
-          : const Color(0xFF0D110F),
+          : const Color(0xFF0F0F11),
       extensions: [colors],
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,

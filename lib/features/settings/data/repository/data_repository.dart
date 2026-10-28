@@ -15,6 +15,7 @@ class DataRepository {
     await _db.transaction(() async {
       await _db.delete(_db.goalContributions).go();
       await _db.delete(_db.goals).go();
+      await _db.delete(_db.shiftBreaks).go();
       await _db.delete(_db.shifts).go();
       await _db.delete(_db.jobs).go();
       await _db.delete(_db.recurringRules).go();
@@ -39,6 +40,8 @@ class DataRepository {
     final contributions = await _db.select(_db.goalContributions).get();
     final debts = await _db.select(_db.debts).get();
     final rates = await _db.select(_db.exchangeRates).get();
+    final shiftBreaks = await _db.select(_db.shiftBreaks).get();
+    final reminderRules = await _db.select(_db.reminderRules).get();
 
     final payload = {
       'version': 1,
@@ -53,6 +56,8 @@ class DataRepository {
       'goalContributions': contributions.map((e) => e.toJson()).toList(),
       'debts': debts.map((e) => e.toJson()).toList(),
       'exchangeRates': rates.map((e) => e.toJson()).toList(),
+      'shiftBreaks': shiftBreaks.map((e) => e.toJson()).toList(),
+      'reminderRules': reminderRules.map((e) => e.toJson()).toList(),
     };
 
     TelemetryService.instance.trackEvent('data_exported', {
@@ -171,7 +176,11 @@ class DataRepository {
       if (data['jobs'] is List) {
         for (final item in data['jobs']) {
           await _db.into(_db.jobs).insert(
-            Job.fromJson(item as Map<String, dynamic>),
+            Job.fromJson({
+              'defaultBreakMinutes': 0,
+              'longShiftAlertMinutes': 360,
+              ...(item as Map<String, dynamic>),
+            }),
           );
         }
       }
@@ -180,6 +189,23 @@ class DataRepository {
         for (final item in data['shifts']) {
           await _db.into(_db.shifts).insert(
             Shift.fromJson(item as Map<String, dynamic>),
+          );
+        }
+      }
+
+      if (data['shiftBreaks'] is List) {
+        for (final item in data['shiftBreaks']) {
+          await _db.into(_db.shiftBreaks).insert(
+            ShiftBreak.fromJson(item as Map<String, dynamic>),
+          );
+        }
+      }
+
+      if (data['reminderRules'] is List) {
+        await _db.delete(_db.reminderRules).go();
+        for (final item in data['reminderRules']) {
+          await _db.into(_db.reminderRules).insert(
+            ReminderRule.fromJson(item as Map<String, dynamic>),
           );
         }
       }

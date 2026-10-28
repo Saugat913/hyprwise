@@ -150,8 +150,8 @@ Future<void> showProUpgradeSheet(
                 child: Column(
                   children: [
                     _PerkRow(
-                      icon: HugeIcons.strokeRoundedSparkles,
-                      label: 'Unlimited AI financial insights & shift advice',
+                      icon: HugeIcons.strokeRoundedChatBot,
+                      label: 'Unlimited Hypr AI financial insights & shift advice',
                       isHighlight: featureHighlight == 'ai',
                     ),
                     const SizedBox(height: AppSpace.sm),

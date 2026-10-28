@@ -163,7 +163,9 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
 
               // Explanation Message
               Text(
-                'Please sign in with Google or Apple to link your current transactions, shifts, and budgets to your account and activate your Hyprwise Pro subscription.',
+                (!kIsWeb && Platform.isIOS)
+                    ? 'Please sign in with Google or Apple to link your current transactions, shifts, and budgets to your account and activate your Hyprwise Pro subscription.'
+                    : 'Please sign in with Google to link your current transactions, shifts, and budgets to your account and activate your Hyprwise Pro subscription.',
                 textAlign: TextAlign.center,
                 style: text.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
@@ -176,7 +178,7 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
               Container(
                 padding: const EdgeInsets.all(AppSpace.md),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF131A17) : const Color(0xFFFFF0E6),
+                  color: isDark ? const Color(0xFF2E1303) : const Color(0xFFFFF0E6),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(
                     color: brandOrange.withValues(alpha: 0.2),

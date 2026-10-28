@@ -17,6 +17,7 @@ import 'package:finance_tracker/features/plan/data/repository/goal_repository.da
 import 'package:finance_tracker/features/plan/viewmodels/plan_view_model.dart';
 import 'package:finance_tracker/features/settings/data/repository/data_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/exchange_rate_repository.dart';
+import 'package:finance_tracker/features/settings/data/repository/reminder_rule_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/settings/viewmodels/settings_view_model.dart';
 import 'package:finance_tracker/features/shared/data/category_repository.dart';
@@ -48,6 +49,7 @@ Future<void> configureDependencies() async {
   final dataRepo = DataRepository(db);
   final debtRepo = DebtRepository(db);
   final categoryRepo = CategoryRepository(db);
+  final reminderRuleRepo = ReminderRuleRepository(db);
 
   await settingsRepo.load();
   await categoryRepo.load();
@@ -70,6 +72,7 @@ Future<void> configureDependencies() async {
     ..registerSingleton<DataRepository>(dataRepo)
     ..registerSingleton<DebtRepository>(debtRepo)
     ..registerSingleton<CategoryRepository>(categoryRepo)
+    ..registerSingleton<ReminderRuleRepository>(reminderRuleRepo)
     ..registerSingleton<AuthService>(authService)
     ..registerSingleton<SubscriptionService>(subscriptionService);
 
@@ -145,6 +148,7 @@ Future<void> configureDependencies() async {
       () => AlertsViewModel(
         financeStore: getIt<FinanceStore>(),
         settingsRepo: getIt<SettingsRepository>(),
+        reminderRuleRepo: getIt<ReminderRuleRepository>(),
       ),
     )
     ..registerLazySingleton<AssistantViewModel>(

@@ -381,8 +381,8 @@ class AppStrings {
   String get appearance => _t('Appearance', ne: 'रुपरेखा', es: 'Apariencia', fr: 'Apparence', de: 'Erscheinungsbild', ja: '外観', zh: '外观');
   String get theme => _t('Theme', ne: 'थिम', es: 'Tema', fr: 'Thème', de: 'Design', ja: 'テーマ', zh: '主题');
   String get language => _t('Language', ne: 'भाषा', es: 'Idioma', fr: 'Langue', de: 'Sprache', ja: '言語', zh: '语言');
-  String get aiAssistant => _t('AI Assistant', ne: 'एआई सहायक', es: 'Asistente IA', fr: 'Assistant IA', de: 'KI-Assistent', ja: 'AIアシスタント', zh: 'AI助手');
-  String get askAiAssistant => _t('Ask AI Assistant', ne: 'एआई सल्लाहकारसँग सोध्नुहोस्', es: 'Preguntar al Asistente IA', fr: 'Demander à l\'Assistant IA', de: 'KI-Assistent fragen', ja: 'AIアシスタントに質問', zh: '询问AI助手');
+  String get aiAssistant => _t('Hypr AI', ne: 'Hypr AI', es: 'Hypr AI', fr: 'Hypr AI', de: 'Hypr AI', ja: 'Hypr AI', zh: 'Hypr AI', it: 'Hypr AI');
+  String get askAiAssistant => _t('Ask Hypr AI', ne: 'Hypr AI सँग सोध्नुहोस्', es: 'Preguntar a Hypr AI', fr: 'Demander à Hypr AI', de: 'Hypr AI fragen', ja: 'Hypr AIに質問', zh: '询问 Hypr AI', it: 'Chiedi a Hypr AI');
   String get dataAndBackup => _t('Data & Backup', ne: 'डाटा र ब्याकअप', es: 'Datos y Copia', fr: 'Données et Sauvegarde', de: 'Daten & Backup', ja: 'データとバックアップ', zh: '数据与备份');
   String get backupExportRestore => _t('Backup, Export & Restore', ne: 'ब्याकअप, निर्यात र पुनर्स्थापना', es: 'Copia, Exportar y Restaurar', fr: 'Sauvegarde, Export et Restauration', de: 'Sichern, Exportieren & Wiederherstellen', ja: 'バックアップ・エクスポート・復元', zh: '备份、导出与恢复');
   String get dangerZone => _t('Danger zone', ne: 'खतरा क्षेत्र', es: 'Zona de peligro', fr: 'Zone de danger', de: 'Gefahrenzone', ja: '危険ゾーン', zh: '危险区域');
@@ -691,10 +691,10 @@ class AppStrings {
   String get opensCameraToScan => _t('Opens camera to scan invoice or receipt', ne: 'सिधै क्यामेरा खोलेर स्क्यान गर्नुहोस्', es: 'Abre la cámara para escanear', fr: 'Ouvre l\'appareil photo pour numériser', de: 'Kamera zum Scannen öffnen', ja: 'カメラを起動して請求書や領収書をスキャン', zh: '启动相机拍照识别消费发票', it: 'Apre la fotocamera per scansionare la fattura');
   String get uploadFromLibrary => _t('Upload from photo library', ne: 'ग्यालेरीबाट छान्नुहोस्', es: 'Subir desde la galería', fr: 'Téléverser depuis la galerie', de: 'Aus Mediathek hochladen', ja: 'アルバムから画像を選択', zh: '从手机相册上传', it: 'Carica dalla galleria');
   String get chooseExistingBill => _t('Choose existing bill or screenshot', ne: 'पहिले नै खिचिएको बिल वा रसिद', es: 'Elegir factura existente o captura', fr: 'Choisir une photo existante ou capture', de: 'Vorhandene Rechnung oder Screenshot wählen', ja: '保存済みの領収書やスクリーンショットを選択', zh: '选择相册中的账单照片或账目截图', it: 'Scegli fattura o screenshot esistente');
-  String get assistantTitle => _t('Assistant', ne: 'एआई वित्तीय सहायक', es: 'Asistente', fr: 'Assistant', de: 'Assistent', ja: 'AIアシスタント', zh: '财务助理', it: 'Assistente');
+  String get assistantTitle => _t('Hypr AI', ne: 'Hypr AI', es: 'Hypr AI', fr: 'Hypr AI', de: 'Hypr AI', ja: 'Hypr AI', zh: 'Hypr AI', it: 'Hypr AI');
   String get unlimitedAiPro => _t('Hyprwise Pro · Unlimited AI', ne: 'हाइपरवाइज प्रो · असीमित एआई', es: 'Hyprwise Pro · IA ilimitada', fr: 'Hyprwise Pro · IA illimitée', de: 'Hyprwise Pro · Unbegrenzte KI', ja: 'Hyprwise Pro · AI無制限利用', zh: 'Hyprwise Pro · 无限次智能分析', it: 'Hyprwise Pro · IA illimitata');
   String get asksBeforeChanges => _t('Asks before it changes anything', ne: 'कुनै परिवर्तन गर्नु अघि पुष्टि माग्छ', es: 'Pide confirmación antes de cambiar nada', fr: 'Demande confirmation avant toute modification', de: 'Fragt vor jeder Änderung nach', ja: '変更前に必ず確認を求めます', zh: '执行任何账目更改前均需您确认', it: 'Chiede conferma prima di qualsiasi modifica');
-  String get unlimitedAiAssistantTitle => _t('Unlimited AI Assistant', ne: 'असीमित एआई वित्तीय सहायक', es: 'Asistente IA ilimitado', fr: 'Assistant IA illimité', de: 'Unbegrenzter KI-Assistent', ja: '無制限AIアシスタント', zh: '无限次AI财务助手', it: 'Assistente IA illimitato');
+  String get unlimitedAiAssistantTitle => _t('Unlimited Hypr AI', ne: 'असीमित Hypr AI', es: 'Hypr AI ilimitado', fr: 'Hypr AI illimité', de: 'Unbegrenzte Hypr AI', ja: '無制限Hypr AI', zh: '无限次 Hypr AI', it: 'Hypr AI illimitato');
   String get whatCanIDoForYou => _t('What can I do for you?', ne: 'म तपाईंलाई कसरी सहयोग गर्न सक्छु?', es: '¿En qué puedo ayudarte?', fr: 'Que puis-je faire pour vous ?', de: 'Wie kann ich Ihnen helfen?', ja: '何かお手伝いできることはありますか？', zh: '今天有什么我可以帮您的？', it: 'Cosa posso fare per te?');
   String get doSection => _t('Do', ne: 'कार्यहरू (Do)', es: 'Hacer', fr: 'Faire', de: 'Aktionen', ja: '実行する (Do)', zh: '快速记账 (Do)', it: 'Fai');
   String get askSection => _t('Ask', ne: 'जिज्ञासा (Ask)', es: 'Preguntar', fr: 'Demander', de: 'Fragen', ja: '質問する (Ask)', zh: '财务咨询 (Ask)', it: 'Chiedi');
@@ -795,6 +795,110 @@ class AppStrings {
   String get addAccount => _t('Add Account', ne: 'खाता थप्नुहोस्', es: 'Añadir Cuenta', fr: 'Ajouter un compte', de: 'Konto hinzufügen', ja: '口座を追加', zh: '添加账户', it: 'Aggiungi conto');
   String get addTransaction => _t('Add Transaction', ne: 'कारोबार थप्नुहोस्', es: 'Añadir Transacción', fr: 'Ajouter une transaction', de: 'Transaktion hinzufügen', ja: '取引を追加', zh: '记一笔', it: 'Aggiungi transazione');
   String get moveMoneyToGoal => _t('Move money to a goal', ne: 'लक्ष्यमा रकम सार्नुहोस्', es: 'Mover dinero a una meta', fr: 'Transférer vers un objectif', de: 'Geld auf ein Ziel überweisen', ja: '目標に資金を移動', zh: '向目标存入资金', it: 'Sposta denaro su un obiettivo');
+
+  // Analytics tabs
+  String get analyticsTabOverview => _t('Overview', ne: 'सारांश', es: 'Resumen', fr: 'Aperçu', de: 'Übersicht', ja: '概要', zh: '概览', it: 'Panoramica');
+  String get analyticsTabExpenses => _t('Expenses', ne: 'खर्चहरू', es: 'Gastos', fr: 'Dépenses', de: 'Ausgaben', ja: '支出', zh: '支出', it: 'Spese');
+  String get analyticsTabLend => _t('Lend', ne: 'सापटी दिएको', es: 'Prestado', fr: 'Prêts', de: 'Verleihen', ja: '貸出', zh: '借出', it: 'Prestiti');
+  String get analyticsTabBorrow => _t('Borrow', ne: 'सापटी लिएको', es: 'Pedido', fr: 'Emprunts', de: 'Borgen', ja: '借入', zh: '借入', it: 'Debiti');
+  String get analyticsTabShiftsWork => _t('Shifts & Work', ne: 'सिफ्ट र काम', es: 'Turnos y trabajo', fr: 'Quarts et travail', de: 'Schichten & Arbeit', ja: 'シフトと勤務', zh: '排班与工作', it: 'Turni e lavoro');
+  String get analyticsTrend => _t('Trend', ne: 'प्रवृत्ति', es: 'Tendencia', fr: 'Tendance', de: 'Verlauf', ja: '推移', zh: '趋势', it: 'Andamento');
+  String get analyticsByCategory => _t('By category', ne: 'श्रेणी अनुसार', es: 'Por categoría', fr: 'Par catégorie', de: 'Nach Kategorie', ja: 'カテゴリ別', zh: '按类别', it: 'Per categoria');
+  String get analyticsByPerson => _t('By person', ne: 'व्यक्ति अनुसार', es: 'Por persona', fr: 'Par personne', de: 'Nach Person', ja: '相手別', zh: '按对象', it: 'Per persona');
+  String get analyticsTopItems => _t('Top items', ne: 'शीर्ष वस्तुहरू', es: 'Principales', fr: 'Principaux', de: 'Top-Einträge', ja: '上位項目', zh: '热门项目', it: 'Principali');
+  String get analyticsTotal => _t('Total', ne: 'जम्मा', es: 'Total', fr: 'Total', de: 'Gesamt', ja: '合計', zh: '总计', it: 'Totale');
+  String get analyticsAverage => _t('Average', ne: 'औसत', es: 'Promedio', fr: 'Moyenne', de: 'Durchschnitt', ja: '平均', zh: '平均', it: 'Media');
+  String get analyticsTransactionsCount => _t('Transactions', ne: 'कारोबार', es: 'Transacciones', fr: 'Transactions', de: 'Transaktionen', ja: '取引数', zh: '交易数', it: 'Transazioni');
+  String get analyticsEntriesCount => _t('Entries', ne: 'प्रविष्टि', es: 'Registros', fr: 'Entrées', de: 'Einträge', ja: '件数', zh: '条目', it: 'Voci');
+  String get analyticsOutstanding => _t('Outstanding', ne: 'बाँकी', es: 'Pendiente', fr: 'En cours', de: 'Offen', ja: '未精算', zh: '未结清', it: 'In sospeso');
+  String get analyticsSettled => _t('Settled', ne: 'फर्छ्यौट', es: 'Saldado', fr: 'Réglé', de: 'Beglichen', ja: '精算済み', zh: '已结清', it: 'Saldato');
+  String get analyticsNoEntriesInPeriod => _t('Nothing recorded in this period', ne: 'यो अवधिमा केही दर्ता छैन', es: 'Nada registrado en este periodo', fr: 'Rien d\'enregistré sur cette période', de: 'Nichts in diesem Zeitraum erfasst', ja: 'この期間の記録はありません', zh: '此期间暂无记录', it: 'Nessun dato in questo periodo');
+  String get analyticsNoShiftsInPeriod => _t('No completed shifts in this period', ne: 'यो अवधिमा सम्पन्न सिफ्ट छैन', es: 'Sin turnos completados en este periodo', fr: 'Aucun quart terminé sur cette période', de: 'Keine abgeschlossenen Schichten in diesem Zeitraum', ja: 'この期間に完了したシフトはありません', zh: '此期间没有已完成的班次', it: 'Nessun turno completato in questo periodo');
+  String get analyticsTotalHours => _t('Total hours', ne: 'कुल घण्टा', es: 'Horas totales', fr: 'Heures totales', de: 'Gesamtstunden', ja: '合計時間', zh: '总工时', it: 'Ore totali');
+  String get analyticsEarnings => _t('Earnings', ne: 'कमाइ', es: 'Ganancias', fr: 'Revenus', de: 'Verdienst', ja: '収入額', zh: '收入', it: 'Guadagni');
+  String get analyticsOvertimeHours => _t('Overtime hours', ne: 'ओभरटाइम घण्टा', es: 'Horas extras', fr: 'Heures sup', de: 'Überstunden', ja: '残業時間', zh: '加班时长', it: 'Ore di straordinario');
+  String get analyticsBreakTime => _t('Break time', ne: 'विश्राम समय', es: 'Tiempo de descanso', fr: 'Temps de pause', de: 'Pausenzeit', ja: '休憩時間', zh: '休息时间', it: 'Tempo di pausa');
+  String get analyticsAvgShiftLength => _t('Avg shift length', ne: 'औसत सिफ्ट अवधि', es: 'Duración media del turno', fr: 'Durée moyenne du quart', de: 'Ø Schichtlänge', ja: '平均シフト時間', zh: '平均班次时长', it: 'Durata media turno');
+  String get analyticsShiftsCount => _t('Shifts', ne: 'सिफ्टहरू', es: 'Turnos', fr: 'Quarts', de: 'Schichten', ja: 'シフト数', zh: '班次', it: 'Turni');
+  String get analyticsEarningsByJob => _t('Earnings by job', ne: 'जागिर अनुसार कमाइ', es: 'Ganancias por empleo', fr: 'Revenus par emploi', de: 'Verdienst pro Job', ja: '仕事別の収入', zh: '按工作统计收入', it: 'Guadagni per lavoro');
+  String get analyticsWeeklyBreakdown => _t('Weekly breakdown', ne: 'साप्ताहिक विवरण', es: 'Desglose semanal', fr: 'Détail hebdomadaire', de: 'Wochenübersicht', ja: '週別内訳', zh: '每周明细', it: 'Dettaglio settimanale');
+  String get analyticsHoursChip => _t('Hours', ne: 'घण्टा', es: 'Horas', fr: 'Heures', de: 'Stunden', ja: '時間', zh: '工时', it: 'Ore');
+  String get hourAbbr => _t('h', ne: 'घ', es: 'h', fr: 'h', de: 'Std', ja: '時間', zh: '小时', it: 'h');
+  String get minuteAbbr => _t('m', ne: 'मि', es: 'min', fr: 'min', de: 'Min', ja: '分', zh: '分钟', it: 'min');
+
+  // Hypr AI & home insight widgets
+  String get hyprAi => _t('Hypr AI', ne: 'Hypr AI', es: 'Hypr AI', fr: 'Hypr AI', de: 'Hypr AI', ja: 'Hypr AI', zh: 'Hypr AI', it: 'Hypr AI');
+  String get thisWeekTitle => _t('This week', ne: 'यो हप्ता', es: 'Esta semana', fr: 'Cette semaine', de: 'Diese Woche', ja: '今週', zh: '本周', it: 'Questa settimana');
+  String get incomeVsSpend => _t('Income vs spend', ne: 'आम्दानी बनाम खर्च', es: 'Ingresos vs gastos', fr: 'Revenus vs dépenses', de: 'Einnahmen vs. Ausgaben', ja: '収入と支出', zh: '收入与支出', it: 'Entrate vs spese');
+  String get savingsRateTitle => _t('Savings rate', ne: 'बचत दर', es: 'Tasa de ahorro', fr: 'Taux d\'épargne', de: 'Sparquote', ja: '貯蓄率', zh: '储蓄率', it: 'Tasso di risparmio');
+  String get ofIncomeKept => _t('of income kept this month', ne: 'यो महिना आम्दानीबाट जोगाइएको', es: 'del ingreso ahorrado este mes', fr: 'du revenu conservé ce mois-ci', de: 'des Einkommens diesen Monat gespart', ja: '今月の収入のうち残した割合', zh: '本月收入结余比例', it: 'del reddito risparmiato questo mese');
+  String get topSpendingTitle => _t('Top spending', ne: 'सबैभन्दा बढी खर्च', es: 'Mayor gasto', fr: 'Plus grosse dépense', de: 'Höchste Ausgaben', ja: '最大の支出', zh: '最大支出', it: 'Spesa maggiore');
+  String get noSpendingYet => _t('No spending yet this month', ne: 'यो महिना अहिलेसम्म खर्च छैन', es: 'Aún sin gastos este mes', fr: 'Aucune dépense ce mois-ci', de: 'Diesen Monat noch keine Ausgaben', ja: '今月の支出はまだありません', zh: '本月暂无支出', it: 'Nessuna spesa questo mese');
+  String get billsDueSoonTitle => _t('Bills due soon', ne: 'छिट्टै तिर्नुपर्ने बिल', es: 'Facturas próximas', fr: 'Factures à venir', de: 'Bald fällige Rechnungen', ja: 'まもなく支払い期日', zh: '即将到期账单', it: 'Bollette in scadenza');
+  String get noBillsDueSoon => _t('Nothing due in the next 7 days', ne: 'आगामी ७ दिनमा केही बाँकी छैन', es: 'Nada vence en 7 días', fr: 'Rien à payer sous 7 jours', de: 'Nichts fällig in 7 Tagen', ja: '7日以内の支払いはありません', zh: '未来7天无到期项目', it: 'Niente in scadenza nei prossimi 7 giorni');
+  String get spendingBreakdown => _t('Spending breakdown', ne: 'खर्चको विवरण', es: 'Desglose de gastos', fr: 'Répartition des dépenses', de: 'Ausgabenaufteilung', ja: '支出の内訳', zh: '支出明细', it: 'Ripartizione delle spese');
+  String get last7Days => _t('Last 7 days', ne: 'पछिल्लो ७ दिन', es: 'Últimos 7 días', fr: '7 derniers jours', de: 'Letzte 7 Tage', ja: '過去7日間', zh: '最近7天', it: 'Ultimi 7 giorni');
+  String get askHyprAiHint => _t('Ask Hypr AI', ne: 'Hypr AI सँग सोध्नुहोस्', es: 'Pregunta a Hypr AI', fr: 'Demander à Hypr AI', de: 'Hypr AI fragen', ja: 'Hypr AIに質問', zh: '询问 Hypr AI', it: 'Chiedi a Hypr AI');
+  String get otherCategory => _t('Other', ne: 'अन्य', es: 'Otros', fr: 'Autres', de: 'Sonstige', ja: 'その他', zh: '其他', it: 'Altro');
+
+  // Reminder ruleset & planner strings
+  String get shiftLabel => _t('Shift', ne: 'सिफ्ट', es: 'Turno', fr: 'Quart', de: 'Schicht', ja: 'シフト', zh: '班次', it: 'Turno');
+  String reminderShiftTitle(String job) => _t('Upcoming shift · $job', ne: 'आगामी सिफ्ट · $job', es: 'Próximo turno · $job', fr: 'Quart à venir · $job', de: 'Kommende Schicht · $job', ja: '次のシフト · $job', zh: '即将开始的班次 · $job', it: 'Prossimo turno · $job');
+  String reminderShiftBody(String offset, String time) => _t('$offset (starts at $time)', ne: '$offset ($time मा सुरु)', es: '$offset (empieza a las $time)', fr: '$offset (début à $time)', de: '$offset (Beginn um $time)', ja: '$offset ($time 開始)', zh: '$offset ($time 开始)', it: '$offset (inizia alle $time)');
+  String reminderOffsetLabel(int minutes) {
+    if (minutes <= 0) {
+      return _t('Starting now', ne: 'अहिले सुरु हुँदैछ', es: 'Empieza ahora', fr: 'Commence maintenant', de: 'Beginnt jetzt', ja: 'まもなく開始', zh: '现在开始', it: 'Inizia ora');
+    }
+    if (minutes % 1440 == 0) {
+      final d = minutes ~/ 1440;
+      return _t('${d}d before', ne: '$d दिन अघि', es: '${d}d antes', fr: '${d}j avant', de: '${d}T vorher', ja: '$d日前', zh: '提前$d天', it: '${d}g prima');
+    }
+    if (minutes % 60 == 0) {
+      final h = minutes ~/ 60;
+      return _t('${h}h before', ne: '$h घण्टा अघि', es: '${h}h antes', fr: '${h}h avant', de: '${h}h vorher', ja: '$h時間前', zh: '提前$h小时', it: '${h}h prima');
+    }
+    return _t('${minutes}m before', ne: '$minutes मिनेट अघि', es: '${minutes}min antes', fr: '${minutes}min avant', de: '${minutes}Min vorher', ja: '$minutes分前', zh: '提前$minutes分钟', it: '${minutes}min prima');
+  }
+  String reminderBillTitle(String name) => _t('Bill reminder · $name', ne: 'बिल रिमाइन्डर · $name', es: 'Recordatorio de factura · $name', fr: 'Rappel de facture · $name', de: 'Rechnungserinnerung · $name', ja: '請求リマインダー · $name', zh: '账单提醒 · $name', it: 'Promemoria bolletta · $name');
+  String reminderDebtTitle(String person) => _t('Settlement due · $person', ne: 'भुक्तानी मिति · $person', es: 'Vencimiento · $person', fr: 'Échéance · $person', de: 'Fälligkeit · $person', ja: '精算期日 · $person', zh: '借贷到期 · $person', it: 'Scadenza · $person');
+  String reminderDueBody(String amount, String date) => _t('$amount due on $date', ne: '$date मा $amount तिर्नुपर्ने', es: '$amount vence el $date', fr: '$amount dû le $date', de: '$amount fällig am $date', ja: '$date に $amount 期日', zh: '$date 到期 $amount', it: '$amount in scadenza il $date');
+  String get reminderCustomDefault => _t('Hyprwise Reminder', ne: 'हाइपरवाइज रिमाइन्डर', es: 'Recordatorio Hyprwise', fr: 'Rappel Hyprwise', de: 'Hyprwise-Erinnerung', ja: 'Hyprwise リマインダー', zh: 'Hyprwise 提醒', it: 'Promemoria Hyprwise');
+  String get reminderCustomBody => _t('Tap to review your finances and schedule.', ne: 'आफ्नो हरहिसाब र तालिका हेर्न ट्याप गर्नुहोस्।', es: 'Toca para revisar tus finanzas y horario.', fr: 'Appuyez pour vérifier vos finances et votre planning.', de: 'Tippen Sie, um Finanzen und Schichtplan zu prüfen.', ja: 'タップして収支とシフトを確認しましょう。', zh: '点击查看您的财务与排班安排。', it: 'Tocca per controllare finanze e turni.');
+  String get reminderRulesSection => _t('Reminder Ruleset', ne: 'रिमाइन्डर नियमहरू', es: 'Reglas de recordatorio', fr: 'Règles de rappel', de: 'Erinnerungsregeln', ja: 'リマインダールール', zh: '提醒规则集', it: 'Regole di promemoria');
+  String get reminderRulesSubtitle => _t('Create flexible rules for shifts, bills, debts, or custom check-ins.', ne: 'सिफ्ट, बिल, सापटी वा कस्टम रिमाइन्डरका लागि लचिलो नियम बनाउनुहोस्।', es: 'Crea reglas flexibles para turnos, facturas, deudas o avisos.', fr: 'Créez des règles flexibles pour quarts, factures, dettes ou rappels.', de: 'Erstellen Sie flexible Regeln für Schichten, Rechnungen, Schulden oder eigene Erinnerungen.', ja: 'シフト・請求・貸借・カスタム通知の柔軟なルールを設定できます。', zh: '为排班、账单、借贷或自定义事项创建灵活提醒规则。', it: 'Crea regole flessibili per turni, bollette, debiti o promemoria.');
+  String get addReminderRule => _t('Add Reminder Rule', ne: 'नयाँ नियम थप्नुहोस्', es: 'Añadir regla', fr: 'Ajouter une règle', de: 'Regel hinzufügen', ja: 'ルールを追加', zh: '添加提醒规则', it: 'Aggiungi regola');
+  String get editReminderRule => _t('Edit Reminder Rule', ne: 'नियम सम्पादन गर्नुहोस्', es: 'Editar regla', fr: 'Modifier la règle', de: 'Regel bearbeiten', ja: 'ルールを編集', zh: '编辑提醒规则', it: 'Modifica regola');
+  String get reminderTypeLabel => _t('Rule Type', ne: 'रिमाइन्डर प्रकार', es: 'Tipo de regla', fr: 'Type de règle', de: 'Regeltyp', ja: 'ルール種別', zh: '规则类型', it: 'Tipo di regola');
+  String get reminderTimingLabel => _t('Notify Me', ne: 'जानकारी समय', es: 'Notificarme', fr: 'Me notifier', de: 'Benachrichtigen', ja: '通知タイミング', zh: '提醒时机', it: 'Avvisami');
+  String get reminderTimeOfDayLabel => _t('Time of Day', ne: 'दिनको समय', es: 'Hora del día', fr: 'Heure du jour', de: 'Tageszeit', ja: '通知時刻', zh: '提醒时间', it: 'Ora del giorno');
+  String get reminderRepeatDaysLabel => _t('Active Days (empty = every day)', ne: 'सक्रिय बारहरू (खाली = हरेक दिन)', es: 'Días activos (vacío = todos)', fr: 'Jours actifs (vide = tous)', de: 'Aktive Tage (leer = täglich)', ja: '対象曜日（未選択＝毎日）', zh: '重复星期（留空为每天）', it: 'Giorni attivi (vuoto = tutti)');
+  String get everyDay => _t('Every day', ne: 'हरेक दिन', es: 'Todos los días', fr: 'Tous les jours', de: 'Jeden Tag', ja: '毎日', zh: '每天', it: 'Ogni giorno');
+  String get customMinutesBefore => _t('Custom minutes before', ne: 'कस्टम मिनेट अघि', es: 'Minutos personalizados antes', fr: 'Minutes personnalisées avant', de: 'Eigene Minuten vorher', ja: 'カスタム分数前', zh: '自定义提前分钟', it: 'Minuti personalizzati prima');
+
+  // Shift completion log & custom break / long shift alert strings
+  String get shiftLogTitle => _t('Shift Completion Log', ne: 'सिफ्ट सम्पन्न विवरण', es: 'Registro de turno completado', fr: 'Journal de fin de quart', de: 'Schichtabschluss-Protokoll', ja: 'シフト完了ログ', zh: '班次完成日志', it: 'Riepilogo fine turno');
+  String get shiftTimelineTitle => _t('Shift Timeline', ne: 'सिफ्ट समयरेखा', es: 'Línea de tiempo del turno', fr: 'Chronologie du quart', de: 'Schicht-Zeitachse', ja: 'シフトタイムライン', zh: '班次时间轴', it: 'Cronologia del turno');
+  String get totalClockTime => _t('Total clock time', ne: 'कुल समय', es: 'Tiempo total', fr: 'Temps total', de: 'Gesamtzeit', ja: '総拘束時間', zh: '总打卡时长', it: 'Tempo totale');
+  String get netWorkedTime => _t('Net worked', ne: 'खुद काम गरेको', es: 'Tiempo trabajado', fr: 'Temps travaillé', de: 'Arbeitszeit netto', ja: '実働時間', zh: '净工作时长', it: 'Ore lavorate nette');
+  String get regularPayLabel => _t('Regular pay', ne: 'नियमित कमाइ', es: 'Pago regular', fr: 'Salaire normal', de: 'Regulärer Lohn', ja: '通常給', zh: '常规薪资', it: 'Paga ordinaria');
+  String get overtimePayLabel => _t('Overtime pay', ne: 'ओभरटाइम कमाइ', es: 'Pago horas extra', fr: 'Heures supplémentaires', de: 'Überstundenlohn', ja: '残業代', zh: '加班薪资', it: 'Straordinario');
+  String get clockedInEvent => _t('Clocked In', ne: 'काम सुरु (Clock In)', es: 'Entrada', fr: 'Début de quart', de: 'Eingestempelt', ja: '出勤 (Clock In)', zh: '上班打卡', it: 'Entrata');
+  String get clockedOutEvent => _t('Clocked Out', ne: 'काम समाप्त (Clock Out)', es: 'Salida', fr: 'Fin de quart', de: 'Ausgestempelt', ja: '退勤 (Clock Out)', zh: '下班打卡', it: 'Uscita');
+  String get breakSegmentLabel => _t('Break taken', ne: 'विश्राम लिइएको', es: 'Descanso tomado', fr: 'Pause prise', de: 'Pause', ja: '休憩', zh: '休息时段', it: 'Pausa effettuata');
+  String get overtimeReachedEvent => _t('Overtime rate active', ne: 'ओभरटाइम दर लागू', es: 'Tarifa extra activa', fr: 'Tarif heures sup actif', de: 'Überstundensatz aktiv', ja: '残業レート適用', zh: '进入加班费率', it: 'Tariffa straordinario attiva');
+  String get customBreakMinutesLabel => _t('Custom break (minutes)', ne: 'कस्टम विश्राम (मिनेट)', es: 'Descanso personalizado (min)', fr: 'Pause personnalisée (min)', de: 'Eigene Pause (Minuten)', ja: 'カスタム休憩（分）', zh: '自定义休息（分钟）', it: 'Pausa personalizzata (min)');
+  String get defaultBreakDurationLabel => _t('Default break duration', ne: 'डिफल्ट विश्राम अवधि', es: 'Descanso predeterminado', fr: 'Durée de pause par défaut', de: 'Standard-Pausendauer', ja: '標準の休憩時間', zh: '默认休息时长', it: 'Durata pausa predefinita');
+  String get longShiftNotificationLabel => _t('Long-shift notification', ne: 'लामो सिफ्ट सूचना', es: 'Aviso de turno largo', fr: 'Alerte de long quart', de: 'Langschicht-Benachrichtigung', ja: '長時間シフト通知', zh: '长班次提醒', it: 'Avviso turno lungo');
+  String get longShiftNotificationSubtitle => _t('Choose when to be notified during a running shift', ne: 'काम चलिरहँदा कति घण्टापछि सूचित गर्ने छान्नुहोस्', es: 'Elige cuándo recibir aviso durante un turno activo', fr: 'Choisissez quand être notifié pendant un quart', de: 'Wählen Sie, wann Sie während einer Schicht erinnert werden', ja: 'シフト開始から何時間後に通知するか選択', zh: '选择班次进行多久后发送提醒通知', it: 'Scegli dopo quante ore ricevere un avviso');
+  String notifyAfterHours(int hours) => _t('After ${hours}h', ne: '$hours घण्टा पछि', es: 'Tras ${hours}h', fr: 'Après ${hours}h', de: 'Nach ${hours}h', ja: '$hours時間後', zh: '$hours小时后', it: 'Dopo ${hours}h');
+  String get customHoursLabel => _t('Custom hours', ne: 'कस्टम घण्टा', es: 'Horas personalizadas', fr: 'Heures personnalisées', de: 'Eigene Stunden', ja: 'カスタム時間', zh: '自定义小时', it: 'Ore personalizzate');
+  String get customOption => _t('Custom', ne: 'कस्टम', es: 'Personalizado', fr: 'Personnalisé', de: 'Eigene', ja: 'カスタム', zh: '自定义', it: 'Personalizzato');
+  String get offOption => _t('Off', ne: 'बन्द', es: 'Desactivado', fr: 'Désactivé', de: 'Aus', ja: 'オフ', zh: '关闭', it: 'Off');
+  String get title => _t('Title', ne: 'शीर्षक', es: 'Título', fr: 'Titre', de: 'Titel', ja: 'タイトル', zh: '标题', it: 'Titolo');
+  String get add => _t('Add', ne: 'थप्नुहोस्', es: 'Añadir', fr: 'Ajouter', de: 'Hinzufügen', ja: '追加', zh: '添加', it: 'Aggiungi');
+  String get statusCompleted => _t('Completed', ne: 'सम्पन्न', es: 'Completado', fr: 'Terminé', de: 'Abgeschlossen', ja: '完了', zh: '已完成', it: 'Completato');
+  String longShiftAlertTitle(String job) => _t('Still working at $job?', ne: '$job मा अझै काम गर्दै हुनुहुन्छ?', es: '¿Sigues trabajando en $job?', fr: 'Toujours en service chez $job ?', de: 'Noch bei $job im Dienst?', ja: '$job でまだ勤務中ですか？', zh: '还在 $job 工作吗？', it: 'Stai ancora lavorando da $job?');
+  String longShiftAlertBody(String duration) => _t('You have been clocked in for $duration. Tap to review or clock out.', ne: 'तपाईंले $duration काम गरिसक्नुभयो। समाप्त गर्न ट्याप गर्नुहोस्।', es: 'Llevas $duration en turno. Toca para revisar o salir.', fr: 'Vous êtes en service depuis $duration. Appuyez pour terminer.', de: 'Sie sind seit $duration eingestempelt. Tippen zum Prüfen oder Ausstempeln.', ja: '出勤から $duration 経過しました。タップして確認または退勤。', zh: '您已连续打卡 $duration，点击查看或下班打卡。', it: 'Sei in turno da $duration. Tocca per controllare o uscire.');
 }
 
 extension AppStringsExtension on BuildContext {

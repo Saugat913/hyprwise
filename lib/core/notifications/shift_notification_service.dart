@@ -6,6 +6,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/core/notifications/reminder_planner.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
@@ -23,6 +24,11 @@ class ShiftNotificationService {
   bool _isAvailable = false;
 
   static const int shiftNotificationId = 9001;
+  static const int longShiftAlertId = 9002;
+  static const Duration _shiftNotifyMinInterval = Duration(milliseconds: 900);
+
+  String? _lastShiftNotifyKey;
+  DateTime? _lastShiftNotifyAt;
   static const String shiftChannelId = 'hyprwise_active_shift_channel';
   static const String alertsChannelId = 'hyprwise_scheduled_alerts_channel';
 
@@ -166,9 +172,22 @@ class ShiftNotificationService {
     required String earningsFormatted,
     bool isOnBreak = false,
     int breakMinutes = 0,
+    bool force = false,
   }) async {
     if (!_initialized) await initialize();
     if (!_isAvailable) return;
+
+    // Called every second by the work view model: skip unchanged content and
+    // never post more than about once per second.
+    final key = '$jobName|$elapsedFormatted|$earningsFormatted|$isOnBreak|$breakMinutes';
+    final nowTs = DateTime.now();
+    if (!force) {
+      if (key == _lastShiftNotifyKey) return;
+      final last = _lastShiftNotifyAt;
+      if (last != null && nowTs.difference(last) < _shiftNotifyMinInterval) return;
+    }
+    _lastShiftNotifyKey = key;
+    _lastShiftNotifyAt = nowTs;
 
     final isNe = _isNepali;
     final breakInfo = isOnBreak
@@ -191,7 +210,7 @@ class ShiftNotificationService {
       usesChronometer: !isOnBreak,
       when: isOnBreak ? null : startAtMs,
       largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-      color: const Color(0xFF1F7A45),
+      color: const Color(0xFFFF6500),
       category: AndroidNotificationCategory.status,
       actions: [
         AndroidNotificationAction(
@@ -234,6 +253,8 @@ class ShiftNotificationService {
   }
 
   Future<void> cancelShiftNotification() async {
+    _lastShiftNotifyKey = null;
+    _lastShiftNotifyAt = null;
     if (!_initialized || !_isAvailable) return;
     try {
       await _notifications.cancel(id: shiftNotificationId);
@@ -266,7 +287,7 @@ class ShiftNotificationService {
           : 'Timely reminders for upcoming shifts, bills, and loan due dates',
       importance: Importance.high,
       priority: Priority.high,
-      color: const Color(0xFF1F7A45),
+      color: const Color(0xFFFF6500),
     );
 
     try {
@@ -394,6 +415,75 @@ class ShiftNotificationService {
       await _notifications.cancel(id: id);
     } catch (e) {
       debugPrint('Error cancelling notification: $e');
+    }
+  }
+
+  AndroidNotificationDetails _alertDetails(Color color) {
+    final isNe = _isNepali;
+    return AndroidNotificationDetails(
+      alertsChannelId,
+      isNe ? 'रिमाइन्डर तथा अलर्टहरू' : 'Reminders & Scheduled Alerts',
+      channelDescription: isNe
+          ? 'आगामी सिफ्ट, बिल तथा ऋणको भुक्तानी मिति रिमाइन्डर'
+          : 'Timely reminders for upcoming shifts, bills, and loan due dates',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: color,
+    );
+  }
+
+  /// Schedules the "you have been working a long time" alert for a live shift.
+  Future<void> scheduleLongShiftAlert({
+    required String title,
+    required String body,
+    required DateTime at,
+  }) async {
+    if (!_initialized) await initialize();
+    if (!_isAvailable || !at.isAfter(DateTime.now())) return;
+    try {
+      await _notifications.zonedSchedule(
+        id: longShiftAlertId,
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(at, tz.local),
+        notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500))),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: '/work/shift/live',
+      );
+    } catch (e) {
+      debugPrint('Error scheduling long shift alert: $e');
+    }
+  }
+
+  Future<void> cancelLongShiftAlert() => cancelNotification(longShiftAlertId);
+
+  /// Replaces every pending rule-based reminder with [plan].
+  Future<void> syncReminders(List<PlannedReminder> plan) async {
+    if (!_initialized) await initialize();
+    if (!_isAvailable) return;
+    try {
+      final pending = await _notifications.pendingNotificationRequests();
+      for (final p in pending) {
+        if (p.id >= ReminderPlanner.idBase) await _notifications.cancel(id: p.id);
+      }
+    } catch (e) {
+      debugPrint('Error clearing reminder notifications: $e');
+    }
+    for (final r in plan) {
+      try {
+        await _notifications.zonedSchedule(
+          id: r.id,
+          title: r.title,
+          body: r.body,
+          scheduledDate: tz.TZDateTime.from(r.at, tz.local),
+          notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500))),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          matchDateTimeComponents: r.weekly ? DateTimeComponents.dayOfWeekAndTime : null,
+          payload: r.payload,
+        );
+      } catch (e) {
+        debugPrint('Error scheduling reminder ${r.id}: $e');
+      }
     }
   }
 }

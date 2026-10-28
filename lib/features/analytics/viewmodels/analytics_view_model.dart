@@ -122,30 +122,30 @@ class AnalyticsViewModel extends ChangeNotifier {
 
     return switch (_dateFilter) {
       AnalyticsDateFilter.thisWeek => (
-          today.subtract(Duration(days: today.weekday - 1)),
-          today.add(const Duration(hours: 23, minutes: 59, seconds: 59)),
-        ),
+        today.subtract(Duration(days: today.weekday - 1)),
+        today.add(const Duration(hours: 23, minutes: 59, seconds: 59)),
+      ),
       AnalyticsDateFilter.thisMonth => (
-          AppDate.startOfMonth(now),
-          AppDate.endOfMonth(now),
-        ),
+        AppDate.startOfMonth(now),
+        AppDate.endOfMonth(now),
+      ),
       AnalyticsDateFilter.last30Days => (
-          today.subtract(const Duration(days: 29)),
-          today.add(const Duration(hours: 23, minutes: 59, seconds: 59)),
-        ),
+        today.subtract(const Duration(days: 29)),
+        today.add(const Duration(hours: 23, minutes: 59, seconds: 59)),
+      ),
       AnalyticsDateFilter.thisYear => (
-          DateTime(now.year, 1, 1),
-          DateTime(now.year, 12, 31, 23, 59, 59),
-        ),
-      AnalyticsDateFilter.custom => _customRange != null
-          ? (
+        DateTime(now.year, 1, 1),
+        DateTime(now.year, 12, 31, 23, 59, 59),
+      ),
+      AnalyticsDateFilter.custom =>
+        _customRange != null
+            ? (
               AppDate.dateOnly(_customRange!.start),
-              AppDate.dateOnly(_customRange!.end).add(const Duration(hours: 23, minutes: 59, seconds: 59)),
+              AppDate.dateOnly(
+                _customRange!.end,
+              ).add(const Duration(hours: 23, minutes: 59, seconds: 59)),
             )
-          : (
-              AppDate.startOfMonth(now),
-              AppDate.endOfMonth(now),
-            ),
+            : (AppDate.startOfMonth(now), AppDate.endOfMonth(now)),
     };
   }
 
@@ -160,14 +160,33 @@ class AnalyticsViewModel extends ChangeNotifier {
       if (_selectedCategory != null) {
         final sel = _selectedCategory!.trim().toLowerCase();
         final cat = t.category.trim().toLowerCase();
-        final match = cat == sel ||
-            TransactionCategories.find(sel, TransactionType.expense)?.label.toLowerCase() == cat ||
-            TransactionCategories.find(sel, TransactionType.income)?.label.toLowerCase() == cat ||
-            TransactionCategories.find(cat, TransactionType.expense)?.value.toLowerCase() == sel ||
-            TransactionCategories.find(cat, TransactionType.income)?.value.toLowerCase() == sel;
+        final match =
+            cat == sel ||
+            TransactionCategories.find(
+                  sel,
+                  TransactionType.expense,
+                )?.label.toLowerCase() ==
+                cat ||
+            TransactionCategories.find(
+                  sel,
+                  TransactionType.income,
+                )?.label.toLowerCase() ==
+                cat ||
+            TransactionCategories.find(
+                  cat,
+                  TransactionType.expense,
+                )?.value.toLowerCase() ==
+                sel ||
+            TransactionCategories.find(
+                  cat,
+                  TransactionType.income,
+                )?.value.toLowerCase() ==
+                sel;
         if (!match) return false;
       }
-      if (_selectedAccountId != null && t.accountId != _selectedAccountId) return false;
+      if (_selectedAccountId != null && t.accountId != _selectedAccountId) {
+        return false;
+      }
       return true;
     }).toList();
   }
@@ -180,7 +199,9 @@ class AnalyticsViewModel extends ChangeNotifier {
 
     final cats = <String>{};
     for (final t in financeStore.transactions) {
-      if (t.occurredAt >= startMs && t.occurredAt <= endMs && t.type == _activeType.value) {
+      if (t.occurredAt >= startMs &&
+          t.occurredAt <= endMs &&
+          t.type == _activeType.value) {
         cats.add(t.category);
       }
     }
@@ -213,7 +234,8 @@ class AnalyticsViewModel extends ChangeNotifier {
     return total;
   }
 
-  int get activeTotalMinor => _activeType == TransactionType.expense ? expenseMinor : incomeMinor;
+  int get activeTotalMinor =>
+      _activeType == TransactionType.expense ? expenseMinor : incomeMinor;
 
   int get netMinor => incomeMinor - expenseMinor;
 
@@ -232,14 +254,16 @@ class AnalyticsViewModel extends ChangeNotifier {
       }
     }
 
-    final list = totals.entries.map((e) {
-      final label = TransactionCategories.fromValue(e.key, _activeType).label;
-      return CategorySpend(
-        categoryKey: e.key,
-        label: label,
-        amountMinor: e.value,
-      );
-    }).toList();
+    final list =
+        totals.entries.map((e) {
+          final label =
+              TransactionCategories.fromValue(e.key, _activeType).label;
+          return CategorySpend(
+            categoryKey: e.key,
+            label: label,
+            amountMinor: e.value,
+          );
+        }).toList();
 
     list.sort((a, b) => b.amountMinor.compareTo(a.amountMinor));
     return list;
@@ -252,12 +276,17 @@ class AnalyticsViewModel extends ChangeNotifier {
 
     for (final t in filteredTransactions) {
       if (t.type == _activeType.value) {
-        final d = AppDate.dateOnly(DateTime.fromMillisecondsSinceEpoch(t.occurredAt));
+        final d = AppDate.dateOnly(
+          DateTime.fromMillisecondsSinceEpoch(t.occurredAt),
+        );
         final key = d.millisecondsSinceEpoch;
-        final amt = financeStore.snapshot.convert(
-          t.amountMinor,
-          financeStore.snapshot.currencyOf(t.accountId),
-        ).toDouble();
+        final amt =
+            financeStore.snapshot
+                .convert(
+                  t.amountMinor,
+                  financeStore.snapshot.currencyOf(t.accountId),
+                )
+                .toDouble();
         dayBuckets.update(key, (v) => v + amt, ifAbsent: () => amt);
       }
     }
@@ -284,12 +313,14 @@ class AnalyticsViewModel extends ChangeNotifier {
 
   /// Top merchants or income sources based on filtered set
   List<AnalyticsMerchantSpend> get topMerchants {
-    final map = <String, (int, int, String)>{}; // name -> (total, count, category)
+    final map =
+        <String, (int, int, String)>{}; // name -> (total, count, category)
 
     for (final t in filteredTransactions) {
       if (t.type != _activeType.value) continue;
       final rawName = t.note?.split('·').first.trim();
-      final name = (rawName != null && rawName.isNotEmpty) ? rawName : t.category;
+      final name =
+          (rawName != null && rawName.isNotEmpty) ? rawName : t.category;
       final amt = financeStore.snapshot.convert(
         t.amountMinor,
         financeStore.snapshot.currencyOf(t.accountId),
@@ -299,14 +330,17 @@ class AnalyticsViewModel extends ChangeNotifier {
       map[name] = (current.$1 + amt, current.$2 + 1, current.$3);
     }
 
-    final list = map.entries
-        .map((e) => AnalyticsMerchantSpend(
-              name: e.key,
-              amountMinor: e.value.$1,
-              count: e.value.$2,
-              category: e.value.$3,
-            ))
-        .toList();
+    final list =
+        map.entries
+            .map(
+              (e) => AnalyticsMerchantSpend(
+                name: e.key,
+                amountMinor: e.value.$1,
+                count: e.value.$2,
+                category: e.value.$3,
+              ),
+            )
+            .toList();
 
     list.sort((a, b) => b.amountMinor.compareTo(a.amountMinor));
     return list;
@@ -320,7 +354,8 @@ class AnalyticsViewModel extends ChangeNotifier {
   // Lending & Borrowing analytics
   List<Debt> get debts => financeStore.debts;
 
-  List<Debt> get activeDebts => financeStore.debts.where((d) => !d.isSettled).toList();
+  List<Debt> get activeDebts =>
+      financeStore.debts.where((d) => !d.isSettled).toList();
 
   int get totalLentMinor {
     var sum = 0;
@@ -345,7 +380,8 @@ class AnalyticsViewModel extends ChangeNotifier {
   int get netDebtMinor => totalLentMinor - totalBorrowedMinor;
 
   List<AnalyticsDebtParty> get topDebtParties {
-    final partyMap = <String, (int, int, int)>{}; // name -> (lent, borrowed, count)
+    final partyMap =
+        <String, (int, int, int)>{}; // name -> (lent, borrowed, count)
     for (final d in activeDebts) {
       final name = d.personName.trim();
       if (name.isEmpty) continue;
@@ -358,17 +394,18 @@ class AnalyticsViewModel extends ChangeNotifier {
       }
     }
 
-    final list = partyMap.entries.map((e) {
-      final lent = e.value.$1;
-      final borrowed = e.value.$2;
-      return AnalyticsDebtParty(
-        name: e.key,
-        netMinor: lent - borrowed,
-        lentMinor: lent,
-        borrowedMinor: borrowed,
-        count: e.value.$3,
-      );
-    }).toList();
+    final list =
+        partyMap.entries.map((e) {
+          final lent = e.value.$1;
+          final borrowed = e.value.$2;
+          return AnalyticsDebtParty(
+            name: e.key,
+            netMinor: lent - borrowed,
+            lentMinor: lent,
+            borrowedMinor: borrowed,
+            count: e.value.$3,
+          );
+        }).toList();
 
     list.sort((a, b) => b.netMinor.abs().compareTo(a.netMinor.abs()));
     return list;

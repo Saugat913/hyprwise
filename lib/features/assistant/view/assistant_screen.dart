@@ -10,6 +10,7 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/features/assistant/view/widgets/chat_widgets.dart';
 import 'package:finance_tracker/features/assistant/viewmodels/assistant_view_model.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
@@ -23,6 +24,8 @@ class AssistantScreen extends StatefulWidget {
 
 class _AssistantScreenState extends State<AssistantScreen> {
   final _inputController = TextEditingController();
+  final _scrollController = ScrollController();
+  int _lastCount = 0;
   late final AssistantViewModel _viewModel;
 
   @override
@@ -34,7 +37,19 @@ class _AssistantScreenState extends State<AssistantScreen> {
   @override
   void dispose() {
     _inputController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   int _queriesSentThisSession = 0;
@@ -127,12 +142,13 @@ class _AssistantScreenState extends State<AssistantScreen> {
             IconButton(
               icon: const ProCrownBadge(isCompact: true),
               tooltip: 'Upgrade to Pro',
-              onPressed: () => showProUpgradeSheet(
-                context,
-                title: tr.unlimitedAiAssistantTitle,
-                message: tr.unlimitedAiAssistantDesc,
-                featureHighlight: 'ai',
-              ),
+              onPressed:
+                  () => showProUpgradeSheet(
+                    context,
+                    title: tr.unlimitedAiAssistantTitle,
+                    message: tr.unlimitedAiAssistantDesc,
+                    featureHighlight: 'ai',
+                  ),
             ),
           TopBarAction(
             HugeIcons.strokeRoundedRefresh,
@@ -151,18 +167,39 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     return ListView(
                       padding: const EdgeInsets.all(AppSpace.page),
                       children: [
-                        Text(
-                          tr.whatCanIDoForYou,
-                          style: text.headlineSmall,
+                        ChatEntrance(
+                          child: Container(
+                            width: 52,
+                            height: 52,
+                            margin: const EdgeInsets.only(bottom: AppSpace.md),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: colors.brandBg,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                            child: AppIcon(
+                              HugeIcons.strokeRoundedChatBot,
+                              size: 28,
+                              color: colors.brand,
+                            ),
+                          ),
                         ),
+                        Text(tr.whatCanIDoForYou, style: text.headlineSmall),
                         const SizedBox(height: 4),
                         Text(
                           tr.assistantIntroSubtitle,
-                          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                          style: text.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(height: AppSpace.xxl),
 
-                        Text(tr.doSection, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(
+                          tr.doSection,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: AppSpace.sm),
                         _PromptCard(
                           title: tr.addExpense,
@@ -186,7 +223,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
                         ),
                         const SizedBox(height: AppSpace.xl),
 
-                        Text(tr.askSection, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(
+                          tr.askSection,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: AppSpace.sm),
                         _PromptCard(
                           title: tr.howMuchSpendFoodTitle,
@@ -205,174 +247,289 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     );
                   }
 
+                  final count =
+                      _viewModel.messages.length +
+                      (_viewModel.isTyping ? 1 : 0);
+                  if (count != _lastCount) {
+                    _lastCount = count;
+                    _scrollToEnd();
+                  }
                   return ListView.builder(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(AppSpace.page),
-                    itemCount: _viewModel.messages.length,
+                    itemCount: count,
                     itemBuilder: (context, i) {
+                      if (i == _viewModel.messages.length) {
+                        return const TypingIndicator();
+                      }
                       final msg = _viewModel.messages[i];
                       if (msg.isUser) {
-                        return Align(
-                          alignment: Alignment.centerRight,
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: AppSpace.md, left: 48),
-                            padding: const EdgeInsets.all(AppSpace.sm),
-                            decoration: BoxDecoration(
-                              color: colors.hero,
-                              borderRadius: BorderRadius.circular(AppRadius.lg),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (msg.imageBytes != null) ...[
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(AppRadius.md),
-                                    child: Image.memory(
-                                      msg.imageBytes!,
-                                      width: 220,
-                                      height: 160,
-                                      fit: BoxFit.cover,
+                        return ChatEntrance(
+                          fromRight: true,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Container(
+                              margin: const EdgeInsets.only(
+                                bottom: AppSpace.md,
+                                left: 48,
+                              ),
+                              padding: const EdgeInsets.all(AppSpace.sm),
+                              decoration: BoxDecoration(
+                                color: colors.hero,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.lg,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (msg.imageBytes != null) ...[
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.md,
+                                      ),
+                                      child: Image.memory(
+                                        msg.imageBytes!,
+                                        width: 220,
+                                        height: 160,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpace.xs),
+                                  ],
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpace.sm,
+                                      vertical: 4,
+                                    ),
+                                    child: Text(
+                                      msg.text,
+                                      style: text.bodyMedium?.copyWith(
+                                        color: colors.onHero,
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(height: AppSpace.xs),
                                 ],
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 4),
-                                  child: Text(msg.text, style: text.bodyMedium?.copyWith(color: colors.onHero)),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         );
                       }
 
                       // Assistant message
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(bottom: AppSpace.md, right: 32),
-                            padding: const EdgeInsets.all(AppSpace.lg),
-                            decoration: BoxDecoration(
-                              color: scheme.surface,
-                              borderRadius: BorderRadius.circular(AppRadius.lg),
-                              border: Border.all(color: scheme.outlineVariant),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (msg.headline != null && msg.headline!.isNotEmpty) ...[
-                                  Text(msg.headline!, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: AppSpace.xs),
-                                ],
-                                MarkdownBody(
-                                  data: msg.text,
-                                  selectable: true,
-                                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                                    p: text.bodyMedium?.copyWith(height: 1.45),
-                                    strong: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700, height: 1.45),
-                                    em: text.bodyMedium?.copyWith(fontStyle: FontStyle.italic, height: 1.45),
-                                    listBullet: text.bodyMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.bold),
-                                    h1: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                                    h2: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                                    h3: text.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
-                                    blockquote: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant, fontStyle: FontStyle.italic),
-                                    code: text.bodySmall?.copyWith(
-                                      fontFamily: 'monospace',
-                                      backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                                    ),
-                                    codeblockDecoration: BoxDecoration(
-                                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                                    ),
-                                  ),
+                      final prevUser =
+                          i > 0 && _viewModel.messages[i - 1].isUser
+                              ? _viewModel.messages[i - 1].text
+                              : null;
+                      final chartKind =
+                          prevUser == null ||
+                                  msg.pendingAction != null ||
+                                  msg.isConfirmed
+                              ? null
+                              : chartKindForQuery(prevUser);
+                      final isLast = i == _viewModel.messages.length - 1;
+                      return ChatEntrance(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(
+                                bottom: AppSpace.md,
+                                right: 32,
+                              ),
+                              padding: const EdgeInsets.all(AppSpace.lg),
+                              decoration: BoxDecoration(
+                                color: scheme.surface,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.lg,
                                 ),
-                                if (msg.explanation != null) ...[
-                                  const SizedBox(height: AppSpace.sm),
-                                  Text(
-                                    msg.explanation!,
-                                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-
-                          // Interactive editable confirmation card
-                          if (msg.pendingAction != null && !msg.isConfirmed) ...[
-                            _InteractiveActionCard(
-                              msg: msg,
-                              viewModel: _viewModel,
-                            ),
-                            const SizedBox(height: AppSpace.md),
-                          ],
-
-                          // Confirmed status card
-                          if (msg.isConfirmed) ...[
-                            AppCard(
-                              child: Row(
+                                border: Border.all(
+                                  color: scheme.outlineVariant,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  IconTile(HugeIcons.strokeRoundedCheckmarkCircle02, size: 36),
-                                  const SizedBox(width: AppSpace.md),
-                                  Expanded(
-                                    child: Text(
-                                      msg.confirmedSummary ?? 'Action completed',
-                                      style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                  if (msg.headline != null &&
+                                      msg.headline!.isNotEmpty) ...[
+                                    Text(
+                                      msg.headline!,
+                                      style: text.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpace.xs),
+                                  ],
+                                  MarkdownBody(
+                                    data: msg.text,
+                                    selectable: true,
+                                    styleSheet: MarkdownStyleSheet.fromTheme(
+                                      Theme.of(context),
+                                    ).copyWith(
+                                      p: text.bodyMedium?.copyWith(
+                                        height: 1.45,
+                                      ),
+                                      strong: text.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.45,
+                                      ),
+                                      em: text.bodyMedium?.copyWith(
+                                        fontStyle: FontStyle.italic,
+                                        height: 1.45,
+                                      ),
+                                      listBullet: text.bodyMedium?.copyWith(
+                                        color: scheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      h1: text.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      h2: text.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      h3: text.bodyLarge?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      blockquote: text.bodySmall?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                      code: text.bodySmall?.copyWith(
+                                        fontFamily: 'monospace',
+                                        backgroundColor: scheme
+                                            .surfaceContainerHighest
+                                            .withValues(alpha: 0.5),
+                                      ),
+                                      codeblockDecoration: BoxDecoration(
+                                        color: scheme.surfaceContainerHighest
+                                            .withValues(alpha: 0.5),
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.sm,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  if (msg.createdTransactionId != null) ...[
-                                    const SizedBox(width: AppSpace.sm),
-                                    OutlinedButton(
-                                      style: OutlinedButton.styleFrom(
-                                        visualDensity: VisualDensity.compact,
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                                  if (msg.explanation != null) ...[
+                                    const SizedBox(height: AppSpace.sm),
+                                    Text(
+                                      msg.explanation!,
+                                      style: text.bodySmall?.copyWith(
+                                        color: scheme.onSurfaceVariant,
                                       ),
-                                      onPressed: () => _viewModel.undoTransaction(msg),
-                                      child: Text(tr.undo),
                                     ),
                                   ],
                                 ],
                               ),
                             ),
-                            const SizedBox(height: AppSpace.md),
-                            if (i == _viewModel.messages.length - 1) ...[
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    tr.whatNextTitle,
-                                    style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                  TextButton(
-                                    onPressed: _viewModel.clear,
-                                    child: Text(tr.startFresh),
-                                  ),
-                                ],
+
+                            if (chartKind != null)
+                              ChatChartCard(
+                                kind: chartKind,
+                                snapshot: _viewModel.financeStore.snapshot,
+                                currency: _viewModel.baseCurrency,
                               ),
-                              const SizedBox(height: AppSpace.sm),
-                              _PromptCard(
-                                title: tr.addExpense,
-                                subtitle: tr.spentLunchSubtitle,
-                                icon: HugeIcons.strokeRoundedCoins01,
-                                onTap: () => _send(tr.spentLunchPrompt),
+
+                            if (isLast &&
+                                msg.suggestions.isNotEmpty &&
+                                !_viewModel.isTyping)
+                              AnimatedSuggestionChips(
+                                suggestions: msg.suggestions,
+                                onTap: _send,
                               ),
-                              const SizedBox(height: AppSpace.sm),
-                              _PromptCard(
-                                title: tr.scheduleShift,
-                                subtitle: tr.cafeFridaySubtitle,
-                                icon: HugeIcons.strokeRoundedCalendar03,
-                                onTap: () => _send(tr.cafeFridayPrompt),
+
+                            // Interactive editable confirmation card
+                            if (msg.pendingAction != null &&
+                                !msg.isConfirmed) ...[
+                              _InteractiveActionCard(
+                                msg: msg,
+                                viewModel: _viewModel,
                               ),
-                              const SizedBox(height: AppSpace.sm),
-                              _PromptCard(
-                                title: tr.moveMoneyToGoal,
-                                subtitle: tr.emergencyFundMoveSubtitle,
-                                icon: HugeIcons.strokeRoundedTarget02,
-                                onTap: () => _send(tr.emergencyFundMovePrompt),
+                              const SizedBox(height: AppSpace.md),
+                            ],
+
+                            // Confirmed status card
+                            if (msg.isConfirmed) ...[
+                              AppCard(
+                                child: Row(
+                                  children: [
+                                    IconTile(
+                                      HugeIcons.strokeRoundedCheckmarkCircle02,
+                                      size: 36,
+                                    ),
+                                    const SizedBox(width: AppSpace.md),
+                                    Expanded(
+                                      child: Text(
+                                        msg.confirmedSummary ??
+                                            'Action completed',
+                                        style: text.titleSmall?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    if (msg.createdTransactionId != null) ...[
+                                      const SizedBox(width: AppSpace.sm),
+                                      OutlinedButton(
+                                        style: OutlinedButton.styleFrom(
+                                          visualDensity: VisualDensity.compact,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 0,
+                                          ),
+                                        ),
+                                        onPressed:
+                                            () =>
+                                                _viewModel.undoTransaction(msg),
+                                        child: Text(tr.undo),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: AppSpace.lg),
+                              const SizedBox(height: AppSpace.md),
+                              if (i == _viewModel.messages.length - 1) ...[
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      tr.whatNextTitle,
+                                      style: text.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: _viewModel.clear,
+                                      child: Text(tr.startFresh),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSpace.sm),
+                                _PromptCard(
+                                  title: tr.addExpense,
+                                  subtitle: tr.spentLunchSubtitle,
+                                  icon: HugeIcons.strokeRoundedCoins01,
+                                  onTap: () => _send(tr.spentLunchPrompt),
+                                ),
+                                const SizedBox(height: AppSpace.sm),
+                                _PromptCard(
+                                  title: tr.scheduleShift,
+                                  subtitle: tr.cafeFridaySubtitle,
+                                  icon: HugeIcons.strokeRoundedCalendar03,
+                                  onTap: () => _send(tr.cafeFridayPrompt),
+                                ),
+                                const SizedBox(height: AppSpace.sm),
+                                _PromptCard(
+                                  title: tr.moveMoneyToGoal,
+                                  subtitle: tr.emergencyFundMoveSubtitle,
+                                  icon: HugeIcons.strokeRoundedTarget02,
+                                  onTap:
+                                      () => _send(tr.emergencyFundMovePrompt),
+                                ),
+                                const SizedBox(height: AppSpace.lg),
+                              ],
                             ],
                           ],
-                        ],
+                        ),
                       );
                     },
                   );
@@ -382,7 +539,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
             // Input bar with rounded inbox, camera bill scanner, and highlighted outlined send button
             Container(
-              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.md,
+                AppSpace.sm,
+                AppSpace.md,
+                AppSpace.md,
+              ),
               decoration: BoxDecoration(
                 color: scheme.surface,
                 border: Border(top: BorderSide(color: scheme.outlineVariant)),
@@ -400,7 +562,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
                       padding: const EdgeInsets.all(10),
                       minimumSize: const Size(44, 44),
                     ),
-                    icon: const AppIcon(HugeIcons.strokeRoundedCamera01, size: 20),
+                    icon: const AppIcon(
+                      HugeIcons.strokeRoundedCamera01,
+                      size: 20,
+                    ),
                     tooltip: tr.scanBillTooltip,
                     onPressed: () => _pickBillImage(context),
                   ),
@@ -409,9 +574,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   // Proper rounded inbox container
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpace.md,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                        color: scheme.surfaceContainerHighest.withValues(
+                          alpha: 0.45,
+                        ),
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                         border: Border.all(color: scheme.outlineVariant),
                       ),
@@ -421,11 +591,15 @@ class _AssistantScreenState extends State<AssistantScreen> {
                         decoration: InputDecoration(
                           hintText: tr.askOrTypeNotesHint,
                           hintStyle: text.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                            color: scheme.onSurfaceVariant.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                          ),
                         ),
                         onSubmitted: (_) => _send(),
                       ),
@@ -442,7 +616,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       minimumSize: const Size(44, 44),
                     ),
                     onPressed: () => _send(),
@@ -488,10 +665,7 @@ class _PromptCard extends StatelessWidget {
 }
 
 class _InteractiveActionCard extends StatefulWidget {
-  const _InteractiveActionCard({
-    required this.msg,
-    required this.viewModel,
-  });
+  const _InteractiveActionCard({required this.msg, required this.viewModel});
 
   final AssistantMessage msg;
   final AssistantViewModel viewModel;
@@ -505,15 +679,25 @@ class _InteractiveActionCardState extends State<_InteractiveActionCard> {
   late final TextEditingController _merchantController;
   late String _category;
 
-  static const _quickCategories = ['Groceries', 'Eating out', 'Transport', 'Bills', 'Entertainment'];
+  static const _quickCategories = [
+    'Groceries',
+    'Eating out',
+    'Transport',
+    'Bills',
+    'Entertainment',
+  ];
 
   @override
   void initState() {
     super.initState();
     final action = widget.msg.pendingAction;
     final amtMinor = action?.amountMinor ?? 5420;
-    _amountController = TextEditingController(text: (amtMinor / 100).toStringAsFixed(2));
-    _merchantController = TextEditingController(text: action?.merchant ?? 'Woolworths');
+    _amountController = TextEditingController(
+      text: (amtMinor / 100).toStringAsFixed(2),
+    );
+    _merchantController = TextEditingController(
+      text: action?.merchant ?? 'Woolworths',
+    );
     _category = action?.category ?? 'Groceries';
   }
 
@@ -550,7 +734,10 @@ class _InteractiveActionCardState extends State<_InteractiveActionCard> {
         children: [
           Row(
             children: [
-              Text(action.title, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                action.title,
+                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
               const Spacer(),
               StatusChip(tr.needsYourOk, tone: ChipTone.warning),
             ],
@@ -563,14 +750,21 @@ class _InteractiveActionCardState extends State<_InteractiveActionCard> {
               children: [
                 Text(
                   widget.viewModel.baseCurrency,
-                  style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: scheme.primary),
+                  style: text.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.primary,
+                  ),
                 ),
                 const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: TextField(
                     controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: text.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                     decoration: const InputDecoration(
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(vertical: 4),
@@ -596,7 +790,10 @@ class _InteractiveActionCardState extends State<_InteractiveActionCard> {
             const SizedBox(height: AppSpace.md),
 
             // Category choice pills
-            Text(tr.categories, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            Text(
+              tr.categories,
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
             const SizedBox(height: 4),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -616,32 +813,41 @@ class _InteractiveActionCardState extends State<_InteractiveActionCard> {
           ] else ...[
             if (action.amountMinor != null)
               Text(
-                MoneyFormatter.format(action.amountMinor!, widget.viewModel.baseCurrency),
-                style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                MoneyFormatter.format(
+                  action.amountMinor!,
+                  widget.viewModel.baseCurrency,
+                ),
+                style: text.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             if (action.merchant != null) ...[
               const SizedBox(height: 4),
-              Text('${tr.merchantLabel}: ${action.merchant}', style: text.bodySmall),
+              Text(
+                '${tr.merchantLabel}: ${action.merchant}',
+                style: text.bodySmall,
+              ),
             ],
             if (action.jobName != null) ...[
               const SizedBox(height: 4),
-              Text('${tr.jobLabel}: ${action.jobName} · ${action.startTime}–${action.endTime}', style: text.bodySmall),
+              Text(
+                '${tr.jobLabel}: ${action.jobName} · ${action.startTime}–${action.endTime}',
+                style: text.bodySmall,
+              ),
             ],
             if (action.goalName != null) ...[
               const SizedBox(height: 4),
-              Text('${tr.goalLabel}: ${action.goalName}', style: text.bodySmall),
+              Text(
+                '${tr.goalLabel}: ${action.goalName}',
+                style: text.bodySmall,
+              ),
             ],
           ],
 
           const SizedBox(height: AppSpace.lg),
           Row(
             children: [
-              Expanded(
-                child: AppButton(
-                  tr.confirmAction,
-                  onPressed: _confirm,
-                ),
-              ),
+              Expanded(child: AppButton(tr.confirmAction, onPressed: _confirm)),
               if (isExpense) ...[
                 const SizedBox(width: AppSpace.sm),
                 IconButton(

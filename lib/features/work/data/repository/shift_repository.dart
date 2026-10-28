@@ -23,6 +23,9 @@ class ShiftRepository {
     int breakMinutes = 0,
     String? note,
     int? rateOverrideMinor,
+    int? overtimeThresholdMinutes,
+    int? overtimeRateMinor,
+    int? longShiftAlertMinutes,
   }) => _db
       .into(_db.shifts)
       .insert(
@@ -34,6 +37,9 @@ class ShiftRepository {
           status: status.value,
           note: Value(normalizeText(note)),
           rateOverrideMinor: Value(rateOverrideMinor),
+          overtimeThresholdMinutes: Value(overtimeThresholdMinutes),
+          overtimeRateMinor: Value(overtimeRateMinor),
+          longShiftAlertMinutes: Value(longShiftAlertMinutes),
           createdAt: nowMs(),
           updatedAt: nowMs(),
         ),
@@ -67,6 +73,9 @@ class ShiftRepository {
     int? breakMinutes,
     String? note,
     int? rateOverrideMinor,
+    int? overtimeThresholdMinutes,
+    int? overtimeRateMinor,
+    int? longShiftAlertMinutes,
   }) async {
     await (_db.update(_db.shifts)..where((s) => s.id.equals(id))).write(
       ShiftsCompanion(
@@ -77,6 +86,11 @@ class ShiftRepository {
         status: status != null ? Value(status.value) : const Value.absent(),
         note: note != null ? Value(normalizeText(note)) : const Value.absent(),
         rateOverrideMinor: rateOverrideMinor != null ? Value(rateOverrideMinor) : const Value.absent(),
+        overtimeThresholdMinutes:
+            overtimeThresholdMinutes != null ? Value(overtimeThresholdMinutes) : const Value.absent(),
+        overtimeRateMinor: overtimeRateMinor != null ? Value(overtimeRateMinor) : const Value.absent(),
+        longShiftAlertMinutes:
+            longShiftAlertMinutes != null ? Value(longShiftAlertMinutes) : const Value.absent(),
         updatedAt: Value(nowMs()),
       ),
     );
@@ -88,6 +102,23 @@ class ShiftRepository {
     );
   }
 
-  Future<void> delete(int id) =>
-      (_db.delete(_db.shifts)..where((s) => s.id.equals(id))).go();
+  Future<void> delete(int id) async {
+    await (_db.delete(_db.shiftBreaks)..where((b) => b.shiftId.equals(id))).go();
+    await (_db.delete(_db.shifts)..where((s) => s.id.equals(id))).go();
+  }
+
+  Future<List<ShiftBreak>> breaksFor(int shiftId) =>
+      (_db.select(_db.shiftBreaks)
+            ..where((b) => b.shiftId.equals(shiftId))
+            ..orderBy([(b) => OrderingTerm.asc(b.startAt)]))
+          .get();
+
+  /// Opens a break now and returns its id.
+  Future<int> startBreak(int shiftId, DateTime at) => _db.into(_db.shiftBreaks).insert(
+        ShiftBreaksCompanion.insert(shiftId: shiftId, startAt: at.millisecondsSinceEpoch),
+      );
+
+  Future<void> endBreak(int breakId, DateTime at) =>
+      (_db.update(_db.shiftBreaks)..where((b) => b.id.equals(breakId)))
+          .write(ShiftBreaksCompanion(endAt: Value(at.millisecondsSinceEpoch)));
 }

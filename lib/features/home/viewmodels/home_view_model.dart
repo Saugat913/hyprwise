@@ -5,7 +5,9 @@ import 'package:finance_tracker/features/debts/data/model/debt.dart';
 import 'package:finance_tracker/features/plan/data/forecast_engine.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/shared/data/finance_snapshot.dart';
+import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
+import 'package:finance_tracker/features/shared/data/snapshot_stats.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';
 
 class HomeViewModel extends ChangeNotifier {
@@ -129,6 +131,27 @@ class HomeViewModel extends ChangeNotifier {
     final start = DateTime(now.year, now.month);
     return snapshot.expenseInMonth(start);
   }
+
+  List<int> get weekIncome => snapshot.dailyTotals(TransactionType.income);
+  List<int> get weekExpense => snapshot.dailyTotals(TransactionType.expense);
+
+  /// Share of this month's income that was not spent (0..1).
+  double get savingsRate {
+    final inc = monthIncome;
+    if (inc <= 0) return 0;
+    return ((inc - monthExpense) / inc).clamp(0.0, 1.0);
+  }
+
+  MapEntry<String, int>? get topCategory {
+    final list = snapshot.topSpendCategories;
+    return list.isEmpty ? null : list.first;
+  }
+
+  /// Bills and subscriptions falling due within the next 7 days.
+  List<ForecastEvent> get billsDueSoon => forecast
+      .upcomingWithin(7, now)
+      .where((e) => e.kind == ForecastEventKind.bill || e.kind == ForecastEventKind.subscription)
+      .toList();
 
   List<double> get sparklinePoints {
     if (forecast.points.isEmpty) return const [];
