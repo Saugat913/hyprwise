@@ -29,3 +29,18 @@ abstract final class AppSize {
   static const double navBar = 72;
   static const double progressStep = 3;
 }
+
+/// Backward compatibility class for presentation layers referencing legacy dimensions.
+abstract final class AppDimensions {
+  static const double pageMaxWidth = 720;
+  static const double screenPadding = AppSpace.page;
+  static const double radiusCard = AppRadius.md;
+  static const double cardPadding = AppSpace.lg;
+  static const double spaceXs = AppSpace.xs;
+  static const double spaceSm = AppSpace.sm;
+  static const double spaceMd = AppSpace.md;
+  static const double spaceLg = AppSpace.lg;
+  static const double spaceXl = AppSpace.xl;
+  static const double spaceXxl = AppSpace.xxl;
+  static const double spaceXxxl = AppSpace.xxxl;
+}
