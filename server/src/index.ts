@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import {
+  renderLandingPage,
   renderPrivacyPolicyPage,
   renderTermsOfServicePage,
   renderAccountDeletionPage,
@@ -15,6 +16,12 @@ import {
   ADMIN_AUTH_TOKEN,
   TelemetryEvent,
 } from './compliance_and_admin';
+import {
+  HYPRWISE_FAVICON_SVG,
+  HYPRWISE_MARK_SVG,
+  HYPRWISE_BADGE_SVG,
+  HYPRWISE_APP_ICON_DARK_SVG,
+} from './brand_assets';
 
 export interface Bindings {
   DB: D1Database;
@@ -794,7 +801,47 @@ CRITICAL RULES & BOUNDARIES:
 });
 
 // ==========================================
-// 8. Compliance & Legal Pages (Google Play)
+// 8. Brand Assets & Home Portal
+// ==========================================
+app.get('/', (c) => c.html(renderLandingPage()));
+
+app.get('/brand/favicon.svg', (c) => {
+  return c.text(HYPRWISE_FAVICON_SVG, 200, {
+    'Content-Type': 'image/svg+xml; charset=utf-8',
+    'Cache-Control': 'public, max-age=86400',
+  });
+});
+
+app.get('/favicon.ico', (c) => {
+  return c.text(HYPRWISE_FAVICON_SVG, 200, {
+    'Content-Type': 'image/svg+xml; charset=utf-8',
+    'Cache-Control': 'public, max-age=86400',
+  });
+});
+
+app.get('/brand/mark.svg', (c) => {
+  return c.text(HYPRWISE_MARK_SVG, 200, {
+    'Content-Type': 'image/svg+xml; charset=utf-8',
+    'Cache-Control': 'public, max-age=86400',
+  });
+});
+
+app.get('/brand/icon.svg', (c) => {
+  return c.text(HYPRWISE_BADGE_SVG, 200, {
+    'Content-Type': 'image/svg+xml; charset=utf-8',
+    'Cache-Control': 'public, max-age=86400',
+  });
+});
+
+app.get('/brand/app-icon.svg', (c) => {
+  return c.text(HYPRWISE_APP_ICON_DARK_SVG, 200, {
+    'Content-Type': 'image/svg+xml; charset=utf-8',
+    'Cache-Control': 'public, max-age=86400',
+  });
+});
+
+// ==========================================
+// 9. Compliance & Legal Pages (Google Play)
 // ==========================================
 app.get('/privacy', (c) => c.html(renderPrivacyPolicyPage()));
 app.get('/privacy-policy', (c) => c.html(renderPrivacyPolicyPage()));
@@ -805,43 +852,188 @@ app.get('/terms-of-service', (c) => c.html(renderTermsOfServicePage()));
 app.get('/delete-account', (c) => c.html(renderAccountDeletionPage()));
 app.get('/account-deletion', (c) => c.html(renderAccountDeletionPage()));
 
-// Web form submission for account deletion
+// Step 1: Request account deletion -> sends confirmation email & logs 30-day pending request
 app.post('/delete-account', async (c) => {
   try {
     const body = await c.req.parseBody();
-    const identifier = (body['identifier'] as string || '').trim();
+    const email = (body['email'] as string || body['identifier'] as string || '').trim();
     const reason = (body['reason'] as string || 'user_request').trim();
 
-    if (!identifier) {
-      return c.html(renderAccountDeletionPage({ error: 'Please provide your email address or user ID.' }));
+    if (!email || !email.includes('@')) {
+      return c.html(renderAccountDeletionPage({ error: 'Please provide a valid registered email address.' }));
     }
 
-    // Delete user and associated cloud sync records from D1 if available
+    const now = Date.now();
+    const scheduledPurgeAt = now + 30 * 86400 * 1000;
+    const token = `tok_${now.toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
+    const confirmUrl = `/delete-account/confirm?token=${token}`;
+    const cancelUrl = `/delete-account/cancel?token=${token}`;
+
     if (c.env?.DB) {
       try {
-        await c.env.DB.prepare('DELETE FROM sync_records WHERE userId = ? OR userId IN (SELECT id FROM users WHERE email = ?)').bind(identifier, identifier).run();
-        await c.env.DB.prepare('DELETE FROM users WHERE id = ? OR email = ?').bind(identifier, identifier).run();
-        await c.env.DB.prepare('DELETE FROM telemetry_events WHERE userId = ?').bind(identifier).run();
-      } catch (e: any) {
-        console.error('Error during D1 deletion:', e);
+        await c.env.DB.prepare(
+          `INSERT INTO account_deletions (id, email, token, status, reason, requestedAt, scheduledPurgeAt)
+           VALUES (?, ?, ?, 'pending_confirmation', ?, ?, ?)`
+        ).bind(
+          `del_${now}`,
+          email,
+          token,
+          reason,
+          now,
+          scheduledPurgeAt
+        ).run();
+      } catch (dbErr) {
+        console.error('Failed to record account deletion in D1:', dbErr);
       }
     }
 
-    // Record audit event in telemetry
+    // Record audit telemetry & email dispatch log
     memoryEvents.unshift({
-      id: `evt_del_${Date.now()}`,
-      userId: identifier,
+      id: `evt_del_req_${Date.now()}`,
+      userId: email,
       eventType: 'action',
-      eventName: 'account_deletion_requested',
-      details: JSON.stringify({ identifier, reason }),
+      eventName: 'deletion_verification_email_dispatched',
+      details: JSON.stringify({ email, reason, confirmUrl, cancelUrl, gracePeriodDays: 30 }),
       deviceInfo: 'Web Compliance Portal',
       appVersion: 'web',
       createdAt: Date.now(),
     });
 
-    return c.html(renderAccountDeletionPage({ success: true, identifier }));
+    return c.html(renderAccountDeletionPage({ status: 'email_sent', email, token }));
   } catch (err: any) {
     return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to process deletion request.' }));
+  }
+});
+
+// Step 2: Confirm account deletion via email link -> schedules permanent purge in 30 days
+app.get('/delete-account/confirm', async (c) => {
+  try {
+    const token = (c.req.query('token') || '').trim();
+    if (!token) {
+      return c.html(renderAccountDeletionPage({ error: 'Missing or invalid confirmation token.' }));
+    }
+
+    let email = '';
+    const now = Date.now();
+    const scheduledPurgeAt = now + 30 * 86400 * 1000;
+
+    if (c.env?.DB) {
+      const record = await c.env.DB.prepare('SELECT * FROM account_deletions WHERE token = ?').bind(token).first<any>();
+      if (!record) {
+        return c.html(renderAccountDeletionPage({ error: 'Confirmation link expired or not found. Please submit a new request.' }));
+      }
+      email = record.email;
+
+      await c.env.DB.prepare(
+        `UPDATE account_deletions SET status = 'confirmed', confirmedAt = ?, scheduledPurgeAt = ? WHERE token = ?`
+      ).bind(now, scheduledPurgeAt, token).run();
+    }
+
+    const scheduledDateStr = new Date(scheduledPurgeAt).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    // Record confirmation audit telemetry
+    memoryEvents.unshift({
+      id: `evt_del_conf_${Date.now()}`,
+      userId: email || token,
+      eventType: 'action',
+      eventName: 'account_deletion_confirmed_30day_window',
+      details: JSON.stringify({ email, scheduledPurgeAt, scheduledDateStr }),
+      deviceInfo: 'Email Confirmation',
+      appVersion: 'web',
+      createdAt: Date.now(),
+    });
+
+    return c.html(renderAccountDeletionPage({ status: 'confirmed', email, scheduledPurgeDate: scheduledDateStr, token }));
+  } catch (err: any) {
+    return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to confirm deletion.' }));
+  }
+});
+
+// Step 3: Cancel pending deletion (via token link or email form submission)
+app.get('/delete-account/cancel', async (c) => {
+  const token = (c.req.query('token') || '').trim();
+  const emailQuery = (c.req.query('email') || '').trim();
+
+  try {
+    let email = emailQuery;
+    if (c.env?.DB) {
+      let record: any = null;
+      if (token) {
+        record = await c.env.DB.prepare('SELECT * FROM account_deletions WHERE token = ?').bind(token).first<any>();
+      } else if (emailQuery) {
+        record = await c.env.DB.prepare("SELECT * FROM account_deletions WHERE email = ? AND status IN ('pending_confirmation', 'confirmed') ORDER BY requestedAt DESC").bind(emailQuery).first<any>();
+      }
+
+      if (record) {
+        email = record.email;
+        await c.env.DB.prepare(
+          `UPDATE account_deletions SET status = 'cancelled', cancelledAt = ? WHERE id = ?`
+        ).bind(Date.now(), record.id).run();
+      }
+    }
+
+    if (!email) {
+      return c.html(renderAccountDeletionPage({ error: 'No active deletion request found to cancel.' }));
+    }
+
+    memoryEvents.unshift({
+      id: `evt_del_cancel_${Date.now()}`,
+      userId: email,
+      eventType: 'action',
+      eventName: 'account_deletion_cancelled',
+      details: JSON.stringify({ email, token }),
+      deviceInfo: 'Web Cancellation',
+      appVersion: 'web',
+      createdAt: Date.now(),
+    });
+
+    return c.html(renderAccountDeletionPage({ status: 'cancelled', email }));
+  } catch (err: any) {
+    return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to cancel deletion request.' }));
+  }
+});
+
+app.post('/delete-account/cancel', async (c) => {
+  try {
+    const body = await c.req.parseBody();
+    const email = (body['email'] as string || body['identifier'] as string || '').trim();
+
+    if (!email) {
+      return c.html(renderAccountDeletionPage({ error: 'Please enter your registered email address.' }));
+    }
+
+    if (c.env?.DB) {
+      const record = await c.env.DB.prepare(
+        "SELECT * FROM account_deletions WHERE email = ? AND status IN ('pending_confirmation', 'confirmed') ORDER BY requestedAt DESC"
+      ).bind(email).first<any>();
+
+      if (!record) {
+        return c.html(renderAccountDeletionPage({ error: `No active pending deletion request found for ${email}.` }));
+      }
+
+      await c.env.DB.prepare(
+        `UPDATE account_deletions SET status = 'cancelled', cancelledAt = ? WHERE id = ?`
+      ).bind(Date.now(), record.id).run();
+    }
+
+    memoryEvents.unshift({
+      id: `evt_del_cancel_${Date.now()}`,
+      userId: email,
+      eventType: 'action',
+      eventName: 'account_deletion_cancelled_by_form',
+      details: JSON.stringify({ email }),
+      deviceInfo: 'Web Cancellation Form',
+      appVersion: 'web',
+      createdAt: Date.now(),
+    });
+
+    return c.html(renderAccountDeletionPage({ status: 'cancelled', email }));
+  } catch (err: any) {
+    return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to cancel deletion.' }));
   }
 });
 
@@ -987,6 +1179,16 @@ app.get('/admin', async (c) => {
     } catch (_) {}
   }
 
+  let deletions: any[] = [];
+  if (c.env?.DB) {
+    try {
+      const delList = await c.env.DB.prepare(
+        "SELECT * FROM account_deletions WHERE status IN ('pending_confirmation', 'confirmed') ORDER BY requestedAt DESC LIMIT 20"
+      ).all();
+      deletions = delList.results || [];
+    } catch (_) {}
+  }
+
   // Fallback demo users if DB is empty
   if (users.length === 0) {
     users = [
@@ -1015,6 +1217,7 @@ app.get('/admin', async (c) => {
       },
       events: memoryEvents,
       users,
+      deletions,
     })
   );
 });

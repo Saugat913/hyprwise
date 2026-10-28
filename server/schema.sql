@@ -28,3 +28,16 @@ CREATE TABLE IF NOT EXISTS telemetry_events (
   appVersion TEXT,
   createdAt INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS account_deletions (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  token TEXT NOT NULL,
+  status TEXT NOT NULL,
+  reason TEXT,
+  requestedAt INTEGER NOT NULL,
+  confirmedAt INTEGER,
+  scheduledPurgeAt INTEGER NOT NULL,
+  cancelledAt INTEGER
+);
+

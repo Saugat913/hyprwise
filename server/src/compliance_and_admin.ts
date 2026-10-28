@@ -2,6 +2,8 @@
 // Supports Google Play Data Safety, Account Deletion, Privacy Policy, Terms,
 // and real-time Telemetry & Crash Monitoring.
 
+import { getHyprwiseIconSvg } from './brand_assets';
+
 export interface TelemetryEvent {
   id: string;
   userId?: string | null;
@@ -61,17 +63,7 @@ export const ADMIN_PASSWORD = 'P@ssword123';
 export const ADMIN_COOKIE_NAME = 'hyprwise_admin_auth';
 export const ADMIN_AUTH_TOKEN = 'hypr_adm_token_p92817x8';
 
-// SVG Hyprwise Logo Brand Icon
-const HYPRWISE_LOGO_SVG = `
-<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="48" height="48" rx="12" fill="#0F172A"/>
-  <path d="M12 14L22 24L12 34" stroke="#6366F1" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M22 14L32 24L22 34" stroke="#38BDF8" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="36" cy="24" r="3" fill="#10B981"/>
-</svg>
-`;
-
-// Base HTML Page Wrapper with Hyprwise Flat Modern Aesthetic
+// Base HTML Page Wrapper with Hyprwise Clean Light Modern Aesthetic
 function wrapHtml({
   title,
   bodyContent,
@@ -87,26 +79,27 @@ function wrapHtml({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} | Hyprwise</title>
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090D14;
-      --surface: #101726;
-      --surface-elevated: #162032;
-      --surface-hover: #1E293B;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-focus: #6366F1;
-      --primary: #6366F1;
-      --primary-hover: #4F46E5;
-      --accent-cyan: #38BDF8;
-      --accent-green: #10B981;
-      --accent-red: #EF4444;
-      --accent-amber: #F59E0B;
-      --text: #F8FAFC;
-      --text-muted: #94A3B8;
-      --text-dim: #64748B;
+      --bg: #F8FAF9;
+      --surface: #FFFFFF;
+      --surface-elevated: #F0F4F2;
+      --surface-hover: #E6ECE8;
+      --border: #DDE4E0;
+      --border-focus: #28A050;
+      --primary: #28A050;
+      --primary-hover: #228A44;
+      --primary-ink: #FFFFFF;
+      --accent-green: #28A050;
+      --accent-red: #D93829;
+      --accent-amber: #B86E00;
+      --text: #1F2726;
+      --text-muted: #56645F;
+      --text-dim: #7F8E89;
       --radius: 12px;
       --radius-sm: 8px;
       --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -124,7 +117,7 @@ function wrapHtml({
       -webkit-font-smoothing: antialiased;
     }
     header {
-      background: rgba(9, 13, 20, 0.85);
+      background: rgba(255, 255, 255, 0.94);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
@@ -133,7 +126,7 @@ function wrapHtml({
       z-index: 50;
     }
     .nav-container {
-      max-width: 1080px;
+      max-width: 1040px;
       margin: 0 auto;
       padding: 14px 24px;
       display: flex;
@@ -147,25 +140,25 @@ function wrapHtml({
       text-decoration: none;
       color: var(--text);
       font-weight: 800;
-      font-size: 1.2rem;
-      letter-spacing: -0.02em;
+      font-size: 1.25rem;
+      letter-spacing: -0.03em;
     }
     .logo-text {
-      background: linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #1F2726;
+      font-weight: 800;
+      letter-spacing: -0.03em;
     }
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
     .nav-link {
       color: var(--text-muted);
       text-decoration: none;
       font-size: 0.875rem;
       font-weight: 500;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: var(--radius-sm);
       transition: all 0.15s ease;
     }
@@ -174,103 +167,65 @@ function wrapHtml({
       background: var(--surface-elevated);
     }
     .nav-link.active {
-      color: #FFFFFF;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: var(--primary);
+      font-weight: 600;
+      background: rgba(40, 160, 80, 0.08);
+      border: 1px solid rgba(40, 160, 80, 0.2);
     }
     main {
       flex: 1;
-      max-width: 920px;
+      max-width: 900px;
       width: 100%;
       margin: 0 auto;
-      padding: 44px 24px 80px;
+      padding: 40px 24px 72px;
     }
     .content-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 36px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
-    }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      background: rgba(99, 102, 241, 0.12);
-      color: #A5B4FC;
-      border: 1px solid rgba(99, 102, 241, 0.25);
-      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(31, 39, 38, 0.03);
     }
     h1 {
-      font-size: 2.15rem;
+      font-size: 2.1rem;
       font-weight: 800;
       letter-spacing: -0.03em;
       margin-bottom: 8px;
-      color: #FFFFFF;
+      color: var(--text);
     }
     .subtitle {
       color: var(--text-muted);
       font-size: 0.95rem;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
       display: flex;
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
     }
-    .pill-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 28px;
-    }
-    .pill {
-      font-size: 0.8rem;
-      font-weight: 600;
-      padding: 4px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--surface-elevated);
-      color: var(--text-muted);
-    }
-    .pill-indigo {
-      background: rgba(99, 102, 241, 0.12);
-      color: #A5B4FC;
-      border-color: rgba(99, 102, 241, 0.25);
-    }
-    .pill-emerald {
-      background: rgba(16, 185, 129, 0.12);
-      color: #6EE7B7;
-      border-color: rgba(16, 185, 129, 0.25);
-    }
-    .pill-cyan {
-      background: rgba(56, 189, 248, 0.12);
-      color: #7DD3FC;
-      border-color: rgba(56, 189, 248, 0.25);
+    .section-eyebrow {
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+      display: block;
     }
     h2 {
       font-size: 1.25rem;
       font-weight: 700;
-      margin: 36px 0 14px;
-      color: #FFFFFF;
+      margin: 32px 0 12px;
+      color: var(--text);
       letter-spacing: -0.015em;
-      display: flex;
-      align-items: center;
-      gap: 10px;
     }
     h3 {
       font-size: 1rem;
       font-weight: 600;
-      margin: 20px 0 8px;
-      color: #E2E8F0;
+      margin: 18px 0 8px;
+      color: var(--text);
     }
     p, ul {
-      color: #94A3B8;
+      color: var(--text-muted);
       font-size: 0.9375rem;
       margin-bottom: 16px;
       line-height: 1.7;
@@ -282,7 +237,7 @@ function wrapHtml({
       margin-bottom: 6px;
     }
     strong {
-      color: #F8FAFC;
+      color: var(--text);
       font-weight: 600;
     }
     code {
@@ -291,7 +246,7 @@ function wrapHtml({
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 0.85em;
-      color: #E2E8F0;
+      color: var(--text);
       border: 1px solid var(--border);
     }
     .callout {
@@ -300,24 +255,33 @@ function wrapHtml({
       border-left: 3px solid var(--primary);
       border-radius: var(--radius-sm);
       padding: 16px 20px;
-      margin: 24px 0;
+      margin: 22px 0;
     }
     .callout p {
       margin: 0;
-      color: #CBD5E1;
+      color: var(--text);
       font-size: 0.9rem;
     }
     .callout-success {
       border-left-color: var(--accent-green);
+      background: #F4FBF6;
+      border-color: #D2EEDB;
+    }
+    .callout-warning {
+      border-left-color: var(--accent-amber);
+      background: #FFFBF2;
+      border-color: #F8E5BA;
     }
     .callout-danger {
       border-left-color: var(--accent-red);
+      background: #FEF7F6;
+      border-color: #F8D3CE;
     }
     .data-table-container {
       overflow-x: auto;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      margin: 20px 0 28px;
+      margin: 18px 0 24px;
     }
     table.flat-table {
       width: 100%;
@@ -327,7 +291,7 @@ function wrapHtml({
     }
     table.flat-table th {
       background: var(--surface-elevated);
-      color: #F1F5F9;
+      color: var(--text);
       font-weight: 600;
       padding: 12px 16px;
       border-bottom: 1px solid var(--border);
@@ -336,7 +300,7 @@ function wrapHtml({
     table.flat-table td {
       padding: 12px 16px;
       border-bottom: 1px solid var(--border);
-      color: #94A3B8;
+      color: var(--text-muted);
     }
     table.flat-table tr:last-child td {
       border-bottom: none;
@@ -346,10 +310,10 @@ function wrapHtml({
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 11px 20px;
+      padding: 10px 18px;
       border-radius: var(--radius-sm);
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       text-decoration: none;
       cursor: pointer;
       border: none;
@@ -357,26 +321,26 @@ function wrapHtml({
     }
     .btn-primary {
       background: var(--primary);
-      color: white;
+      color: #FFFFFF;
     }
     .btn-primary:hover {
       background: var(--primary-hover);
     }
     .btn-danger {
       background: var(--accent-red);
-      color: white;
+      color: #FFFFFF;
     }
     .btn-danger:hover {
-      background: #DC2626;
+      background: #C22D1F;
     }
     .btn-outline {
-      background: var(--surface-elevated);
+      background: var(--surface);
       border: 1px solid var(--border);
       color: var(--text);
     }
     .btn-outline:hover {
-      background: var(--surface-hover);
-      border-color: rgba(255, 255, 255, 0.15);
+      background: var(--surface-elevated);
+      border-color: #CAD5CE;
     }
     .form-group {
       margin-bottom: 18px;
@@ -386,13 +350,13 @@ function wrapHtml({
       margin-bottom: 6px;
       font-size: 0.825rem;
       font-weight: 600;
-      color: #E2E8F0;
+      color: var(--text);
       letter-spacing: 0.01em;
     }
     input, select, textarea {
       width: 100%;
-      padding: 11px 14px;
-      background: var(--surface-elevated);
+      padding: 10px 14px;
+      background: #FFFFFF;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       color: var(--text);
@@ -403,49 +367,46 @@ function wrapHtml({
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      box-shadow: 0 0 0 3px rgba(40, 160, 80, 0.15);
     }
     .alert {
       padding: 14px 18px;
       border-radius: var(--radius-sm);
-      margin-bottom: 24px;
+      margin-bottom: 22px;
       font-size: 0.875rem;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
     .alert-success {
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #34D399;
+      background: #F2FBF5;
+      border: 1px solid #C8EED4;
+      color: #176536;
+    }
+    .alert-info {
+      background: #F4F8F6;
+      border: 1px solid #D1E3D9;
+      color: #1F2726;
     }
     .alert-error {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #F87171;
+      background: #FEF6F5;
+      border: 1px solid #F9D4D0;
+      color: #A92619;
     }
-    .badge-pill {
+    .status-dot {
       display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 0.725rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      margin-right: 6px;
     }
-    .badge-red { background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .badge-green { background: rgba(16, 185, 129, 0.15); color: #6EE7B7; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-indigo { background: rgba(99, 102, 241, 0.15); color: #A5B4FC; border: 1px solid rgba(99, 102, 241, 0.3); }
-    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #FCD34D; border: 1px solid rgba(245, 158, 11, 0.3); }
     footer {
       border-top: 1px solid var(--border);
-      padding: 32px 24px;
+      padding: 30px 24px;
       background: var(--surface);
       margin-top: auto;
     }
     .footer-container {
-      max-width: 1080px;
+      max-width: 1040px;
       margin: 0 auto;
       display: flex;
       flex-wrap: wrap;
@@ -466,10 +427,10 @@ function wrapHtml({
       transition: color 0.15s ease;
     }
     .footer-links a:hover {
-      color: var(--text);
+      color: var(--primary);
     }
     @media (max-width: 640px) {
-      .content-card { padding: 24px 18px; }
+      .content-card { padding: 22px 18px; }
       h1 { font-size: 1.75rem; }
       .nav-links { gap: 4px; }
       .nav-link { font-size: 0.8rem; padding: 6px 10px; }
@@ -480,8 +441,8 @@ function wrapHtml({
   <header>
     <div class="nav-container">
       <a href="/" class="logo">
-        ${HYPRWISE_LOGO_SVG}
-        <span class="logo-text">Hyprwise</span>
+        ${getHyprwiseIconSvg(30)}
+        <span class="logo-text">hyprwise</span>
       </a>
       <div class="nav-links">
         <a href="/privacy" class="nav-link ${activeNav === 'privacy' ? 'active' : ''}">Privacy</a>
@@ -509,19 +470,84 @@ function wrapHtml({
 </html>`;
 }
 
+// 0. Landing / Home Page
+export function renderLandingPage(): string {
+  const content = `
+    <div style="text-align: center; margin-bottom: 44px;">
+      <div style="display: inline-block; margin-bottom: 20px;">
+        ${getHyprwiseIconSvg(68)}
+      </div>
+      <h1 style="font-size: 2.4rem; margin-bottom: 8px; letter-spacing: -0.04em;">hyprwise</h1>
+      <p style="font-size: 1.05rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 16px;">
+        Personal finance, shift wage management & dual-currency budget intelligence. Built local-first for uncompromising privacy.
+      </p>
+      <div style="font-size: 0.85rem; color: var(--text-dim);">
+        <span class="status-dot"></span>Cloudflare Edge Network Online &nbsp;·&nbsp; Version 1.3.0 &nbsp;·&nbsp; Package: <code>com.hypr.hyprwise</code>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 32px;">
+      <a href="/privacy" class="content-card" style="text-decoration: none; display: block; transition: border-color 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <span class="section-eyebrow">Data Safety</span>
+        <h2 style="font-size: 1.2rem; margin: 0 0 6px; color: var(--text);">Privacy Policy &rarr;</h2>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">
+          Google Play certified Data Safety. Zero data monetization, on-device Drift SQLite encryption, and 30-day deletion grace period.
+        </p>
+      </a>
+
+      <a href="/terms" class="content-card" style="text-decoration: none; display: block; transition: border-color 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <span class="section-eyebrow">Legal</span>
+        <h2 style="font-size: 1.2rem; margin: 0 0 6px; color: var(--text);">Terms of Service &rarr;</h2>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">
+          Software license, shift rate calculation disclaimers, and RevenueCat subscription terms.
+        </p>
+      </a>
+
+      <a href="/delete-account" class="content-card" style="text-decoration: none; display: block; transition: border-color 0.15s ease;" onmouseover="this.style.borderColor='var(--accent-red)'" onmouseout="this.style.borderColor='var(--border)'">
+        <span class="section-eyebrow" style="color: var(--accent-red);">User Rights</span>
+        <h2 style="font-size: 1.2rem; margin: 0 0 6px; color: var(--text);">Delete Account &rarr;</h2>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">
+          Email verification required. 30-day protected grace period before permanent purge, with instant cancellation option.
+        </p>
+      </a>
+
+      <a href="/admin" class="content-card" style="text-decoration: none; display: block; transition: border-color 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <span class="section-eyebrow">Operations</span>
+        <h2 style="font-size: 1.2rem; margin: 0 0 6px; color: var(--text);">Admin Portal &rarr;</h2>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">
+          Live telemetry stream, exception monitor, cloud backup health, and performance telemetry.
+        </p>
+      </a>
+    </div>
+
+    <div class="content-card">
+      <h3 style="font-size: 1.1rem; margin-top: 0; margin-bottom: 14px;">Hyprwise Core Principles</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+        <div>
+          <strong style="color: var(--primary); display: block; margin-bottom: 4px;">Local-First SQLite</strong>
+          <p style="font-size: 0.85rem; margin: 0;">Full offline tracking. All shift wages, transactions, accounts, and budgets live in an on-device Drift SQLite vault.</p>
+        </div>
+        <div>
+          <strong style="color: var(--primary); display: block; margin-bottom: 4px;">Dual-Currency Engine</strong>
+          <p style="font-size: 0.85rem; margin: 0;">Adaptive native formatting for dual-currency earners and migrant workers with live rate conversions.</p>
+        </div>
+        <div>
+          <strong style="color: var(--primary); display: block; margin-bottom: 4px;">Gemini 2.5 Intelligence</strong>
+          <p style="font-size: 0.85rem; margin: 0;">On-device assisted receipt scanning and financial reasoning with verifiable database executions.</p>
+        </div>
+      </div>
+    </div>
+  `;
+  return wrapHtml({ title: 'Overview', bodyContent: content, activeNav: '' });
+}
+
 // 1. Privacy Policy Page
 export function renderPrivacyPolicyPage(): string {
   const content = `
     <div class="content-card">
-      <span class="hero-badge">Google Play Data Safety Verified</span>
+      <span class="section-eyebrow">Google Play Data Safety Certified</span>
       <h1>Hyprwise Privacy Policy</h1>
       <p class="subtitle">Effective Date: January 1, 2026 · Last Updated: October 28, 2026 · Version 1.3.0</p>
-
-      <div class="pill-group">
-        <span class="pill pill-emerald">✓ Encrypted Local SQLite</span>
-        <span class="pill pill-indigo">✓ Zero Data Monetization</span>
-        <span class="pill pill-cyan">✓ Local-First Architecture</span>
-      </div>
 
       <div class="callout callout-success">
         <p><strong>Core Privacy Guarantee:</strong> Hyprwise is engineered local-first. Your financial logs, hourly shift rates, bank accounts, and budgets live in an encrypted on-device SQLite database via Drift. We never sell, monetize, or broker your personal financial records to third-party advertisers.</p>
@@ -579,7 +605,17 @@ export function renderPrivacyPolicyPage(): string {
         </table>
       </div>
 
-      <h2>3. Third-Party Service Providers</h2>
+      <h2>3. AI Assistant & Receipt Scanning Protocol</h2>
+      <p>
+        Hyprwise incorporates Gemini 2.5 Flash for natural language interaction and bill OCR scanning. All AI interactions adhere to strict guardrails:
+      </p>
+      <ul>
+        <li><strong>Zero Training Retention:</strong> Receipt images and prompt transcripts sent to the AI proxy are never used to train global public machine learning models.</li>
+        <li><strong>Strict Financial Boundary:</strong> The AI assistant is restricted exclusively to personal financial records and shift scheduling. It will refuse requests unrelated to your financial management.</li>
+        <li><strong>Local Confirmation:</strong> Financial actions generated by AI execute directly against your local Drift database and are displayed with explicit confirmation cards.</li>
+      </ul>
+
+      <h2>4. Third-Party Service Providers</h2>
       <p>We work exclusively with vetted enterprise infrastructure providers strictly required to deliver app functionality:</p>
       <ul>
         <li><strong>Google Firebase (Authentication & Analytics):</strong> Handles federated Google/Apple sign-in and anonymized performance telemetry.</li>
@@ -588,19 +624,27 @@ export function renderPrivacyPolicyPage(): string {
         <li><strong>Cloudflare Workers & D1:</strong> Edge computing infrastructure hosting API endpoints, legal portals, and encrypted sync records.</li>
       </ul>
 
-      <h2>4. User Rights & Data Deletion</h2>
+      <h2>5. User Rights & Account Deletion (30-Day Protected Grace Period)</h2>
+      <div class="callout callout-warning">
+        <p><strong>30-Day Safe Deletion Protocol:</strong> When you request account deletion through our web portal, a verification link is dispatched to your registered email address. Once confirmed, your account enters a mandatory <strong>30-day grace period</strong> during which your data remains protected and you can cancel the deletion at any time. Permanent cryptographic purge occurs only after the 30-day window has expired.</p>
+      </div>
       <p>
-        In accordance with Google Play Data Safety requirements and global privacy regulations (GDPR / CCPA):
+        You have the complete right to export, modify, or permanently erase your data at any time:
       </p>
       <ul>
-        <li>You retain 100% ownership of your data at all times.</li>
-        <li>You can export complete backups in CSV and encrypted formats directly from <em>Settings &rarr; Data Management</em>.</li>
-        <li>You can permanently delete all cloud backups and profile records instantly either in-app via <em>Settings &rarr; Danger Zone &rarr; Delete Account</em> or through our web-based portal at <a href="/delete-account" style="color: var(--accent-cyan); text-decoration: underline;">/delete-account</a>.</li>
+        <li><strong>In-App Deletion:</strong> Open Hyprwise &rarr; <em>Settings</em> &rarr; <em>Danger Zone</em> &rarr; <em>Delete Account</em>.</li>
+        <li><strong>Web-Based Deletion:</strong> Visit <a href="/delete-account" style="color: var(--primary); font-weight: 600;">/delete-account</a> to initiate email-verified account and cloud backup deletion.</li>
+        <li><strong>Cancellation:</strong> You can cancel any pending deletion during the 30-day grace period via the cancellation link sent to your email or on the <a href="/delete-account" style="color: var(--primary);">account deletion portal</a>.</li>
       </ul>
 
-      <h2>5. Contact & Privacy Officer</h2>
+      <h2>6. Security Measures</h2>
       <p>
-        If you have questions regarding this Privacy Policy or wish to file a formal data safety request, contact our security team at:
+        All network communications utilize modern TLS 1.3 encryption. Internal administrative portals require password authorization and enforce edge IP access logging.
+      </p>
+
+      <h2>7. Contact & Privacy Officer</h2>
+      <p>
+        If you have questions regarding this Privacy Policy or wish to file a formal data safety request, contact our security team:
         <br>
         <strong>Email:</strong> <code>privacy@hyprwise.app</code> or <code>dev@hyprwise.app</code>
       </p>
@@ -613,15 +657,9 @@ export function renderPrivacyPolicyPage(): string {
 export function renderTermsOfServicePage(): string {
   const content = `
     <div class="content-card">
-      <span class="hero-badge">Terms of Service</span>
+      <span class="section-eyebrow">Legal Terms</span>
       <h1>Hyprwise Terms of Service</h1>
       <p class="subtitle">Effective Date: January 1, 2026 · Last Updated: October 28, 2026 · Version 1.3.0</p>
-
-      <div class="pill-group">
-        <span class="pill pill-indigo">Official User Agreement</span>
-        <span class="pill pill-cyan">Fair Usage Policy</span>
-        <span class="pill pill-emerald">Hyprwise Pro Billing Terms</span>
-      </div>
 
       <h2>1. Acceptance of Terms</h2>
       <p>
@@ -644,8 +682,8 @@ export function renderTermsOfServicePage(): string {
       <h2>4. User Responsibilities & Acceptable Use</h2>
       <p>You agree to use Hyprwise solely for lawful personal or small-business shift management. You agree not to reverse engineer, decompile, or launch automated denial-of-service attempts against Hyprwise edge infrastructure.</p>
 
-      <h2>5. Termination & Data Deletion</h2>
-      <p>You may terminate your account at any time. When you request account deletion, all cloud-synced backups, device tokens, and customer service records are permanently purged.</p>
+      <h2>5. Termination & Data Deletion (30-Day Policy)</h2>
+      <p>You may request account deletion at any time. When you request deletion via our web portal, an email confirmation is sent, followed by a <strong>30-day grace period</strong> during which you may cancel at any time. Permanent purge of cloud backups and telemetry occurs automatically after 30 days.</p>
 
       <h2>6. Governing Law & Inquiries</h2>
       <p>
@@ -659,21 +697,62 @@ export function renderTermsOfServicePage(): string {
 }
 
 // 3. Account Deletion Portal
-export function renderAccountDeletionPage(opts?: { success?: boolean; error?: string; identifier?: string }): string {
+export function renderAccountDeletionPage(opts?: {
+  status?: 'email_sent' | 'confirmed' | 'cancelled';
+  error?: string;
+  email?: string;
+  scheduledPurgeDate?: string;
+  token?: string;
+}): string {
   const content = `
     <div class="content-card">
-      <span class="hero-badge" style="background: rgba(239, 68, 68, 0.12); color: #FCA5A5; border-color: rgba(239, 68, 68, 0.25);">Google Play Compliance Portal</span>
+      <span class="section-eyebrow" style="color: var(--accent-red);">Google Play Data Safety Portal</span>
       <h1>Account & Data Deletion</h1>
-      <p class="subtitle">Permanent Erasure of Hyprwise Account, Cloud Backups & Diagnostic Records</p>
+      <p class="subtitle">Request permanent erasure of your Hyprwise account, cloud sync vaults, and server records.</p>
 
       ${
-        opts?.success
+        opts?.status === 'email_sent'
           ? `
           <div class="alert alert-success">
-            <div>
-              <strong>Account Erasure Initiated:</strong>
-              <div style="margin-top: 4px;">Cloud synchronization records, telemetry logs, and profile identifiers associated with <strong>${opts.identifier || 'your account'}</strong> have been permanently deleted from Cloudflare D1 and Firebase systems.</div>
-            </div>
+            <strong>Verification Email Sent:</strong>
+            <p style="margin: 6px 0 0; color: inherit;">
+              A confirmation link has been dispatched to <strong>${opts.email}</strong>. Please check your inbox and click the confirmation link to schedule your account deletion.
+            </p>
+            <p style="margin: 8px 0 0; font-size: 0.85rem; color: inherit;">
+              <strong>Protection Note:</strong> Your data is NOT deleted immediately. Confirmation activates a <strong>30-day grace period</strong> during which your records are safely preserved, and you can cancel anytime.
+            </p>
+          </div>
+        `
+          : ''
+      }
+
+      ${
+        opts?.status === 'confirmed'
+          ? `
+          <div class="alert alert-success">
+            <strong>Deletion Confirmed — 30-Day Grace Window Active:</strong>
+            <p style="margin: 6px 0 0; color: inherit;">
+              Account deletion for <strong>${opts.email}</strong> has been confirmed and scheduled for permanent purge.
+            </p>
+            <p style="margin: 8px 0; font-weight: 700; font-size: 1rem; color: inherit;">
+              Scheduled Purge Date: ${opts.scheduledPurgeDate || 'In 30 days'}
+            </p>
+            <p style="margin: 8px 0 0; font-size: 0.85rem; color: inherit;">
+              You have 30 days to change your mind. Use the cancellation form below or the cancel link in your email at any time to restore your active account.
+            </p>
+          </div>
+        `
+          : ''
+      }
+
+      ${
+        opts?.status === 'cancelled'
+          ? `
+          <div class="alert alert-success">
+            <strong>Deletion Cancelled:</strong>
+            <p style="margin: 6px 0 0; color: inherit;">
+              The pending deletion request for <strong>${opts.email}</strong> has been cancelled. Your account and cloud sync vaults remain active and protected.
+            </p>
           </div>
         `
           : ''
@@ -683,39 +762,40 @@ export function renderAccountDeletionPage(opts?: { success?: boolean; error?: st
         opts?.error
           ? `
           <div class="alert alert-error">
-            <div>
-              <strong>Error:</strong> ${opts.error}
-            </div>
+            <strong>Error:</strong> ${opts.error}
           </div>
         `
           : ''
       }
 
-      <div class="callout callout-danger">
-        <p><strong>Warning:</strong> Deleting your account will immediately and permanently erase all cloud synchronization backups, linked profile credentials, and server audit records. This action cannot be undone.</p>
+      <div class="callout callout-warning">
+        <strong style="display: block; margin-bottom: 6px; color: var(--text);">How Account Deletion Works (30-Day Safe Protocol):</strong>
+        <p style="font-size: 0.875rem; line-height: 1.6; margin-bottom: 8px;">
+          1. <strong>Email Verification:</strong> We email you a secure confirmation link to ensure no unauthorized or accidental deletion occurs.
+        </p>
+        <p style="font-size: 0.875rem; line-height: 1.6; margin-bottom: 8px;">
+          2. <strong>30-Day Protection Window:</strong> Once you confirm, your data is retained safely for <strong>30 days</strong>. Nothing is deleted right away.
+        </p>
+        <p style="font-size: 0.875rem; line-height: 1.6; margin: 0;">
+          3. <strong>Cancel Anytime:</strong> If you change your mind, submit your email below or click the cancel link in your email during the 30-day period to restore full active access.
+        </p>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 28px 0;">
-        <div style="background: var(--surface-elevated); padding: 20px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
-          <div style="color: var(--accent-green); font-weight: 700; margin-bottom: 6px;">1. In-App Deletion (Instant)</div>
-          <p style="font-size: 0.85rem; margin: 0;">Open Hyprwise on your phone &rarr; <em>Settings</em> &rarr; <em>Danger Zone</em> &rarr; tap <strong>Delete Account & Data</strong> for instant cryptographic purge.</p>
-        </div>
-        <div style="background: var(--surface-elevated); padding: 20px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
-          <div style="color: var(--accent-cyan); font-weight: 700; margin-bottom: 6px;">2. Web-Based Deletion</div>
-          <p style="font-size: 0.85rem; margin: 0;">Submit the form below. Our edge database immediately executes a deletion query across all D1 sync records and profile tables.</p>
-        </div>
-      </div>
+      <h2 style="font-size: 1.15rem; margin-top: 28px; margin-bottom: 10px;">Step 1: Request Deletion Verification Email</h2>
+      <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 16px;">
+        Enter your registered email address. We will send a confirmation link to start the 30-day grace period.
+      </p>
 
-      <form method="POST" action="/delete-account" style="margin-top: 24px;">
+      <form method="POST" action="/delete-account" style="margin-bottom: 32px;">
         <div class="form-group">
-          <label for="identifier">Email Address or Firebase User ID</label>
-          <input type="text" id="identifier" name="identifier" required placeholder="e.g. user@example.com or usr_abc123" value="${opts?.identifier || ''}">
+          <label for="email">Account Email Address</label>
+          <input type="email" id="email" name="email" required placeholder="e.g. name@example.com" value="${opts?.email || ''}">
         </div>
 
         <div class="form-group">
           <label for="reason">Reason for Deletion (Optional)</label>
           <select id="reason" name="reason">
-            <option value="no_longer_needed">I no longer need the app</option>
+            <option value="no_longer_needed">No longer needed</option>
             <option value="switching_device">Switching devices</option>
             <option value="privacy_preference">Privacy preferences</option>
             <option value="other">Other reason</option>
@@ -723,16 +803,30 @@ export function renderAccountDeletionPage(opts?: { success?: boolean; error?: st
         </div>
 
         <div class="form-group">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #CBD5E1;">
-            <input type="checkbox" required style="width: 18px; height: 18px; accent-color: var(--accent-red);">
-            <span>I confirm that I want to permanently delete all my cloud backups and account information.</span>
+          <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.85rem; font-weight: normal; color: var(--text-muted);">
+            <input type="checkbox" required style="width: 17px; height: 17px; margin-top: 2px; accent-color: var(--primary);">
+            <span>I understand that a confirmation email will be sent and that I have 30 days to cancel before data is permanently deleted.</span>
           </label>
         </div>
 
-        <button type="submit" class="btn btn-danger" style="width: 100%; padding: 13px;">
-          Permanently Erase My Account & Cloud Data
+        <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">
+          Send Deletion Confirmation Email
         </button>
       </form>
+
+      <div style="border-top: 1px solid var(--border); padding-top: 24px;">
+        <h2 style="font-size: 1.15rem; margin-top: 0; margin-bottom: 8px;">Cancel a Pending Deletion</h2>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 14px;">
+          If you previously confirmed a deletion request and wish to keep your account within the 30-day grace period, enter your email below to cancel immediately.
+        </p>
+
+        <form method="POST" action="/delete-account/cancel" style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <input type="email" name="email" required placeholder="Your registered email address" style="flex: 1; min-width: 240px;" value="${opts?.email || ''}">
+          <button type="submit" class="btn btn-outline" style="padding: 10px 18px;">
+            Cancel Deletion & Keep Account
+          </button>
+        </form>
+      </div>
     </div>
   `;
   return wrapHtml({ title: 'Delete Account', bodyContent: content, activeNav: 'delete' });
@@ -741,13 +835,13 @@ export function renderAccountDeletionPage(opts?: { success?: boolean; error?: st
 // 4. Admin Login Page
 export function renderAdminLoginPage(opts?: { error?: string }): string {
   const content = `
-    <div style="max-width: 420px; margin: 40px auto;">
+    <div style="max-width: 400px; margin: 40px auto;">
       <div class="content-card" style="text-align: center;">
-        <div style="margin-bottom: 16px;">
-          ${HYPRWISE_LOGO_SVG}
+        <div style="margin-bottom: 18px; display: inline-block;">
+          ${getHyprwiseIconSvg(52)}
         </div>
-        <h1 style="font-size: 1.5rem; margin-bottom: 6px;">Hyprwise Admin</h1>
-        <p class="subtitle" style="margin-bottom: 24px; justify-content: center;">Operations, telemetry, and live exception monitor</p>
+        <h1 style="font-size: 1.45rem; margin-bottom: 6px; letter-spacing: -0.03em;">hyprwise admin</h1>
+        <p class="subtitle" style="margin-bottom: 22px; justify-content: center; font-size: 0.875rem;">Edge telemetry and live operational monitor</p>
 
         ${opts?.error ? `<div class="alert alert-error" style="text-align: left;">${opts.error}</div>` : ''}
 
@@ -756,10 +850,10 @@ export function renderAdminLoginPage(opts?: { error?: string }): string {
             <label for="password">Security Password</label>
             <input type="password" id="password" name="password" required placeholder="Enter admin password" autofocus>
           </div>
-          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Authenticate & Enter</button>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px; margin-top: 6px;">Authenticate & Enter</button>
         </form>
 
-        <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 24px;">
+        <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 20px; margin-bottom: 0;">
           Protected operations portal · Access is logged with edge IP and timestamp
         </p>
       </div>
@@ -773,6 +867,7 @@ export function renderAdminDashboard({
   metrics,
   events,
   users,
+  deletions = [],
 }: {
   metrics: {
     totalUsers: number;
@@ -785,71 +880,126 @@ export function renderAdminDashboard({
   };
   events: TelemetryEvent[];
   users: any[];
+  deletions?: any[];
 }): string {
   const exceptions = events.filter((e) => e.eventType === 'exception' || e.eventType === 'crash');
   const interactions = events.filter((e) => e.eventType === 'action' || e.eventType === 'screen_view');
 
   const content = `
-    <div style="max-width: 1100px; margin: 0 auto;">
+    <div style="max-width: 1040px; margin: 0 auto;">
       <!-- Header -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
         <div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span class="badge-pill badge-green">● Live Edge Connected</span>
-            <span style="color: var(--text-dim); font-size: 0.85rem;">Cloudflare Workers · D1 Database</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="status-dot"></span>
+            <span style="font-weight: 600; font-size: 0.85rem; color: var(--primary);">Live Edge Connected</span>
+            <span style="color: var(--text-dim); font-size: 0.85rem;">· Cloudflare Workers · D1 Database</span>
           </div>
-          <h1 style="margin-top: 6px;">Operations & Telemetry</h1>
+          <h1 style="margin-top: 4px; font-size: 1.85rem;">Operations & Telemetry</h1>
         </div>
-        <div style="display: flex; gap: 10px;">
-          <a href="/admin" class="btn btn-outline" style="font-size: 0.85rem; padding: 8px 14px;">↻ Refresh</a>
-          <a href="/admin/logout" class="btn btn-outline" style="font-size: 0.85rem; padding: 8px 14px; color: var(--accent-red);">Logout</a>
+        <div style="display: flex; gap: 8px;">
+          <a href="/admin" class="btn btn-outline" style="font-size: 0.825rem; padding: 7px 12px;">↻ Refresh</a>
+          <a href="/admin/logout" class="btn btn-outline" style="font-size: 0.825rem; padding: 7px 12px; color: var(--accent-red);">Logout</a>
         </div>
       </div>
 
       <!-- Metrics Grid -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 28px;">
-        <div class="content-card" style="padding: 20px;">
-          <div style="color: var(--text-muted); font-size: 0.775rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Registered Users</div>
-          <div style="font-size: 2rem; font-weight: 800; margin: 6px 0; color: #FFF;">${metrics.totalUsers}</div>
-          <div style="font-size: 0.8rem; color: var(--accent-green);">Pro: ${metrics.proUsers} (${metrics.conversionRate})</div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        <div class="content-card" style="padding: 18px;">
+          <div style="color: var(--text-muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Registered Users</div>
+          <div style="font-size: 1.85rem; font-weight: 800; margin: 4px 0; color: var(--text);">${metrics.totalUsers}</div>
+          <div style="font-size: 0.8rem; color: var(--primary);">Pro: ${metrics.proUsers} (${metrics.conversionRate})</div>
         </div>
 
-        <div class="content-card" style="padding: 20px;">
-          <div style="color: var(--text-muted); font-size: 0.775rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Cloud Backups</div>
-          <div style="font-size: 2rem; font-weight: 800; margin: 6px 0; color: #FFF;">${metrics.totalBackups}</div>
-          <div style="font-size: 0.8rem; color: var(--accent-cyan);">Active synchronized vaults</div>
+        <div class="content-card" style="padding: 18px;">
+          <div style="color: var(--text-muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Cloud Backups</div>
+          <div style="font-size: 1.85rem; font-weight: 800; margin: 4px 0; color: var(--text);">${metrics.totalBackups}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">Active sync vaults</div>
         </div>
 
-        <div class="content-card" style="padding: 20px;">
-          <div style="color: var(--text-muted); font-size: 0.775rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Logged Exceptions</div>
-          <div style="font-size: 2rem; font-weight: 800; margin: 6px 0; color: ${metrics.totalExceptions > 0 ? 'var(--accent-red)' : 'var(--accent-green)'};">
+        <div class="content-card" style="padding: 18px;">
+          <div style="color: var(--text-muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Logged Exceptions</div>
+          <div style="font-size: 1.85rem; font-weight: 800; margin: 4px 0; color: ${metrics.totalExceptions > 0 ? 'var(--accent-red)' : 'var(--primary)'};">
             ${metrics.totalExceptions}
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-dim);">Unhandled crashes / errors</div>
+          <div style="font-size: 0.8rem; color: var(--text-dim);">Unhandled crashes</div>
         </div>
 
-        <div class="content-card" style="padding: 20px;">
-          <div style="color: var(--text-muted); font-size: 0.775rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Telemetry Events</div>
-          <div style="font-size: 2rem; font-weight: 800; margin: 6px 0; color: #FFF;">${metrics.totalInteractions}</div>
-          <div style="font-size: 0.8rem; color: var(--text-dim);">Shifts, TXs, Assistant prompts</div>
+        <div class="content-card" style="padding: 18px;">
+          <div style="color: var(--text-muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Telemetry Events</div>
+          <div style="font-size: 1.85rem; font-weight: 800; margin: 4px 0; color: var(--text);">${metrics.totalInteractions}</div>
+          <div style="font-size: 0.8rem; color: var(--text-dim);">Logged client actions</div>
         </div>
       </div>
 
-      <!-- Section: App Exceptions & Bug Reports -->
-      <div class="content-card" style="margin-bottom: 28px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <!-- Section: 30-Day Account Deletion Queue -->
+      <div class="content-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div>
-            <h2 style="margin: 0;">App Exceptions & Crash Reports</h2>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Live error ingestion reported from Flutter mobile client and backend</p>
+            <h2 style="margin: 0; font-size: 1.15rem;">Pending Account Deletion Queue (30-Day Window)</h2>
+            <p style="color: var(--text-muted); font-size: 0.825rem; margin: 0;">Verified deletion requests undergoing 30-day grace retention</p>
           </div>
-          <span class="badge-pill ${exceptions.length > 0 ? 'badge-red' : 'badge-green'}">${exceptions.length} Detected</span>
+          <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">${deletions.length} Pending</span>
+        </div>
+
+        ${
+          deletions.length === 0
+            ? `<div style="text-align: center; padding: 24px 0; color: var(--text-muted); font-size: 0.875rem;">
+                No pending deletion requests.
+              </div>`
+            : `
+            <div class="data-table-container" style="margin: 0;">
+              <table class="flat-table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Requested</th>
+                    <th>Scheduled Purge Date</th>
+                    <th>Token</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${deletions
+                    .map(
+                      (d) => `
+                    <tr>
+                      <td><strong>${d.email}</strong></td>
+                      <td>
+                        <span style="font-weight: 600; font-size: 0.8rem; color: ${d.status === 'confirmed' ? 'var(--accent-red)' : 'var(--accent-amber)'};">
+                          ${d.status}
+                        </span>
+                      </td>
+                      <td>${new Date(d.requestedAt).toLocaleDateString()}</td>
+                      <td><strong>${new Date(d.scheduledPurgeAt).toLocaleDateString()}</strong></td>
+                      <td><code>${String(d.token).substring(0, 10)}...</code></td>
+                    </tr>
+                  `
+                    )
+                    .join('')}
+                </tbody>
+              </table>
+            </div>
+          `
+        }
+      </div>
+
+      <!-- Section: App Exceptions & Bug Reports -->
+      <div class="content-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div>
+            <h2 style="margin: 0; font-size: 1.15rem;">App Exceptions & Crash Reports</h2>
+            <p style="color: var(--text-muted); font-size: 0.825rem; margin: 0;">Live error ingestion reported from Flutter mobile client and edge</p>
+          </div>
+          <span style="font-size: 0.8rem; font-weight: 600; color: ${exceptions.length > 0 ? 'var(--accent-red)' : 'var(--primary)'};">
+            ${exceptions.length} Recorded
+          </span>
         </div>
 
         ${
           exceptions.length === 0
-            ? `<div style="text-align: center; padding: 32px 0; color: var(--text-muted);">
-                <div style="font-size: 24px; margin-bottom: 6px;">✓</div>
-                <div>No app exceptions or crashes recorded. All systems operational.</div>
+            ? `<div style="text-align: center; padding: 28px 0; color: var(--text-muted); font-size: 0.875rem;">
+                ✓ No app exceptions or crashes recorded. All systems operational.
               </div>`
             : `
             <div class="data-table-container" style="margin: 0;">
@@ -860,7 +1010,7 @@ export function renderAdminDashboard({
                     <th>Error Event</th>
                     <th>App Version / Device</th>
                     <th>Time</th>
-                    <th>Stack Details</th>
+                    <th>Details</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -868,12 +1018,12 @@ export function renderAdminDashboard({
                     .map(
                       (e) => `
                     <tr>
-                      <td><span class="badge-pill badge-red">${e.eventType}</span></td>
-                      <td style="font-weight: 600; color: #FCA5A5;">${e.eventName}</td>
+                      <td style="font-weight: 600; font-size: 0.8rem; color: var(--accent-red);">${e.eventType}</td>
+                      <td style="font-weight: 600; color: var(--text);">${e.eventName}</td>
                       <td>${e.appVersion || 'v0.1.2'} · ${e.deviceInfo || 'Unknown'}</td>
                       <td>${new Date(e.createdAt).toLocaleTimeString()}</td>
                       <td>
-                        <pre style="background: var(--surface-elevated); padding: 4px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.75rem; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.details || 'No stack trace'}</pre>
+                        <code style="font-size: 0.75rem; max-width: 260px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.details || '-'}</code>
                       </td>
                     </tr>
                   `
@@ -887,13 +1037,13 @@ export function renderAdminDashboard({
       </div>
 
       <!-- Section: Live Customer Interaction Stream -->
-      <div class="content-card" style="margin-bottom: 28px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div class="content-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div>
-            <h2 style="margin: 0;">Customer Interaction Stream</h2>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Audited real-time feature usage patterns</p>
+            <h2 style="margin: 0; font-size: 1.15rem;">Customer Interaction Stream</h2>
+            <p style="color: var(--text-muted); font-size: 0.825rem; margin: 0;">Audited real-time feature usage patterns</p>
           </div>
-          <span class="badge-pill badge-indigo">${interactions.length} Events</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">${interactions.length} Events</span>
         </div>
 
         <div class="data-table-container" style="margin: 0;">
@@ -913,12 +1063,12 @@ export function renderAdminDashboard({
                 .map(
                   (e) => `
                 <tr>
-                  <td><span class="badge-pill badge-indigo">${e.eventName}</span></td>
+                  <td style="font-weight: 600; color: var(--text);">${e.eventName}</td>
                   <td><code>${e.userId || 'anonymous'}</code></td>
                   <td>${e.deviceInfo || 'Unknown'}</td>
                   <td>${new Date(e.createdAt).toLocaleTimeString()}</td>
                   <td>
-                    <code style="font-size: 0.75rem; max-width: 280px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.details || '-'}</code>
+                    <code style="font-size: 0.75rem; max-width: 260px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.details || '-'}</code>
                   </td>
                 </tr>
               `
@@ -931,17 +1081,17 @@ export function renderAdminDashboard({
 
       <!-- Section: Registered Users -->
       <div class="content-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div>
-            <h2 style="margin: 0;">Registered App Users</h2>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Firebase Authentication & Pro Entitlement Directory</p>
+            <h2 style="margin: 0; font-size: 1.15rem;">Registered App Users</h2>
+            <p style="color: var(--text-muted); font-size: 0.825rem; margin: 0;">Firebase Authentication & Pro Entitlement Directory</p>
           </div>
-          <span class="badge-pill badge-green">${users.length} Active</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">${users.length} Active</span>
         </div>
 
         ${
           users.length === 0
-            ? `<div style="text-align: center; padding: 32px 0; color: var(--text-muted);">No users in database yet.</div>`
+            ? `<div style="text-align: center; padding: 24px 0; color: var(--text-muted); font-size: 0.875rem;">No users in database yet.</div>`
             : `
             <div class="data-table-container" style="margin: 0;">
               <table class="flat-table">
@@ -962,13 +1112,11 @@ export function renderAdminDashboard({
                     <tr>
                       <td><code>${u.id}</code></td>
                       <td>${u.email || 'guest@offline.local'}</td>
-                      <td><span class="badge-pill badge-cyan">${u.provider || 'google'}</span></td>
+                      <td>${u.provider || 'google'}</td>
                       <td>
-                        ${
-                          u.isPro === 1
-                            ? `<span class="badge-pill badge-amber">★ PRO</span>`
-                            : `<span class="badge-pill badge-indigo">FREE</span>`
-                        }
+                        <strong style="color: ${u.isPro === 1 ? 'var(--primary)' : 'var(--text-muted)'}; font-size: 0.8rem;">
+                          ${u.isPro === 1 ? 'PRO' : 'FREE'}
+                        </strong>
                       </td>
                       <td>${new Date(u.createdAt || Date.now()).toLocaleDateString()}</td>
                     </tr>
