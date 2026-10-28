@@ -740,10 +740,36 @@ Respond ONLY with a JSON object in this exact format:
       }
     }
 
+    // 7.1 Financial summary / overview query (instant verified on-device reply)
+    final summaryRegex = RegExp(
+      r'\b(financial summary|summary|overview|where do i stand|how am i doing|financial status|status|my finances|net worth|position)\b',
+    );
+    final isSummaryQuery = summaryRegex.hasMatch(lower) ||
+        RegExp(r'(आर्थिक|विवरण|सारांश|हिसाब)').hasMatch(lower);
+    if (isSummaryQuery) {
+      final localAnswer = financeStore.ask(text);
+      if (localAnswer.headline.isNotEmpty) {
+        _messages.add(
+          AssistantMessage(
+            isUser: false,
+            headline: localAnswer.headline,
+            text: localAnswer.body,
+            explanation: localAnswer.explanation,
+            suggestions: [
+              ...localAnswer.suggestions,
+              ...localAnswer.followUps,
+            ],
+          ),
+        );
+        notifyListeners();
+        return true;
+      }
+    }
+
     // 8. Restrict unknown / out-of-scope non-financial queries locally
     final isFinancialOrAction = RegExp(
-      r'\b(money|balance|account|save|saving|savings|goal|goals|spend|spent|spending|expense|expenses|income|cash|shift|shifts|job|jobs|debt|debts|owe|owes|lent|borrow|borrowed|loan|loans|afford|buy|purchase|convert|currency|wage|wages|pay|rate|rates|cost|budget|bill|bills|wallet|groceries|dining|food|transport|fuel)\b',
-    ).hasMatch(lower);
+      r'\b(money|balance|account|save|saving|savings|goal|goals|spend|spent|spending|expense|expenses|income|cash|shift|shifts|job|jobs|debt|debts|owe|owes|lent|borrow|borrowed|loan|loans|afford|buy|purchase|convert|currency|wage|wages|pay|rate|rates|cost|budget|bill|bills|wallet|groceries|dining|food|transport|fuel|financial|finance|finances|summary|overview|status|report|net|worth|position|earning|earnings|worked|hours)\b',
+    ).hasMatch(lower) || RegExp(r'[\u0900-\u097F]').hasMatch(lower);
 
     if (!isFinancialOrAction &&
         !RegExp(
@@ -935,6 +961,7 @@ CRITICAL RULES & GUARDRAILS:
 2. INJECTED APP DATA:
    - The verified live ledger snapshot is provided below.
    - ONLY reveal data when the user specifically asks for it. Do NOT dump the entire ledger or unrequested financial metrics unprompted.
+   - When the user asks for a financial summary, overview, status, or how they are doing, provide a structured, polite breakdown of their net position, account balances, month-to-date spending, debts, and shifts from the live ledger below.
 3. ACTIONS & MCP:
    - When the user asks to add an expense, record income, convert currency, schedule a shift, or allocate savings to a goal, call the matching tool declaration.
 4. CURRENCY, LANGUAGE & FORMATTING:

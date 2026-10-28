@@ -295,36 +295,97 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
                 },
               ),
 
-              // Existing party suggestions
+              // Existing party suggestions (spacious horizontal merchant-style cards)
               if (existingParties.isNotEmpty) ...[
+                const SizedBox(height: AppSpace.md),
+                Text(
+                  tr.t(
+                    'Recent people',
+                    ne: 'हालका व्यक्तिहरू',
+                    es: 'Personas recientes',
+                    fr: 'Personnes récentes',
+                    de: 'Zuletzt verwendet',
+                    ja: '最近の相手',
+                    zh: '最近往来对象',
+                    it: 'Persone recenti',
+                  ),
+                  style: text.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: AppSpace.sm),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final party in existingParties.take(6))
-                      InkWell(
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
-                        onTap: () {
-                          setState(() {
-                            _partyController.text = party;
-                            _partyError = null;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
-                            border: Border.all(color: scheme.outlineVariant),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cols = constraints.maxWidth >= 420 ? 3 : 2;
+                    final cardWidth = (constraints.maxWidth - (cols - 1) * AppSpace.sm) / cols;
+                    return Wrap(
+                      spacing: AppSpace.sm,
+                      runSpacing: AppSpace.sm,
+                      children: [
+                        for (final party in existingParties.take(6))
+                          Builder(
+                            builder: (context) {
+                              final isSelected = _partyController.text.trim().toLowerCase() ==
+                                  party.trim().toLowerCase();
+                              return SizedBox(
+                                width: cardWidth,
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
+                                    onTap: () {
+                                      setState(() {
+                                        _partyController.text = party;
+                                        _partyError = null;
+                                      });
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 150),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AppSpace.md,
+                                        vertical: AppSpace.sm + 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? scheme.primary.withValues(alpha: 0.08)
+                                            : scheme.surface,
+                                        borderRadius: BorderRadius.circular(AppRadius.md),
+                                        border: Border.all(
+                                          color: isSelected ? scheme.primary : scheme.outlineVariant,
+                                          width: isSelected ? 1.5 : 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          LetterAvatar(party, size: 28, isCircle: true),
+                                          const SizedBox(width: AppSpace.sm),
+                                          Expanded(
+                                            child: Text(
+                                              party,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: text.bodySmall?.copyWith(
+                                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                                color: isSelected ? scheme.primary : scheme.onSurface,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isSelected) ...[
+                                            const SizedBox(width: AppSpace.xs),
+                                            Icon(Icons.check_circle, size: 16, color: scheme.primary),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                          child: Text(
-                            party,
-                            style: text.bodySmall?.copyWith(fontSize: 11, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ],
               const SizedBox(height: AppSpace.xl),
@@ -373,7 +434,10 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
 
               // Cash Flow Switch
               AppCard(
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.lg,
+                  vertical: AppSpace.xs,
+                ),
                 child: SwitchRow(
                   title: tr.recordInEverydayAccount,
                   subtitle: _type == DebtType.lent

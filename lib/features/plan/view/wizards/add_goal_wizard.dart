@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
@@ -131,32 +132,43 @@ class _AddGoalWizardState extends State<AddGoalWizard> {
           onClose: () => context.pop(),
           child: Column(
             children: [
-              OptionTile(
-                title: tr.emergencyFund,
-                subtitle: tr.cushionForSurprises,
-                selected: _category == 'Emergency fund',
-                onTap: () => setState(() => _category = 'Emergency fund'),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              OptionTile(
-                title: tr.somethingToBuy,
-                subtitle: tr.laptopBikeGift,
-                selected: _category == 'Something to buy',
-                onTap: () => setState(() => _category = 'Something to buy'),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              OptionTile(
-                title: tr.aTrip,
-                subtitle: tr.somewhereYouWantToGo,
-                selected: _category == 'A trip',
-                onTap: () => setState(() => _category = 'A trip'),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              OptionTile(
-                title: tr.somethingElse,
-                subtitle: tr.nameItYourself,
-                selected: _category == 'Something else',
-                onTap: () => setState(() => _category = 'Something else'),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: AppSpace.sm,
+                crossAxisSpacing: AppSpace.sm,
+                childAspectRatio: 1.25,
+                children: [
+                  _GoalCategoryCard(
+                    title: tr.emergencyFund,
+                    subtitle: tr.cushionForSurprises,
+                    icon: HugeIcons.strokeRoundedShield02,
+                    isSelected: _category == 'Emergency fund',
+                    onTap: () => setState(() => _category = 'Emergency fund'),
+                  ),
+                  _GoalCategoryCard(
+                    title: tr.somethingToBuy,
+                    subtitle: tr.laptopBikeGift,
+                    icon: HugeIcons.strokeRoundedShoppingBag01,
+                    isSelected: _category == 'Something to buy',
+                    onTap: () => setState(() => _category = 'Something to buy'),
+                  ),
+                  _GoalCategoryCard(
+                    title: tr.aTrip,
+                    subtitle: tr.somewhereYouWantToGo,
+                    icon: HugeIcons.strokeRoundedAirplane01,
+                    isSelected: _category == 'A trip',
+                    onTap: () => setState(() => _category = 'A trip'),
+                  ),
+                  _GoalCategoryCard(
+                    title: tr.somethingElse,
+                    subtitle: tr.nameItYourself,
+                    icon: HugeIcons.strokeRoundedTarget02,
+                    isSelected: _category == 'Something else',
+                    onTap: () => setState(() => _category = 'Something else'),
+                  ),
+                ],
               ),
               if (_category == 'Something else') ...[
                 const SizedBox(height: AppSpace.md),
@@ -311,3 +323,113 @@ class _AddGoalWizardState extends State<AddGoalWizard> {
     };
   }
 }
+
+class _GoalCategoryCard extends StatelessWidget {
+  const _GoalCategoryCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final dynamic icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final text = theme.textTheme;
+
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: Material(
+        color:
+            isSelected ? scheme.primary.withValues(alpha: 0.08) : scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpace.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color:
+                    isSelected
+                        ? scheme.primary
+                        : scheme.outlineVariant.withValues(alpha: 0.6),
+                width: isSelected ? 1.5 : 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? scheme.primary.withValues(alpha: 0.15)
+                                : scheme.surfaceContainerHighest,
+                        shape: BoxShape.circle,
+                      ),
+                      child: AppIcon(
+                        icon,
+                        size: 16,
+                        color:
+                            isSelected
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 16,
+                        color: scheme.primary,
+                      ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? scheme.primary : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 10.5,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

@@ -184,25 +184,35 @@ class _AddJobWizardState extends State<AddJobWizard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OptionTile(
-                title: tr.hourly,
-                subtitle: tr.paidForHoursWorked,
-                selected: _payType == 'hourly',
-                onTap: () => setState(() => _payType = 'hourly'),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              OptionTile(
-                title: tr.perShift,
-                subtitle: tr.sameAmountEveryShift,
-                selected: _payType == 'shift',
-                onTap: () => setState(() => _payType = 'shift'),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              OptionTile(
-                title: tr.salary,
-                subtitle: tr.fixedAmountEachPayPeriod,
-                selected: _payType == 'salary',
-                onTap: () => setState(() => _payType = 'salary'),
+              Row(
+                children: [
+                  Expanded(
+                    child: _PayTypeCard(
+                      title: tr.hourly,
+                      subtitle: tr.paidForHoursWorked,
+                      isSelected: _payType == 'hourly',
+                      onTap: () => setState(() => _payType = 'hourly'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: _PayTypeCard(
+                      title: tr.perShift,
+                      subtitle: tr.sameAmountEveryShift,
+                      isSelected: _payType == 'shift',
+                      onTap: () => setState(() => _payType = 'shift'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: _PayTypeCard(
+                      title: tr.salary,
+                      subtitle: tr.fixedAmountEachPayPeriod,
+                      isSelected: _payType == 'salary',
+                      onTap: () => setState(() => _payType = 'salary'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpace.xl),
               UnderlineField(
@@ -282,28 +292,32 @@ class _AddJobWizardState extends State<AddJobWizard> {
               ),
               const SizedBox(height: AppSpace.xl),
 
-              // Default Break Duration selector (presets + Custom minutes)
+              // Default Break Duration selector (spacious 3-column grid)
               Text(
                 tr.defaultBreakDurationLabel,
                 style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: AppSpace.xs),
-              Wrap(
-                spacing: AppSpace.sm,
-                runSpacing: AppSpace.xs,
+              const SizedBox(height: AppSpace.sm),
+              GridView.count(
+                crossAxisCount: 3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: AppSpace.xs + 2,
+                crossAxisSpacing: AppSpace.xs + 2,
+                childAspectRatio: 2.2,
                 children: [
                   for (final b in [0, 15, 30, 45, 60])
-                    ChoicePill(
-                      b == 0 ? tr.noBreak : tr.minsBreak(b),
-                      selected: !_useCustomBreak && _defaultBreakMinutes == b,
+                    _SelectableChipCard(
+                      label: b == 0 ? tr.noBreak : tr.minsBreak(b),
+                      isSelected: !_useCustomBreak && _defaultBreakMinutes == b,
                       onTap: () => setState(() {
                         _useCustomBreak = false;
                         _defaultBreakMinutes = b;
                       }),
                     ),
-                  ChoicePill(
-                    tr.customOption,
-                    selected: _useCustomBreak,
+                  _SelectableChipCard(
+                    label: tr.customOption,
+                    isSelected: _useCustomBreak,
                     onTap: () => setState(() {
                       _useCustomBreak = true;
                       if (_customBreakController.text.isEmpty) {
@@ -330,7 +344,7 @@ class _AddJobWizardState extends State<AddJobWizard> {
               ],
               const SizedBox(height: AppSpace.xl),
 
-              // Selectable Long-Shift Notification Threshold
+              // Selectable Long-Shift Notification Threshold (spacious 3-column grid)
               Text(
                 tr.longShiftNotificationLabel,
                 style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -343,30 +357,34 @@ class _AddJobWizardState extends State<AddJobWizard> {
                 ),
               ),
               const SizedBox(height: AppSpace.sm),
-              Wrap(
-                spacing: AppSpace.sm,
-                runSpacing: AppSpace.xs,
+              GridView.count(
+                crossAxisCount: 3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: AppSpace.xs + 2,
+                crossAxisSpacing: AppSpace.xs + 2,
+                childAspectRatio: 2.2,
                 children: [
-                  ChoicePill(
-                    tr.offOption,
-                    selected: !_useCustomAlertHours && _longShiftAlertMinutes == 0,
+                  _SelectableChipCard(
+                    label: tr.offOption,
+                    isSelected: !_useCustomAlertHours && _longShiftAlertMinutes == 0,
                     onTap: () => setState(() {
                       _useCustomAlertHours = false;
                       _longShiftAlertMinutes = 0;
                     }),
                   ),
                   for (final h in [4, 6, 8, 10, 12])
-                    ChoicePill(
-                      tr.notifyAfterHours(h),
-                      selected: !_useCustomAlertHours && _longShiftAlertMinutes == h * 60,
+                    _SelectableChipCard(
+                      label: tr.notifyAfterHours(h),
+                      isSelected: !_useCustomAlertHours && _longShiftAlertMinutes == h * 60,
                       onTap: () => setState(() {
                         _useCustomAlertHours = false;
                         _longShiftAlertMinutes = h * 60;
                       }),
                     ),
-                  ChoicePill(
-                    tr.customOption,
-                    selected: _useCustomAlertHours,
+                  _SelectableChipCard(
+                    label: tr.customOption,
+                    isSelected: _useCustomAlertHours,
                     onTap: () => setState(() {
                       _useCustomAlertHours = true;
                       if (_customAlertHoursController.text.isEmpty) {
@@ -533,3 +551,132 @@ class _WeekdayGridCard extends StatelessWidget {
     );
   }
 }
+
+class _PayTypeCard extends StatelessWidget {
+  const _PayTypeCard({
+    required this.title,
+    required this.subtitle,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: Material(
+        color: isSelected ? scheme.primary.withValues(alpha: 0.08) : scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: isSelected ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.6),
+                width: isSelected ? 1.5 : 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? scheme.primary : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (isSelected)
+                      Icon(Icons.check_circle_rounded, size: 14, color: scheme.primary),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: text.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 10,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectableChipCard extends StatelessWidget {
+  const _SelectableChipCard({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: Material(
+        color: isSelected ? scheme.primary.withValues(alpha: 0.08) : scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: onTap,
+          child: Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: isSelected ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.5),
+                width: isSelected ? 1.5 : 1.0,
+              ),
+            ),
+            child: Text(
+              label,
+              style: text.bodySmall?.copyWith(
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? scheme.primary : scheme.onSurface,
+                fontSize: 11,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

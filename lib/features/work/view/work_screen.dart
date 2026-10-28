@@ -36,51 +36,95 @@ class WorkScreen extends StatelessWidget {
           children: [
             // Active shift banner (if clocked in)
             if (activeShift != null) ...[
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          viewModel.isOnBreak ? tr.onBreakTimerPaused : tr.inProgress,
-                          style: text.bodySmall?.copyWith(color: viewModel.isOnBreak ? colors.warning : colors.income),
-                        ),
-                        const Spacer(),
-                        StatusChip(
-                          viewModel.isOnBreak ? tr.takeBreak : tr.running,
-                          tone: viewModel.isOnBreak ? ChipTone.warning : ChipTone.success,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpace.sm),
-                    Text(
-                      viewModel.jobsById[activeShift.jobId]?.name ?? tr.activeShift,
-                      style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: AppSpace.md),
-                    Text(
-                      tr.localizeDigits(_formatDuration(viewModel.activeShiftElapsed)),
-                      style: text.displaySmall?.copyWith(
-                        fontFamily: 'RedditMono',
-                        fontWeight: FontWeight.w700,
-                        color: viewModel.isOnBreak ? scheme.onSurfaceVariant : null,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpace.lg),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AppButton(
-                            tr.viewLiveShift,
-                            onPressed: () => context.push(AppRoutes.liveShift),
+              () {
+                final activeJob = viewModel.jobsById[activeShift.jobId];
+                final activeStart = DateTime.fromMillisecondsSinceEpoch(activeShift.startAt);
+                final activeCurrency = activeJob?.currencyCode ?? viewModel.baseCurrency;
+                final activeRateMinor = activeShift.rateOverrideMinor ?? activeJob?.hourlyRateMinor ?? 0;
+                final liveEarnings = viewModel.activeShiftLiveEarnings;
+                final isStartedToday = AppDate.isSameDay(activeStart, DateTime.now());
+                final startedAtStr = isStartedToday
+                    ? AppDate.timeOnly(activeStart)
+                    : '${AppDate.short(activeStart)}, ${AppDate.timeOnly(activeStart)}';
+
+                return AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const IconTile(HugeIcons.strokeRoundedBriefcase01, size: 38),
+                          const SizedBox(width: AppSpace.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  activeJob?.name ?? tr.activeShift,
+                                  style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${tr.startedAt(startedAtStr)} · ${MoneyFormatter.format(activeRateMinor, activeCurrency)}/${tr.hourAbbr}',
+                                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                          StatusChip(
+                            viewModel.isOnBreak ? tr.takeBreak : tr.running,
+                            tone: viewModel.isOnBreak ? ChipTone.warning : ChipTone.success,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.md),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            tr.localizeDigits(_formatDuration(viewModel.activeShiftElapsed)),
+                            style: text.displaySmall?.copyWith(
+                              fontFamily: 'RedditMono',
+                              fontWeight: FontWeight.w700,
+                              color: viewModel.isOnBreak ? scheme.onSurfaceVariant : null,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: colors.incomeBg.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(AppRadius.pill),
+                            ),
+                            child: Text(
+                              '≈ ${MoneyFormatter.format(liveEarnings?.earningsMinor ?? 0, activeCurrency)}',
+                              style: text.titleSmall?.copyWith(
+                                fontFamily: 'RedditMono',
+                                fontWeight: FontWeight.w700,
+                                color: colors.income,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.lg),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppButton(
+                              tr.viewLiveShift,
+                              onPressed: () => context.push(AppRoutes.liveShift),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }(),
               const SizedBox(height: AppSpace.xl),
             ],
 
@@ -99,18 +143,28 @@ class WorkScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpace.md),
 
-              for (final job in viewModel.jobs) ...[
-                OptionTile(
-                  title: job.name,
-                  subtitle: '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)} ${tr.perHour}',
-                  selected: viewModel.selectedJob?.id == job.id,
-                  icon: HugeIcons.strokeRoundedBriefcase01,
-                  onTap: () => viewModel.selectJob(job.id),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: AppSpace.sm,
+                  mainAxisSpacing: AppSpace.sm,
+                  childAspectRatio: 1.4,
                 ),
-                const SizedBox(height: AppSpace.sm),
-              ],
+                itemCount: viewModel.jobs.length,
+                itemBuilder: (context, index) {
+                  final job = viewModel.jobs[index];
+                  final isSelected = viewModel.selectedJob?.id == job.id;
+                  return _WorkJobGridCard(
+                    job: job,
+                    isSelected: isSelected,
+                    onTap: () => viewModel.selectJob(job.id),
+                  );
+                },
+              ),
 
-              const SizedBox(height: AppSpace.sm),
+              const SizedBox(height: AppSpace.md),
               Row(
                 children: [
                   Expanded(
@@ -922,4 +976,98 @@ void _showEditShiftDialog(BuildContext context, Shift shift, Job? job, WorkViewM
     ),
   );
 }
+
+class _WorkJobGridCard extends StatelessWidget {
+  const _WorkJobGridCard({
+    required this.job,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final Job job;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final text = theme.textTheme;
+    final tr = context.strings;
+
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: Material(
+        color: isSelected ? scheme.primary.withValues(alpha: 0.08) : scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpace.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: isSelected ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.5),
+                width: isSelected ? 1.5 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? scheme.primary.withValues(alpha: 0.15) : scheme.surfaceContainerHighest,
+                        shape: BoxShape.circle,
+                      ),
+                      child: AppIcon(
+                        HugeIcons.strokeRoundedBriefcase01,
+                        size: 16,
+                        color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(Icons.check_circle_rounded, size: 16, color: scheme.primary),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      job.name,
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? scheme.primary : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)} /${tr.hourAbbr}',
+                      style: text.bodySmall?.copyWith(
+                        fontFamily: 'RedditMono',
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 

@@ -85,6 +85,26 @@ class AssistantEngine {
       return _spendingOn(snapshot, text);
     }
 
+    // Financial summary & overview
+    if (_hasAny(text, [
+      'financial summary',
+      'summary',
+      'overview',
+      'how am i doing',
+      'where do i stand',
+      'my status',
+      'financial status',
+      'financial overview',
+      'financial report',
+      'my summary',
+      'my finances',
+      'summary of my',
+      'aarthik',
+      'saransh',
+    ]) || RegExp(r'(आर्थिक|विवरण|सारांश|हिसाब)').hasMatch(text)) {
+      return _financialSummary(snapshot);
+    }
+
     if (_hasAny(text, ['afford', 'can i buy', 'should i buy'])) {
       return _affordability(snapshot, text);
     }
@@ -479,6 +499,56 @@ class AssistantEngine {
       followUps: const [
         'Can I afford a 200 purchase?',
         'Where am I overspending?',
+      ],
+    );
+  }
+
+  AssistantAnswer _financialSummary(FinanceSnapshot snapshot) {
+    final currency = snapshot.baseCurrency;
+    final netWorthStr = MoneyFormatter.format(snapshot.netWorthMinor, currency);
+
+    // Month-to-date income and expense
+    final now = snapshot.now;
+    final startOfMonth = DateTime(now.year, now.month);
+    var monthIncome = 0;
+    var monthExpense = 0;
+    for (final t in snapshot.transactions) {
+      final dt = DateTime.fromMillisecondsSinceEpoch(t.occurredAt);
+      if (dt.isAfter(startOfMonth)) {
+        final converted = snapshot.convert(t.amountMinor, snapshot.currencyOf(t.accountId));
+        if (t.type == TransactionType.income.value) {
+          monthIncome += converted;
+        } else if (t.type == TransactionType.expense.value) {
+          monthExpense += converted;
+        }
+      }
+    }
+
+    final netCashflow = monthIncome - monthExpense;
+    final netSign = netCashflow >= 0 ? '+' : '';
+    final workHours = _completedHoursThisWeek(snapshot);
+
+    final parts = <String>[
+      'Total Net Position: $netWorthStr.',
+      'This month: ${MoneyFormatter.format(monthIncome, currency)} income, ${MoneyFormatter.format(monthExpense, currency)} expenses ($netSign${MoneyFormatter.format(netCashflow, currency)} net cashflow).',
+      if (workHours > 0)
+        'You have logged ${workHours.toStringAsFixed(1)} hours of shift work this week.',
+      if (snapshot.goals.isNotEmpty)
+        'You have ${snapshot.goals.length} active savings goals in progress.',
+    ];
+
+    return AssistantAnswer(
+      headline: 'Financial Summary',
+      body: parts.join('\n\n'),
+      explanation: 'Calculated directly from your verified on-device accounts, transactions, and shifts.',
+      suggestions: const [
+        'How much did I spend this month?',
+        'What are my upcoming shifts?',
+        'Check balances',
+      ],
+      followUps: const [
+        'Where am I overspending?',
+        'Can I afford a purchase?',
       ],
     );
   }

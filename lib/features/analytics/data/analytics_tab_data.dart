@@ -76,6 +76,13 @@ class AnalyticsWeek {
   final int earningsMinor;
 }
 
+class AnalyticsWorkDay {
+  const AnalyticsWorkDay(this.date, this.minutes, this.earningsMinor);
+  final DateTime date;
+  final int minutes;
+  final int earningsMinor;
+}
+
 class AnalyticsWorkTabData {
   const AnalyticsWorkTabData({
     required this.totalMinutes,
@@ -85,6 +92,7 @@ class AnalyticsWorkTabData {
     required this.shiftCount,
     required this.jobs,
     required this.weeks,
+    required this.currentWeekDays,
   });
   final int totalMinutes;
   final int earningsMinor;
@@ -93,9 +101,16 @@ class AnalyticsWorkTabData {
   final int shiftCount;
   final List<AnalyticsJobEarnings> jobs;
   final List<AnalyticsWeek> weeks;
+  final List<AnalyticsWorkDay> currentWeekDays;
 
   int get averageShiftMinutes =>
       shiftCount == 0 ? 0 : (totalMinutes / shiftCount).round();
+
+  int get currentWeekTotalMinutes =>
+      currentWeekDays.fold(0, (sum, d) => sum + d.minutes);
+
+  int get currentWeekEarningsMinor =>
+      currentWeekDays.fold(0, (sum, d) => sum + d.earningsMinor);
 }
 
 /// Buckets dated amounts across [start]..[end]: daily up to 31 days,
@@ -235,18 +250,38 @@ extension AnalyticsTabData on AnalyticsViewModel {
     final snap = financeStore.snapshot;
     final jobsById = {for (final j in financeStore.jobs) j.id: j};
 
+    final now = DateTime.now();
+    final today = AppDate.dateOnly(now);
+    final currentWeekMonday = today.subtract(Duration(days: today.weekday - 1));
+    final currentWeekSundayEnd = currentWeekMonday.add(
+      const Duration(days: 6, hours: 23, minutes: 59, seconds: 59, milliseconds: 999),
+    );
+    final currentWeekStartMs = currentWeekMonday.millisecondsSinceEpoch;
+    final currentWeekEndMs = currentWeekSundayEnd.millisecondsSinceEpoch;
+    final perCurrentWeekDay = <int, (int, int)>{}; // weekday (1..7) -> (minutes, earnings)
+
     var minutes = 0, earnings = 0, overtime = 0, breaks = 0, count = 0;
     final perJob = <int, (int, int, int)>{}; // earnings, minutes, shifts
     final perWeek = <int, (int, int)>{}; // minutes, earnings
 
     for (final s in financeStore.shifts) {
       if (s.status != ShiftStatus.completed.value || s.endAt == null) continue;
-      if (s.startAt < startMs || s.startAt > endMs) continue;
       final job = jobsById[s.jobId];
       if (job == null) continue;
       final result = ShiftEarnings.forShift(s, job);
       final earned = snap.convert(result.earningsMinor, job.currencyCode);
       final worked = result.workedMinutes;
+
+      if (s.startAt >= currentWeekStartMs && s.startAt <= currentWeekEndMs) {
+        final shiftDate = AppDate.dateOnly(
+          DateTime.fromMillisecondsSinceEpoch(s.startAt),
+        );
+        final wd = shiftDate.weekday;
+        final curDay = perCurrentWeekDay[wd] ?? (0, 0);
+        perCurrentWeekDay[wd] = (curDay.$1 + worked, curDay.$2 + earned);
+      }
+
+      if (s.startAt < startMs || s.startAt > endMs) continue;
       minutes += worked;
       earnings += earned;
       breaks += s.breakMinutes;
@@ -264,6 +299,19 @@ extension AnalyticsTabData on AnalyticsViewModel {
         w.$2 + earned,
       );
     }
+
+    final currentWeekDays = <AnalyticsWorkDay>[
+      for (var i = 0; i < 7; i++)
+        () {
+          final d = DateTime(
+            currentWeekMonday.year,
+            currentWeekMonday.month,
+            currentWeekMonday.day + i,
+          );
+          final entry = perCurrentWeekDay[i + 1] ?? (0, 0);
+          return AnalyticsWorkDay(d, entry.$1, entry.$2);
+        }(),
+    ];
 
     // Continuous weeks (including empty ones), capped to the latest 12.
     final weeks = <AnalyticsWeek>[];
@@ -293,6 +341,7 @@ extension AnalyticsTabData on AnalyticsViewModel {
           ),
       ]..sort((a, b) => b.earningsMinor.compareTo(a.earningsMinor)),
       weeks: shownWeeks,
+      currentWeekDays: currentWeekDays,
     );
   }
 }

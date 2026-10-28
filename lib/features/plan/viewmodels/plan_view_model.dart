@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
+import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
@@ -8,8 +9,23 @@ import 'package:finance_tracker/features/plan/data/forecast_engine.dart';
 import 'package:finance_tracker/features/plan/data/model/goals.dart';
 import 'package:finance_tracker/features/plan/data/repository/goal_repository.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
+import 'package:finance_tracker/features/work/data/model/work.dart';
 
 enum GoalFilter { all, inProgress, completed }
+
+class PlanForecastPoint {
+  const PlanForecastPoint({
+    required this.label,
+    required this.balanceMinor,
+    required this.netChangeMinor,
+    required this.isForecast,
+  });
+
+  final String label;
+  final int balanceMinor;
+  final int netChangeMinor;
+  final bool isForecast;
+}
 
 class PlanViewModel extends ChangeNotifier {
   PlanViewModel({
@@ -52,7 +68,144 @@ class PlanViewModel extends ChangeNotifier {
 
   ForecastResult get forecast => financeStore.forecast(horizonDays: 90);
 
-  int get projectedBalanceIn3Months => forecast.endMinor;
+  int get currentTotalBalanceMinor => financeStore.snapshot.netWorthMinor;
+
+  int get monthlyNetDeltaMinor {
+    final snap = financeStore.snapshot;
+    final nowMonth = snap.currentMonth;
+    final income = snap.incomeInMonth(nowMonth);
+    final expense = snap.expenseInMonth(nowMonth);
+
+    final jobsById = {for (final job in snap.jobs) job.id: job};
+    var shiftEarned = 0;
+    for (final shift in snap.shifts) {
+      if (shift.status != ShiftStatus.completed.value) continue;
+      final date = DateTime.fromMillisecondsSinceEpoch(shift.startAt);
+      if (!snap.isInMonth(date, nowMonth)) continue;
+      final job = jobsById[shift.jobId];
+      if (job == null) continue;
+      final earnings = ShiftEarnings.forShift(shift, job);
+      shiftEarned += snap.convert(earnings.earningsMinor, job.currencyCode);
+    }
+
+    final actualCurrentNet = income + shiftEarned - expense;
+    final fcNetPerMonth = (forecast.netChangeMinor / 3).round();
+    if (fcNetPerMonth != 0) {
+      return fcNetPerMonth;
+    }
+    return actualCurrentNet;
+  }
+
+  int get projectedBalanceIn3Months {
+    final fcEnd = forecast.endMinor;
+    if (fcEnd != currentTotalBalanceMinor) {
+      return fcEnd;
+    }
+    return currentTotalBalanceMinor + (monthlyNetDeltaMinor * 3);
+  }
+
+  int get threeMonthNetChangeMinor =>
+      projectedBalanceIn3Months - currentTotalBalanceMinor;
+
+  List<PlanForecastPoint> get trajectoryPoints {
+    final snap = financeStore.snapshot;
+    final now = snap.now;
+    final jobsById = {for (final job in snap.jobs) job.id: job};
+
+    int actualNetForMonth(DateTime month) {
+      final inc = snap.incomeInMonth(month);
+      final exp = snap.expenseInMonth(month);
+      var shiftPay = 0;
+      for (final shift in snap.shifts) {
+        if (shift.status != ShiftStatus.completed.value) continue;
+        final d = DateTime.fromMillisecondsSinceEpoch(shift.startAt);
+        if (!snap.isInMonth(d, month)) continue;
+        final job = jobsById[shift.jobId];
+        if (job == null) continue;
+        shiftPay += snap.convert(
+          ShiftEarnings.forShift(shift, job).earningsMinor,
+          job.currencyCode,
+        );
+      }
+      return inc + shiftPay - exp;
+    }
+
+    final mMinus2Date = DateTime(now.year, now.month - 2, 1);
+    final mMinus1Date = DateTime(now.year, now.month - 1, 1);
+    final m0Date = DateTime(now.year, now.month, 1);
+    final mPlus1Date = DateTime(now.year, now.month + 1, 1);
+    final mPlus2Date = DateTime(now.year, now.month + 2, 1);
+    final mPlus3Date = DateTime(now.year, now.month + 3, 1);
+
+    final net0 = actualNetForMonth(m0Date);
+    final netMinus1 = actualNetForMonth(mMinus1Date);
+    final netMinus2 = actualNetForMonth(mMinus2Date);
+
+    final bal0 = currentTotalBalanceMinor;
+    final balMinus1 = bal0 - net0;
+    final balMinus2 = balMinus1 - netMinus1;
+
+    final fc = forecast;
+    final hasForecastEvents = fc.events.isNotEmpty;
+    final pace = monthlyNetDeltaMinor;
+
+    late final int balPlus1;
+    late final int balPlus2;
+    late final int balPlus3;
+
+    if (hasForecastEvents) {
+      balPlus1 = fc.balanceAt(now.add(const Duration(days: 30)));
+      balPlus2 = fc.balanceAt(now.add(const Duration(days: 60)));
+      balPlus3 = fc.endMinor;
+    } else {
+      balPlus1 = bal0 + pace;
+      balPlus2 = bal0 + pace * 2;
+      balPlus3 = bal0 + pace * 3;
+    }
+
+    final netPlus1 = balPlus1 - bal0;
+    final netPlus2 = balPlus2 - balPlus1;
+    final netPlus3 = balPlus3 - balPlus2;
+
+    return [
+      PlanForecastPoint(
+        label: DateFormatter.monthShort(mMinus2Date),
+        balanceMinor: balMinus2,
+        netChangeMinor: netMinus2,
+        isForecast: false,
+      ),
+      PlanForecastPoint(
+        label: DateFormatter.monthShort(mMinus1Date),
+        balanceMinor: balMinus1,
+        netChangeMinor: netMinus1,
+        isForecast: false,
+      ),
+      PlanForecastPoint(
+        label: DateFormatter.monthShort(m0Date),
+        balanceMinor: bal0,
+        netChangeMinor: net0,
+        isForecast: false,
+      ),
+      PlanForecastPoint(
+        label: DateFormatter.monthShort(mPlus1Date),
+        balanceMinor: balPlus1,
+        netChangeMinor: netPlus1,
+        isForecast: true,
+      ),
+      PlanForecastPoint(
+        label: DateFormatter.monthShort(mPlus2Date),
+        balanceMinor: balPlus2,
+        netChangeMinor: netPlus2,
+        isForecast: true,
+      ),
+      PlanForecastPoint(
+        label: DateFormatter.monthShort(mPlus3Date),
+        balanceMinor: balPlus3,
+        netChangeMinor: netPlus3,
+        isForecast: true,
+      ),
+    ];
+  }
 
   List<GoalForecast> get goalForecasts => forecast.goalForecasts;
 

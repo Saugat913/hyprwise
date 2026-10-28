@@ -90,7 +90,7 @@ class AnalyticsTransactionsTab extends StatelessWidget {
           ),
         ),
         SectionHeader(tr.analyticsTrend),
-        AppCard(child: AnimatedBarChart(trend: data.trend)),
+        AppCard(child: AnimatedBarChart(trend: data.trend, currencyCode: currency)),
         if (data.categories.isNotEmpty) ...[
           SectionHeader(tr.analyticsByCategory),
           AppCard(
@@ -204,7 +204,7 @@ class AnalyticsDebtTab extends StatelessWidget {
           ),
         ),
         SectionHeader(tr.analyticsTrend),
-        AppCard(child: AnimatedBarChart(trend: data.trend)),
+        AppCard(child: AnimatedBarChart(trend: data.trend, currencyCode: currency)),
         SectionHeader(tr.analyticsByPerson),
         AppCard(
           padding: EdgeInsets.zero,
@@ -315,7 +315,10 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
       for (final w in data.weeks)
         _showEarnings ? w.earningsMinor.toDouble() : w.minutes / 60,
     ];
-    final weekLabels = [for (final w in data.weeks) tr.formatNumber(w.start.day)];
+    final weekLabels = [
+      for (final w in data.weeks)
+        '${DateFormatter.monthShort(w.start)} ${tr.formatNumber(w.start.day)}',
+    ];
 
     return ListView(
       padding: _tabPadding,
@@ -366,7 +369,100 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
                     tr.analyticsBreakTime,
                     _duration(tr, data.breakMinutes),
                   ),
-                  const Expanded(child: SizedBox()),
+                ],
+              ),
+            ],
+          ),
+        ),
+        SectionHeader(
+          tr.t(
+            'This Week (Mon – Sun)',
+            ne: 'यो हप्ता (सोम – आइत)',
+            es: 'Esta semana (Lun – Dom)',
+            fr: 'Cette semaine (Lun – Dim)',
+            de: 'Diese Woche (Mo – So)',
+            ja: '今週 (月〜日)',
+            zh: '本周 (周一至周日)',
+            it: 'Questa settimana (Lun – Dom)',
+          ),
+        ),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr.t(
+                          'Current Week Worked',
+                          ne: 'यस हप्ताको काम',
+                          es: 'Trabajado esta semana',
+                          fr: 'Travaillé cette semaine',
+                          de: 'Diese Woche gearbeitet',
+                          ja: '今週の労働',
+                          zh: '本周工作',
+                          it: 'Lavorato questa settimana',
+                        ),
+                        style: text.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _duration(tr, data.currentWeekTotalMinutes),
+                        style: text.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'RedditMono',
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        tr.analyticsEarnings,
+                        style: text.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        MoneyFormatter.format(
+                          data.currentWeekEarningsMinor,
+                          currency,
+                        ),
+                        style: text.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'RedditMono',
+                          color: context.colors.income,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpace.lg),
+              Row(
+                children: [
+                  for (final day in data.currentWeekDays)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: _CurrentWeekDayColumn(
+                          day: day,
+                          currency: currency,
+                          maxMinutes: data.currentWeekDays.fold(
+                            60,
+                            (max, d) => d.minutes > max ? d.minutes : max,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ],
@@ -393,7 +489,11 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
                 ],
               ),
               const SizedBox(height: AppSpace.lg),
-              AnimatedBarChart(trend: AnalyticsTrend(weekValues, weekLabels)),
+              AnimatedBarChart(
+                trend: AnalyticsTrend(weekValues, weekLabels),
+                currencyCode: _showEarnings ? currency : null,
+                unitSuffix: _showEarnings ? null : 'h',
+              ),
             ],
           ),
         ),
@@ -641,89 +741,323 @@ class _ToggleChip extends StatelessWidget {
 }
 
 /// Bar chart in brand orange whose bars grow in whenever the data changes.
+/// Displays clear numerical values and formatted summary metrics.
 class AnimatedBarChart extends StatelessWidget {
-  const AnimatedBarChart({super.key, required this.trend, this.height = 120});
+  const AnimatedBarChart({
+    super.key,
+    required this.trend,
+    this.height = 140,
+    this.currencyCode,
+    this.valueFormatter,
+    this.unitSuffix,
+  });
 
   final AnalyticsTrend trend;
   final double height;
+  final String? currencyCode;
+  final String Function(double)? valueFormatter;
+  final String? unitSuffix;
+
+  String _formatValue(BuildContext context, double val) {
+    if (valueFormatter != null) return valueFormatter!(val);
+    final tr = context.strings;
+    if (currencyCode != null) {
+      return MoneyFormatter.compact(val.round(), currencyCode!);
+    }
+    if (unitSuffix != null) {
+      final formatted = tr.localizeDigits(
+        val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1),
+      );
+      return '$formatted$unitSuffix';
+    }
+    if (val >= 1000) {
+      return '${tr.localizeDigits((val / 1000).toStringAsFixed(1))}k';
+    }
+    return tr.localizeDigits(
+      val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final tr = context.strings;
     final values = trend.values;
     final peak = values.isEmpty ? 0.0 : values.reduce((a, b) => a > b ? a : b);
+    final total = values.fold(0.0, (sum, v) => sum + v);
     final effectiveMax = peak <= 0 ? 1.0 : peak;
     final brand = context.colors.brand;
-    // Skip some labels on dense charts so none are truncated.
     final labelEvery = values.length > 16 ? 4 : (values.length > 8 ? 2 : 1);
+    final showValueAboveBar = values.length <= 14;
 
-    return TweenAnimationBuilder<double>(
-      key: ValueKey(Object.hashAll(values)),
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 650),
-      curve: Curves.easeOutCubic,
-      builder:
-          (context, t, _) => SizedBox(
-            height: height,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < values.length; i++)
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: values.length > 16 ? 1 : 3,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Container(
-                                height: (values[i] /
-                                        effectiveMax *
-                                        (height - 40) *
-                                        t)
-                                    .clamp(4.0, height - 40),
-                                decoration: BoxDecoration(
-                                  color:
-                                      values[i] > 0
-                                          ? brand
-                                          : scheme.outlineVariant.withValues(
-                                            alpha: 0.3,
-                                          ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.sm,
-                                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (peak > 0) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${tr.t('Peak', ne: 'अधिकतम', es: 'Pico', fr: 'Pic', de: 'Spitze', ja: 'ピーク', zh: '峰值', it: 'Picco')}: ${_formatValue(context, peak)}',
+                style: text.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontFamily: 'RedditMono',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+              ),
+              if (total > 0)
+                Text(
+                  '${tr.t('Total', ne: 'जम्मा', es: 'Total', fr: 'Total', de: 'Gesamt', ja: '合計', zh: '总计', it: 'Totale')}: ${_formatValue(context, total)}',
+                  style: text.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontFamily: 'RedditMono',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.sm),
+        ],
+        TweenAnimationBuilder<double>(
+          key: ValueKey(Object.hashAll(values)),
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 650),
+          curve: Curves.easeOutCubic,
+          builder:
+              (context, t, _) => SizedBox(
+                height: height,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < values.length; i++)
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal:
+                                values.length > 16
+                                    ? 1
+                                    : (values.length > 8 ? 2 : 3),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: Stack(
+                                  alignment: Alignment.bottomCenter,
+                                  children: [
+                                    LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final maxBarH =
+                                            constraints.maxHeight - 18;
+                                        final barH = (values[i] /
+                                                effectiveMax *
+                                                maxBarH *
+                                                t)
+                                            .clamp(4.0, maxBarH);
+                                        return Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            if (values[i] > 0 &&
+                                                (showValueAboveBar ||
+                                                    values[i] == peak))
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  bottom: 2,
+                                                ),
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
+                                                    _formatValue(
+                                                      context,
+                                                      values[i],
+                                                    ),
+                                                    style: text.labelSmall
+                                                        ?.copyWith(
+                                                          fontSize:
+                                                              values.length > 8
+                                                                  ? 8
+                                                                  : 9.5,
+                                                          fontFamily:
+                                                              'RedditMono',
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color:
+                                                              values[i] == peak
+                                                                  ? brand
+                                                                  : scheme
+                                                                      .onSurfaceVariant,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                            Container(
+                                              height: barH,
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    values[i] > 0
+                                                        ? (values[i] == peak
+                                                            ? brand
+                                                            : brand.withValues(
+                                                              alpha: 0.85,
+                                                            ))
+                                                        : scheme.outlineVariant
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      AppRadius.sm,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                height: 14,
+                                child:
+                                    i % labelEvery == 0 &&
+                                            i < trend.labels.length
+                                        ? Text(
+                                          trend.labels[i],
+                                          softWrap: false,
+                                          overflow: TextOverflow.visible,
+                                          style: text.labelSmall?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                            fontSize: 10,
+                                          ),
+                                        )
+                                        : null,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          SizedBox(
-                            height: 14,
-                            child:
-                                i % labelEvery == 0 && i < trend.labels.length
-                                    ? Text(
-                                      trend.labels[i],
-                                      softWrap: false,
-                                      overflow: TextOverflow.visible,
-                                      style: text.labelSmall?.copyWith(
-                                        color: scheme.onSurfaceVariant,
-                                        fontSize: 10,
-                                      ),
-                                    )
-                                    : null,
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+                  ],
+                ),
+              ),
+        ),
+      ],
     );
   }
 }
+
+class _CurrentWeekDayColumn extends StatelessWidget {
+  const _CurrentWeekDayColumn({
+    required this.day,
+    required this.currency,
+    required this.maxMinutes,
+  });
+
+  final AnalyticsWorkDay day;
+  final String currency;
+  final int maxMinutes;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = context.strings;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final text = theme.textTheme;
+    final colors = context.colors;
+    final isToday = AppDate.isSameDay(day.date, DateTime.now());
+    final hasWork = day.minutes > 0;
+    final hours = day.minutes / 60.0;
+    final hoursStr =
+        hasWork
+            ? '${tr.localizeDigits(hours.toStringAsFixed(hours.truncateToDouble() == hours ? 0 : 1))}h'
+            : '—';
+
+    final effectiveMax = maxMinutes <= 0 ? 60 : maxMinutes;
+    final ratio = (day.minutes / effectiveMax).clamp(0.08, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: 2),
+      decoration: BoxDecoration(
+        color:
+            isToday
+                ? scheme.primary.withValues(alpha: 0.08)
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border:
+            isToday
+                ? Border.all(color: scheme.primary.withValues(alpha: 0.4))
+                : null,
+      ),
+      child: Column(
+        children: [
+          Text(
+            AppDate.weekday(day.date).substring(0, 3),
+            style: text.labelSmall?.copyWith(
+              fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
+              color: isToday ? scheme.primary : scheme.onSurfaceVariant,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            tr.formatNumber(day.date.day),
+            style: text.labelSmall?.copyWith(
+              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 10,
+              color: isToday ? scheme.primary : scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Vertical bar
+          Container(
+            height: 48,
+            width: 14,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height: 48 * ratio,
+              width: 14,
+              decoration: BoxDecoration(
+                color: hasWork ? colors.brand : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hoursStr,
+            style: text.labelSmall?.copyWith(
+              fontFamily: 'RedditMono',
+              fontWeight: hasWork ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 9.5,
+              color: hasWork ? scheme.onSurface : scheme.outlineVariant,
+            ),
+          ),
+          if (day.earningsMinor > 0) ...[
+            const SizedBox(height: 1),
+            Text(
+              MoneyFormatter.compact(day.earningsMinor, currency),
+              style: text.labelSmall?.copyWith(
+                fontFamily: 'RedditMono',
+                fontWeight: FontWeight.w700,
+                fontSize: 8.5,
+                color: colors.income,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.visible,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+

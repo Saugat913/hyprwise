@@ -168,30 +168,34 @@ class _StartShiftSheetState extends State<StartShiftSheet> {
                         ),
                       ),
                       const SizedBox(height: AppSpace.sm),
-                      Wrap(
-                        spacing: AppSpace.xs,
-                        runSpacing: AppSpace.xs,
+                      GridView.count(
+                        crossAxisCount: 3,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: AppSpace.xs + 2,
+                        crossAxisSpacing: AppSpace.xs + 2,
+                        childAspectRatio: 2.2,
                         children: [
-                          ChoicePill(
-                            tr.offOption,
-                            selected: !_useCustomAlertHours && effectiveAlertMinutes == 0,
+                          _SelectableChipCard(
+                            label: tr.offOption,
+                            isSelected: !_useCustomAlertHours && effectiveAlertMinutes == 0,
                             onTap: () => setState(() {
                               _useCustomAlertHours = false;
                               _longShiftAlertMinutes = 0;
                             }),
                           ),
                           for (final h in [4, 6, 8, 10, 12])
-                            ChoicePill(
-                              tr.notifyAfterHours(h),
-                              selected: !_useCustomAlertHours && effectiveAlertMinutes == h * 60,
+                            _SelectableChipCard(
+                              label: tr.notifyAfterHours(h),
+                              isSelected: !_useCustomAlertHours && effectiveAlertMinutes == h * 60,
                               onTap: () => setState(() {
                                 _useCustomAlertHours = false;
                                 _longShiftAlertMinutes = h * 60;
                               }),
                             ),
-                          ChoicePill(
-                            tr.customOption,
-                            selected: _useCustomAlertHours,
+                          _SelectableChipCard(
+                            label: tr.customOption,
+                            isSelected: _useCustomAlertHours,
                             onTap: () => setState(() {
                               _useCustomAlertHours = true;
                               if (_customAlertHoursController.text.isEmpty) {
@@ -351,3 +355,57 @@ class _JobSelectionGridCard extends StatelessWidget {
     );
   }
 }
+
+class _SelectableChipCard extends StatelessWidget {
+  const _SelectableChipCard({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: Material(
+        color: isSelected ? scheme.primary.withValues(alpha: 0.08) : scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: onTap,
+          child: Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: isSelected ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.5),
+                width: isSelected ? 1.5 : 1.0,
+              ),
+            ),
+            child: Text(
+              label,
+              style: text.bodySmall?.copyWith(
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? scheme.primary : scheme.onSurface,
+                fontSize: 11,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

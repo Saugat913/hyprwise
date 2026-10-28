@@ -87,19 +87,45 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   ),
                   onPressed: viewModel.clearFilters,
                 ),
-              IconButton(
-                tooltip: tr.exportAnalytics,
-                icon: const AppIcon(
-                  HugeIcons.strokeRoundedDownload01,
-                  size: 20,
-                ),
-                onPressed:
-                    () => AnalyticsPdfService.showPdfExportSheet(
-                      context,
-                      viewModel,
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpace.page),
+                child: FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.md,
+                      vertical: 6,
                     ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                  ),
+                  icon: const AppIcon(
+                    HugeIcons.strokeRoundedFileExport,
+                    size: 16,
+                  ),
+                  label: Text(
+                    tr.t(
+                      'Export',
+                      ne: 'निर्यात',
+                      es: 'Exportar',
+                      fr: 'Exporter',
+                      de: 'Export',
+                      ja: 'エクスポート',
+                      zh: '导出',
+                      it: 'Esporta',
+                    ),
+                    style: text.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  onPressed:
+                      () => AnalyticsPdfService.showPdfExportSheet(
+                        context,
+                        viewModel,
+                      ),
+                ),
               ),
-              const SizedBox(width: AppSpace.xs),
             ],
           ),
           body: SafeArea(

@@ -566,7 +566,10 @@ class _DebtsScreenState extends State<DebtsScreen> {
 
                 // Cash Flow Switch
                 AppCard(
-                  padding: EdgeInsets.zero,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpace.lg,
+                    vertical: AppSpace.xs,
+                  ),
                   child: SwitchRow(
                     title: tr.recordInEverydayAccount,
                     subtitle: isLent ? tr.inflowEverydayBalance : tr.outflowEverydayBalance,

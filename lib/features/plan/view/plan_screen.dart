@@ -39,22 +39,123 @@ class PlanScreen extends StatelessWidget {
             ),
           ],
           children: [
-            // Projected balance in 3 months
+            // Projected balance in 3 months with Up/Down trajectory and forecast chart
             HeroCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    tr.projectedBalanceIn3Months,
-                    style: text.bodyMedium?.copyWith(color: colors.onHeroSecondary),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr.projectedBalanceIn3Months,
+                            style: text.bodyMedium?.copyWith(
+                              color: colors.onHeroSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpace.xs),
+                          Text(
+                            MoneyFormatter.format(
+                              viewModel.projectedBalanceIn3Months,
+                              viewModel.baseCurrency,
+                            ),
+                            style: text.headlineMedium?.copyWith(
+                              color: colors.onHero,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'RedditMono',
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Up / Down trajectory badge
+                      Builder(
+                        builder: (context) {
+                          final isUp = viewModel.monthlyNetDeltaMinor >= 0;
+                          final deltaMinor =
+                              viewModel.monthlyNetDeltaMinor.abs();
+                          final deltaFormatted = MoneyFormatter.format(
+                            deltaMinor,
+                            viewModel.baseCurrency,
+                          );
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpace.sm + 2,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  isUp
+                                      ? colors.incomeBg.withValues(alpha: 0.35)
+                                      : colors.expense.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
+                              border: Border.all(
+                                color:
+                                    isUp
+                                        ? colors.income.withValues(alpha: 0.6)
+                                        : colors.expense.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isUp
+                                      ? Icons.trending_up_rounded
+                                      : Icons.trending_down_rounded,
+                                  size: 14,
+                                  color: isUp ? colors.income : colors.expense,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${isUp ? "+" : "−"}$deltaFormatted ${tr.perMonth}',
+                                  style: text.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        isUp ? colors.income : colors.expense,
+                                    fontFamily: 'RedditMono',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpace.md),
-                  Text(
-                    MoneyFormatter.format(viewModel.projectedBalanceIn3Months, viewModel.baseCurrency),
-                    style: text.displaySmall?.copyWith(
-                      color: colors.onHero,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '${tr.t('Current', ne: 'हाल', es: 'Actual', fr: 'Actuel', de: 'Aktuell', ja: '現在', zh: '当前', it: 'Attuale')}: ${MoneyFormatter.format(viewModel.currentTotalBalanceMinor, viewModel.baseCurrency)}',
+                        style: text.bodySmall?.copyWith(
+                          color: colors.onHeroSecondary,
+                          fontFamily: 'RedditMono',
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${viewModel.threeMonthNetChangeMinor >= 0 ? "+" : ""}${MoneyFormatter.format(viewModel.threeMonthNetChangeMinor, viewModel.baseCurrency)} (90d)',
+                        style: text.bodySmall?.copyWith(
+                          color:
+                              viewModel.threeMonthNetChangeMinor >= 0
+                                  ? colors.income
+                                  : colors.expense,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'RedditMono',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpace.lg),
+                  _PlanTrajectoryChart(
+                    points: viewModel.trajectoryPoints,
+                    currencyCode: viewModel.baseCurrency,
                   ),
                 ],
               ),
@@ -311,17 +412,63 @@ class PlanScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpace.md),
 
-                    // Quick chip additions
+                    // Quick addition cards (spacious horizontal cards)
                     Wrap(
                       spacing: AppSpace.sm,
+                      runSpacing: AppSpace.sm,
                       children: [
                         for (final amt in [20, 50, 100, 250])
-                          ChoicePill(
-                            '+${goal.currencyCode} $amt',
-                            selected: false,
-                            onTap: () {
-                              final curr = double.tryParse(amountController.text) ?? 0.0;
-                              amountController.text = (curr + amt).toStringAsFixed(0);
+                          Builder(
+                            builder: (context) {
+                              final curr =
+                                  double.tryParse(amountController.text) ?? 0.0;
+                              final isSelected = curr == amt.toDouble();
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                                onTap: () {
+                                  amountController.text = amt.toString();
+                                  setState(() {});
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpace.md,
+                                    vertical: AppSpace.sm,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isSelected
+                                            ? scheme.primary.withValues(
+                                              alpha: 0.12,
+                                            )
+                                            : scheme.surfaceContainerHighest
+                                                .withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.md,
+                                    ),
+                                    border: Border.all(
+                                      color:
+                                          isSelected
+                                              ? scheme.primary
+                                              : scheme.outlineVariant
+                                                  .withValues(alpha: 0.6),
+                                      width: isSelected ? 1.5 : 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '+${goal.currencyCode} $amt',
+                                    style: text.labelMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          isSelected
+                                              ? scheme.primary
+                                              : scheme.onSurface,
+                                      fontFamily: 'RedditMono',
+                                    ),
+                                  ),
+                                ),
+                              );
                             },
                           ),
                       ],
@@ -329,33 +476,226 @@ class PlanScreen extends StatelessWidget {
 
                     if (accounts.isNotEmpty) ...[
                       const SizedBox(height: AppSpace.lg),
-                      Text(tr.transferFrom, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: AppSpace.xs),
-                      DropdownButtonFormField<int?>(
-                        initialValue: selectedSourceAccountId,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: scheme.surfaceContainerHighest,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 12),
+                      Text(
+                        tr.transferFrom,
+                        style: text.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
-                        items: [
-                          for (final acc in accounts)
-                            DropdownMenuItem<int?>(
-                              value: acc.id,
-                              child: Text(
-                                '${tr.accountDisplayName(acc.name)} (${MoneyFormatter.format(viewModel.financeStore.snapshot.balanceOf(acc.id), acc.currencyCode)})',
+                      ),
+                      const SizedBox(height: AppSpace.sm),
+                      SizedBox(
+                        height: 74,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            for (final acc in accounts)
+                              Builder(
+                                builder: (context) {
+                                  final isSelected =
+                                      selectedSourceAccountId == acc.id;
+                                  final bal = viewModel.financeStore.snapshot
+                                      .balanceOf(acc.id);
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                      right: AppSpace.sm,
+                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.md,
+                                      ),
+                                      onTap:
+                                          () => setState(
+                                            () =>
+                                                selectedSourceAccountId =
+                                                    acc.id,
+                                          ),
+                                      child: Container(
+                                        width: 154,
+                                        padding: const EdgeInsets.all(
+                                          AppSpace.sm + 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              isSelected
+                                                  ? scheme.primary.withValues(
+                                                    alpha: 0.1,
+                                                  )
+                                                  : scheme
+                                                      .surfaceContainerHighest
+                                                      .withValues(alpha: 0.4),
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadius.md,
+                                          ),
+                                          border: Border.all(
+                                            color:
+                                                isSelected
+                                                    ? scheme.primary
+                                                    : scheme.outlineVariant
+                                                        .withValues(alpha: 0.6),
+                                            width: isSelected ? 1.5 : 1.0,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const AppIcon(
+                                                  HugeIcons.strokeRoundedSafe,
+                                                  size: 14,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    tr.accountDisplayName(
+                                                      acc.name,
+                                                    ),
+                                                    style: text.bodySmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              isSelected
+                                                                  ? FontWeight
+                                                                      .w700
+                                                                  : FontWeight
+                                                                      .w600,
+                                                          color:
+                                                              isSelected
+                                                                  ? scheme
+                                                                      .primary
+                                                                  : scheme
+                                                                      .onSurface,
+                                                        ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                if (isSelected)
+                                                  Icon(
+                                                    Icons.check_circle,
+                                                    size: 14,
+                                                    color: scheme.primary,
+                                                  ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              MoneyFormatter.format(
+                                                bal,
+                                                acc.currencyCode,
+                                              ),
+                                              style: text.labelSmall?.copyWith(
+                                                fontFamily: 'RedditMono',
+                                                color: scheme.onSurfaceVariant,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
+                            // External / direct deposit card
+                            Builder(
+                              builder: (context) {
+                                final isSelected =
+                                    selectedSourceAccountId == null;
+                                return InkWell(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.md,
+                                  ),
+                                  onTap:
+                                      () => setState(
+                                        () => selectedSourceAccountId = null,
+                                      ),
+                                  child: Container(
+                                    width: 144,
+                                    padding: const EdgeInsets.all(
+                                      AppSpace.sm + 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isSelected
+                                              ? scheme.primary.withValues(
+                                                alpha: 0.1,
+                                              )
+                                              : scheme.surfaceContainerHighest
+                                                  .withValues(alpha: 0.4),
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.md,
+                                      ),
+                                      border: Border.all(
+                                        color:
+                                            isSelected
+                                                ? scheme.primary
+                                                : scheme.outlineVariant
+                                                    .withValues(alpha: 0.6),
+                                        width: isSelected ? 1.5 : 1.0,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const AppIcon(
+                                              HugeIcons.strokeRoundedCoins01,
+                                              size: 14,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                tr.directDepositOrExternal,
+                                                style: text.bodySmall?.copyWith(
+                                                  fontWeight:
+                                                      isSelected
+                                                          ? FontWeight.w700
+                                                          : FontWeight.w600,
+                                                  color:
+                                                      isSelected
+                                                          ? scheme.primary
+                                                          : scheme.onSurface,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (isSelected)
+                                              Icon(
+                                                Icons.check_circle,
+                                                size: 14,
+                                                color: scheme.primary,
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          tr.t(
+                                            'External funds',
+                                            ne: 'बाह्य रकम',
+                                            es: 'Fondos externos',
+                                          ),
+                                          style: text.labelSmall?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          DropdownMenuItem<int?>(
-                            value: null,
-                            child: Text(tr.directDepositOrExternal),
-                          ),
-                        ],
-                        onChanged: (val) => setState(() => selectedSourceAccountId = val),
+                          ],
+                        ),
                       ),
                     ],
 
@@ -450,3 +790,179 @@ class _FilterPill extends StatelessWidget {
     );
   }
 }
+
+class _PlanTrajectoryChart extends StatelessWidget {
+  const _PlanTrajectoryChart({
+    required this.points,
+    required this.currencyCode,
+  });
+
+  final List<PlanForecastPoint> points;
+  final String currencyCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = context.colors;
+    final tr = context.strings;
+    final maxBal = points.fold<int>(
+      1,
+      (max, p) => p.balanceMinor > max ? p.balanceMinor : max,
+    );
+    final effectiveMax = maxBal <= 0 ? 100 : maxBal;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.sm,
+        AppSpace.md,
+        AppSpace.sm,
+        AppSpace.sm,
+      ),
+      decoration: BoxDecoration(
+        color: colors.onHero.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                tr.t(
+                  '6-Month Balance Trajectory',
+                  ne: '६-महिने ब्यालेन्स प्रक्षेपण',
+                  es: 'Trayectoria de saldo de 6 meses',
+                  fr: 'Trajectoire du solde sur 6 mois',
+                  de: '6-Monats-Saldoverlauf',
+                  ja: '6ヶ月の残高予測',
+                  zh: '6个月余额走势',
+                  it: 'Traiettoria del saldo a 6 mesi',
+                ),
+                style: text.labelSmall?.copyWith(
+                  color: colors.onHeroSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  tr.t(
+                    '3 mo Forecast',
+                    ne: '३ महिना पूर्वानुमान',
+                    es: 'Pronóstico 3 m',
+                    fr: 'Prévision 3 mois',
+                    de: '3-Monats-Prognose',
+                    ja: '3ヶ月予測',
+                    zh: '3个月预测',
+                    it: 'Previsione a 3 m',
+                  ),
+                  style: text.labelSmall?.copyWith(
+                    color: colors.brand,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 9.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          SizedBox(
+            height: 90,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final point in points)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              MoneyFormatter.compact(
+                                point.balanceMinor,
+                                currencyCode,
+                              ),
+                              style: text.labelSmall?.copyWith(
+                                color:
+                                    point.isForecast
+                                        ? colors.brand
+                                        : colors.onHero,
+                                fontFamily: 'RedditMono',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final h = (point.balanceMinor /
+                                          effectiveMax *
+                                          constraints.maxHeight)
+                                      .clamp(6.0, constraints.maxHeight);
+                                  return Container(
+                                    height: h,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          point.isForecast
+                                              ? colors.brand.withValues(
+                                                alpha: 0.85,
+                                              )
+                                              : colors.onHero.withValues(
+                                                alpha: 0.35,
+                                              ),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border:
+                                          point.isForecast
+                                              ? Border.all(
+                                                color: colors.brand,
+                                                width: 1,
+                                              )
+                                              : null,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            point.label,
+                            style: text.labelSmall?.copyWith(
+                              color:
+                                  point.isForecast
+                                      ? colors.brand
+                                      : colors.onHeroSecondary,
+                              fontWeight:
+                                  point.isForecast
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

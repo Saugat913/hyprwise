@@ -604,23 +604,27 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
               const SizedBox(height: AppSpace.lg),
 
               Text(tr.breakDuration, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: AppSpace.xs),
-              Wrap(
-                spacing: AppSpace.sm,
-                runSpacing: AppSpace.xs,
+              const SizedBox(height: AppSpace.sm),
+              GridView.count(
+                crossAxisCount: 3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: AppSpace.xs + 2,
+                crossAxisSpacing: AppSpace.xs + 2,
+                childAspectRatio: 2.2,
                 children: [
                   for (final b in [0, 15, 30, 45, 60])
-                    ChoicePill(
-                      b == 0 ? tr.noBreak : tr.minsBreak(b),
-                      selected: !_useCustomBreak && _breakMinutes == b,
+                    _OptionGridCard(
+                      label: b == 0 ? tr.noBreak : tr.minsBreak(b),
+                      isSelected: !_useCustomBreak && _breakMinutes == b,
                       onTap: () => setState(() {
                         _useCustomBreak = false;
                         _breakMinutes = b;
                       }),
                     ),
-                  ChoicePill(
-                    tr.customOption,
-                    selected: _useCustomBreak,
+                  _OptionGridCard(
+                    label: tr.customOption,
+                    isSelected: _useCustomBreak,
                     onTap: () => setState(() {
                       _useCustomBreak = true;
                       if (_customBreakController.text.isEmpty) {
@@ -649,31 +653,35 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
 
               // Selectable Long-Shift Notification Threshold
               Text(tr.longShiftNotificationLabel, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: AppSpace.xs),
-              Wrap(
-                spacing: AppSpace.sm,
-                runSpacing: AppSpace.xs,
+              const SizedBox(height: AppSpace.sm),
+              GridView.count(
+                crossAxisCount: 3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: AppSpace.xs + 2,
+                crossAxisSpacing: AppSpace.xs + 2,
+                childAspectRatio: 2.2,
                 children: [
-                  ChoicePill(
-                    tr.offOption,
-                    selected: !_useCustomAlertHours && _longShiftAlertMinutes == 0,
+                  _OptionGridCard(
+                    label: tr.offOption,
+                    isSelected: !_useCustomAlertHours && _longShiftAlertMinutes == 0,
                     onTap: () => setState(() {
                       _useCustomAlertHours = false;
                       _longShiftAlertMinutes = 0;
                     }),
                   ),
                   for (final h in [4, 6, 8, 10, 12])
-                    ChoicePill(
-                      tr.notifyAfterHours(h),
-                      selected: !_useCustomAlertHours && _longShiftAlertMinutes == h * 60,
+                    _OptionGridCard(
+                      label: tr.notifyAfterHours(h),
+                      isSelected: !_useCustomAlertHours && _longShiftAlertMinutes == h * 60,
                       onTap: () => setState(() {
                         _useCustomAlertHours = false;
                         _longShiftAlertMinutes = h * 60;
                       }),
                     ),
-                  ChoicePill(
-                    tr.customOption,
-                    selected: _useCustomAlertHours,
+                  _OptionGridCard(
+                    label: tr.customOption,
+                    isSelected: _useCustomAlertHours,
                     onTap: () => setState(() {
                       _useCustomAlertHours = true;
                       if (_customAlertHoursController.text.isEmpty) {
