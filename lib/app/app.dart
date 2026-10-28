@@ -34,7 +34,7 @@ class FinanceTrackerApp extends StatelessWidget {
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: overlayStyle,
           child: MaterialApp.router(
-            title: 'hyprwise',
+            title: 'Hyprwise',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,

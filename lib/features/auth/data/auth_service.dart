@@ -4,9 +4,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
 import 'package:finance_tracker/features/auth/data/model/user_profile.dart';
+import 'package:finance_tracker/features/settings/data/repository/data_repository.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 class AuthService extends ChangeNotifier {
@@ -19,6 +21,7 @@ class AuthService extends ChangeNotifier {
 
   UserProfile? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
+  bool get isGuest => _currentUser == null || _currentUser?.provider == AuthProvider.guest;
   bool get isLoading => _isLoading;
 
   static const _userKey = 'auth_user_profile';
@@ -191,6 +194,204 @@ class AuthService extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Links an existing anonymous/guest session with Google credentials and backs up local data to cloud
+  Future<UserProfile?> linkGuestWithGoogle() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      String userId = _currentUser?.id ?? 'usr_google_${DateTime.now().millisecondsSinceEpoch}';
+      String userEmail = 'user.finance@gmail.com';
+      String userName = 'Google User';
+      String? photoUrl;
+      String? idToken;
+
+      if (_hasFirebase) {
+        final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+        final GoogleSignInAccount? gUser = await googleSignIn.signIn();
+        if (gUser == null) {
+          // User aborted Google sign in
+          return null;
+        }
+
+        userEmail = gUser.email;
+        userName = gUser.displayName ?? userEmail.split('@')[0];
+        photoUrl = gUser.photoUrl;
+
+        final GoogleSignInAuthentication gAuth = await gUser.authentication;
+        idToken = gAuth.idToken;
+
+        final credential = GoogleAuthProvider.credential(
+          accessToken: gAuth.accessToken,
+          idToken: gAuth.idToken,
+        );
+
+        final currentFbUser = FirebaseAuth.instance.currentUser;
+        UserCredential userCredential;
+        if (currentFbUser != null && currentFbUser.isAnonymous) {
+          try {
+            userCredential = await currentFbUser.linkWithCredential(credential);
+          } on FirebaseAuthException catch (e) {
+            if (e.code == 'credential-already-in-use') {
+              userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+            } else {
+              rethrow;
+            }
+          }
+        } else {
+          userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        }
+
+        final fbUser = userCredential.user;
+        if (fbUser != null) {
+          userId = fbUser.uid;
+          userEmail = fbUser.email ?? userEmail;
+          userName = fbUser.displayName ?? userName;
+          photoUrl = fbUser.photoURL ?? photoUrl;
+          idToken = await fbUser.getIdToken();
+        }
+      }
+
+      // Synchronize with Cloudflare Server
+      bool isPro = false;
+      try {
+        final serverRes = await ApiClient.instance.authenticateFirebase(
+          uid: userId,
+          idToken: idToken,
+          email: userEmail,
+          displayName: userName,
+          photoUrl: photoUrl,
+          provider: 'google',
+        );
+        final serverUser = serverRes?['user'] as Map<String, dynamic>?;
+        isPro = serverUser?['isPro'] as bool? ?? false;
+      } catch (_) {}
+
+      // Link with RevenueCat customer identity
+      try {
+        await Purchases.logIn(userId);
+      } catch (_) {}
+
+      final user = UserProfile(
+        id: userId,
+        email: userEmail,
+        displayName: userName,
+        photoUrl: photoUrl,
+        provider: AuthProvider.google,
+        isPro: isPro,
+      );
+      _currentUser = user;
+      await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+      // Backup local Drift SQLite database to cloud
+      await syncLocalDataToCloud();
+
+      // Firebase Analytics Tracking
+      TelemetryService.instance.setUserId(userId);
+      TelemetryService.instance.logLogin(loginMethod: 'google_linked');
+      TelemetryService.instance.setUserProperty(name: 'auth_provider', value: 'google');
+      TelemetryService.instance.setUserProperty(name: 'is_pro', value: isPro.toString());
+
+      return user;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Links an existing anonymous/guest session with Apple credentials and backs up local data
+  Future<UserProfile?> linkGuestWithApple() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      String userId = _currentUser?.id ?? 'usr_apple_${DateTime.now().millisecondsSinceEpoch}';
+      String userEmail = 'user.finance@icloud.com';
+      String userName = 'Apple User';
+      String? idToken;
+
+      if (_hasFirebase) {
+        final appleProvider = AppleAuthProvider();
+        final currentFbUser = FirebaseAuth.instance.currentUser;
+        UserCredential userCredential;
+        if (currentFbUser != null && currentFbUser.isAnonymous) {
+          try {
+            userCredential = await currentFbUser.linkWithProvider(appleProvider);
+          } on FirebaseAuthException catch (e) {
+            if (e.code == 'credential-already-in-use') {
+              userCredential = await FirebaseAuth.instance.signInWithProvider(appleProvider);
+            } else {
+              rethrow;
+            }
+          }
+        } else {
+          userCredential = await FirebaseAuth.instance.signInWithProvider(appleProvider);
+        }
+
+        final fbUser = userCredential.user;
+        if (fbUser != null) {
+          userId = fbUser.uid;
+          userEmail = fbUser.email ?? userEmail;
+          userName = fbUser.displayName ?? userName;
+          idToken = await fbUser.getIdToken();
+        }
+      }
+
+      // Synchronize with Cloudflare Server
+      bool isPro = false;
+      try {
+        final serverRes = await ApiClient.instance.authenticateFirebase(
+          uid: userId,
+          idToken: idToken,
+          email: userEmail,
+          displayName: userName,
+          provider: 'apple',
+        );
+        final serverUser = serverRes?['user'] as Map<String, dynamic>?;
+        isPro = serverUser?['isPro'] as bool? ?? false;
+      } catch (_) {}
+
+      // Link with RevenueCat
+      try {
+        await Purchases.logIn(userId);
+      } catch (_) {}
+
+      final user = UserProfile(
+        id: userId,
+        email: userEmail,
+        displayName: userName,
+        provider: AuthProvider.apple,
+        isPro: isPro,
+      );
+      _currentUser = user;
+      await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+      // Backup local Drift SQLite database to cloud
+      await syncLocalDataToCloud();
+
+      // Firebase Analytics Tracking
+      TelemetryService.instance.setUserId(userId);
+      TelemetryService.instance.logLogin(loginMethod: 'apple_linked');
+      TelemetryService.instance.setUserProperty(name: 'auth_provider', value: 'apple');
+      TelemetryService.instance.setUserProperty(name: 'is_pro', value: isPro.toString());
+
+      return user;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Exports local Drift SQLite database and synchronizes with Hyprwise Cloud
+  Future<void> syncLocalDataToCloud() async {
+    try {
+      final dataRepo = getIt<DataRepository>();
+      final jsonString = await dataRepo.exportJson();
+      final map = jsonDecode(jsonString) as Map<String, dynamic>;
+      await ApiClient.instance.pushSync(map);
+    } catch (e) {
+      debugPrint('[Auth] Auto sync local data notice: $e');
     }
   }
 

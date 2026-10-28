@@ -169,16 +169,36 @@ class SubscriptionService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Checks entitlement directly from RevenueCat server
+  /// Checks entitlement directly from RevenueCat and validates with Hyprwise server
   Future<bool> checkEntitlement() async {
     if (_isConfigured) {
       try {
         final info = await Purchases.getCustomerInfo();
         _handleCustomerInfo(info);
-        return isPro;
       } catch (e) {
         debugPrint('[RevenueCat] Error checking entitlement: $e');
       }
+    }
+    await syncWithServer();
+    return isPro;
+  }
+
+  /// Synchronizes Pro subscription status directly from the Hyprwise backend server
+  Future<bool> syncWithServer() async {
+    try {
+      final status = await ApiClient.instance.getSubscriptionStatus();
+      if (status != null && status['isPro'] != null) {
+        final serverPro = status['isPro'] as bool;
+        if (serverPro != _isPro) {
+          _isPro = serverPro;
+          await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+          authService.updateProStatus(_isPro);
+          notifyListeners();
+        }
+        return _isPro;
+      }
+    } catch (e) {
+      debugPrint('[Subscription] Server status sync notice: $e');
     }
     return isPro;
   }
@@ -274,6 +294,15 @@ class SubscriptionService extends ChangeNotifier {
           );
           await TelemetryService.instance.setUserProperty(name: 'is_pro', value: 'true');
 
+          final userId = authService.currentUser?.id ?? customerInfo.originalAppUserId;
+          try {
+            await ApiClient.instance.verifySubscription(
+              appUserId: userId,
+              planId: pkg.identifier,
+            );
+            await syncWithServer();
+          } catch (_) {}
+
           return isPro;
         }
       } on PlatformException catch (e) {
@@ -309,7 +338,7 @@ class SubscriptionService extends ChangeNotifier {
     });
     await TelemetryService.instance.setUserProperty(name: 'is_pro', value: 'true');
 
-    // Sync Pro activation to Tilvane server
+    // Sync Pro activation to Hyprwise server
     final userId = authService.currentUser?.id ?? 'default_user';
     try {
       await ApiClient.instance.verifySubscription(

@@ -22,40 +22,10 @@ export const memoryEvents: TelemetryEvent[] = [
     userId: 'system',
     eventType: 'action',
     eventName: 'server_boot',
-    details: JSON.stringify({ version: '1.3.0', status: 'ready', cloud: 'cloudflare-workers' }),
+    details: JSON.stringify({ version: '1.4.0', status: 'ready', cloud: 'cloudflare-workers' }),
     deviceInfo: 'Edge Runtime',
-    appVersion: '0.1.2+3',
-    createdAt: Date.now() - 3600000,
-  },
-  {
-    id: 'evt_init_2',
-    userId: 'usr_pixel_demo',
-    eventType: 'action',
-    eventName: 'app_launch',
-    details: JSON.stringify({ locale: 'en', currency: 'USD', isPro: false }),
-    deviceInfo: 'Google Pixel 8 (Android 15)',
-    appVersion: '0.1.2+3',
-    createdAt: Date.now() - 1800000,
-  },
-  {
-    id: 'evt_init_3',
-    userId: 'usr_pixel_demo',
-    eventType: 'action',
-    eventName: 'shift_created',
-    details: JSON.stringify({ job: 'Barista', hours: 7.5, hourlyRate: 26.5, overtimeMultiplier: 1.5 }),
-    deviceInfo: 'Google Pixel 8 (Android 15)',
-    appVersion: '0.1.2+3',
-    createdAt: Date.now() - 1200000,
-  },
-  {
-    id: 'evt_init_4',
-    userId: 'usr_iphone_demo',
-    eventType: 'action',
-    eventName: 'transaction_added',
-    details: JSON.stringify({ type: 'expense', category: 'Groceries', amount: 48.75, currency: 'USD' }),
-    deviceInfo: 'iPhone 15 Pro (iOS 18.1)',
-    appVersion: '0.1.2+3',
-    createdAt: Date.now() - 600000,
+    appVersion: '0.1.3',
+    createdAt: Date.now(),
   },
 ];
 
@@ -1046,37 +1016,43 @@ export function renderAdminDashboard({
           <span style="font-size: 0.8rem; color: var(--text-muted);">${interactions.length} Events</span>
         </div>
 
-        <div class="data-table-container" style="margin: 0;">
-          <table class="flat-table">
-            <thead>
-              <tr>
-                <th>Event Action</th>
-                <th>User Identifier</th>
-                <th>Device Platform</th>
-                <th>Timestamp</th>
-                <th>Parameters</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${interactions
-                .slice(0, 15)
-                .map(
-                  (e) => `
-                <tr>
-                  <td style="font-weight: 600; color: var(--text);">${e.eventName}</td>
-                  <td><code>${e.userId || 'anonymous'}</code></td>
-                  <td>${e.deviceInfo || 'Unknown'}</td>
-                  <td>${new Date(e.createdAt).toLocaleTimeString()}</td>
-                  <td>
-                    <code style="font-size: 0.75rem; max-width: 260px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.details || '-'}</code>
-                  </td>
-                </tr>
-              `
-                )
-                .join('')}
-            </tbody>
-          </table>
-        </div>
+        ${
+          interactions.length === 0
+            ? `<div style="text-align: center; padding: 24px 0; color: var(--text-muted); font-size: 0.875rem;">No customer interaction events recorded yet.</div>`
+            : `
+            <div class="data-table-container" style="margin: 0;">
+              <table class="flat-table">
+                <thead>
+                  <tr>
+                    <th>Event Action</th>
+                    <th>User Identifier</th>
+                    <th>Device Platform</th>
+                    <th>Timestamp</th>
+                    <th>Parameters</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${interactions
+                    .slice(0, 25)
+                    .map(
+                      (e) => `
+                    <tr>
+                      <td style="font-weight: 600; color: var(--text);">${e.eventName}</td>
+                      <td><code>${e.userId || 'anonymous'}</code></td>
+                      <td>${e.deviceInfo || 'Unknown'}</td>
+                      <td>${new Date(e.createdAt).toLocaleTimeString()}</td>
+                      <td>
+                        <code style="font-size: 0.75rem; max-width: 260px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.details || '-'}</code>
+                      </td>
+                    </tr>
+                  `
+                    )
+                    .join('')}
+                </tbody>
+              </table>
+            </div>
+          `
+        }
       </div>
 
       <!-- Section: Registered Users -->

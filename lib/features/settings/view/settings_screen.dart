@@ -12,6 +12,7 @@ import 'package:finance_tracker/features/settings/viewmodels/settings_view_model
 import 'package:finance_tracker/features/shared/data/currency.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
+import 'package:finance_tracker/features/subscription/view/subscription_auth_guard_sheet.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -342,6 +343,10 @@ class _SubscriptionBanner extends StatelessWidget {
                 if (context.mounted) context.push(AppRoutes.paywall);
               }
             } else {
+              if (getIt<AuthService>().isGuest) {
+                final ok = await promptLoginToUpgrade(context);
+                if (!ok) return;
+              }
               if (subService.isConfigured) {
                 try {
                   final result = await subService.presentPaywall();

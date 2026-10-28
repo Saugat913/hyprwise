@@ -142,7 +142,7 @@ app.post('/api/auth/firebase', async (c) => {
     const user: UserRow = {
       id: userId,
       email: verifiedEmail || existing?.email || `${userId}@firebase.tilvane`,
-      displayName: verifiedName || existing?.displayName || 'Tilvane User',
+      displayName: verifiedName || existing?.displayName || 'Hyprwise User',
       photoUrl: verifiedPhoto || existing?.photoUrl || null,
       provider: (provider === 'apple' ? 'apple' : 'google') as 'google' | 'apple' | 'offline',
       isPro: existing?.isPro ?? 0,
@@ -441,7 +441,7 @@ app.post('/api/export/csv', async (c) => {
     return c.json({
       error: 'pro_required',
       feature: 'export',
-      message: 'Server-side detailed CSV export requires an active Tilvane Pro subscription.',
+      message: 'Server-side detailed CSV export requires an active Hyprwise Pro subscription.',
     }, 403);
   }
 
@@ -595,7 +595,7 @@ app.post('/api/sync/push', async (c) => {
       return c.json({
         error: 'pro_required',
         feature: 'cloud_sync',
-        message: 'Cloud backup and cross-device sync requires an active Tilvane Pro subscription.',
+        message: 'Cloud backup and cross-device sync requires an active Hyprwise Pro subscription.',
       }, 403);
     }
     const userId = user.id;
@@ -630,7 +630,7 @@ app.get('/api/sync/pull', async (c) => {
     return c.json({
       error: 'pro_required',
       feature: 'cloud_sync',
-      message: 'Cloud backup and cross-device sync requires an active Tilvane Pro subscription.',
+      message: 'Cloud backup and cross-device sync requires an active Hyprwise Pro subscription.',
     }, 403);
   }
   const userId = user.id;
@@ -688,7 +688,7 @@ app.post('/api/ai/chat', async (c) => {
         return c.json({
           error: 'pro_required',
           feature: 'assistant',
-          message: 'You have reached your 5 free AI queries for today. Upgrade to Tilvane Pro for unlimited intelligent financial analysis.',
+          message: 'You have reached your 5 free AI queries for today. Upgrade to Hyprwise Pro for unlimited intelligent financial analysis.',
         }, 403);
       }
       await c.env.DB.prepare(
@@ -1189,19 +1189,36 @@ app.get('/admin', async (c) => {
     } catch (_) {}
   }
 
-  // Fallback demo users if DB is empty
-  if (users.length === 0) {
-    users = [
-      { id: 'usr_sample_1', displayName: 'Alex Morgan', email: 'alex.morgan@gmail.com', provider: 'google', isPro: 1, createdAt: Date.now() - 86400000 * 5 },
-      { id: 'usr_sample_2', displayName: 'Liam Chen', email: 'liam.chen@icloud.com', provider: 'apple', isPro: 0, createdAt: Date.now() - 86400000 * 3 },
-      { id: 'usr_sample_3', displayName: 'Sara Miller', email: 'sara.shift@hyprwise.app', provider: 'google', isPro: 1, createdAt: Date.now() - 86400000 * 1 },
-    ];
-    totalUsers = users.length;
-    proUsers = 2;
+  let allEvents = [...memoryEvents];
+  if (c.env?.DB) {
+    try {
+      const dbEvents = await c.env.DB.prepare(
+        'SELECT * FROM telemetry_events ORDER BY createdAt DESC LIMIT 100'
+      ).all();
+      if (dbEvents.results && dbEvents.results.length > 0) {
+        const existingIds = new Set(allEvents.map((e) => e.id));
+        for (const ev of dbEvents.results) {
+          const item = ev as any;
+          if (!existingIds.has(item.id)) {
+            allEvents.push({
+              id: item.id,
+              userId: item.userId || null,
+              eventType: item.eventType || 'action',
+              eventName: item.eventName || '',
+              details: item.details || null,
+              deviceInfo: item.deviceInfo || null,
+              appVersion: item.appVersion || '',
+              createdAt: Number(item.createdAt) || Date.now(),
+            });
+          }
+        }
+        allEvents.sort((a, b) => b.createdAt - a.createdAt);
+      }
+    } catch (_) {}
   }
 
-  const totalExceptions = memoryEvents.filter((e) => e.eventType === 'exception' || e.eventType === 'crash').length;
-  const totalInteractions = memoryEvents.filter((e) => e.eventType === 'action' || e.eventType === 'screen_view').length;
+  const totalExceptions = allEvents.filter((e) => e.eventType === 'exception' || e.eventType === 'crash').length;
+  const totalInteractions = allEvents.filter((e) => e.eventType === 'action' || e.eventType === 'screen_view').length;
   const conversionRate = totalUsers > 0 ? `${((proUsers / totalUsers) * 100).toFixed(1)}%` : '0%';
 
   return c.html(
@@ -1215,7 +1232,7 @@ app.get('/admin', async (c) => {
         totalInteractions,
         uptime: '99.98%',
       },
-      events: memoryEvents,
+      events: allEvents,
       users,
       deletions,
     })

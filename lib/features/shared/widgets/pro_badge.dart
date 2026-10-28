@@ -4,8 +4,10 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
+import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/shared/widgets/app_icon.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
+import 'package:finance_tracker/features/subscription/view/subscription_auth_guard_sheet.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 /// Compact inline Crown badge to indicate a Pro feature without cluttering the screen.
@@ -183,6 +185,10 @@ Future<void> showProUpgradeSheet(
                   ),
                   onPressed: () async {
                     Navigator.of(sheetContext).pop();
+                    if (getIt<AuthService>().isGuest) {
+                      final ok = await promptLoginToUpgrade(context);
+                      if (!ok) return;
+                    }
                     final subService = getIt<SubscriptionService>();
                     if (subService.isConfigured) {
                       final result = await subService.presentPaywall();

@@ -47,11 +47,23 @@ void main() {
   });
 
   test('Guest login creates offline profile and initial free tier', () async {
+    expect(authService.isGuest, isTrue);
     final user = await authService.signInAsGuest();
     expect(user.provider, equals(AuthProvider.guest));
     expect(user.isPro, isFalse);
     expect(authService.isAuthenticated, isTrue);
+    expect(authService.isGuest, isTrue);
     expect(subService.isPro, isFalse);
+  });
+
+  test('Signing in with Google upgrades guest to authenticated permanent user', () async {
+    await authService.signInAsGuest();
+    expect(authService.isGuest, isTrue);
+
+    final user = await authService.signInWithGoogle(email: 'user@hyprwise.com', displayName: 'Hyprwise User');
+    expect(user.provider, equals(AuthProvider.google));
+    expect(authService.isGuest, isFalse);
+    expect(authService.isAuthenticated, isTrue);
   });
 
   test('Subscribing to Pro plan activates Pro across SubscriptionService and AuthService', () async {
