@@ -56,7 +56,17 @@ function parseJwtPayload(token: string): any {
 app.get('/health', (c) => {
   return c.json({
     status: 'ok',
-    service: 'tilvane-backend',
+    service: 'hyprwise-server',
+    version: '1.3.0',
+    platform: 'cloudflare-workers',
+    firebaseProject: c.env.FIREBASE_PROJECT_ID || 'tilvane',
+    timestamp: new Date().toISOString(),
+  });
+});
+app.get('/api/health', (c) => {
+  return c.json({
+    status: 'ok',
+    service: 'hyprwise-server',
     version: '1.3.0',
     platform: 'cloudflare-workers',
     firebaseProject: c.env.FIREBASE_PROJECT_ID || 'tilvane',
