@@ -193,9 +193,28 @@ class HomeScreen extends StatelessWidget {
                     ),
                     if (viewModel.sparklinePoints.isNotEmpty) ...[
                       const SizedBox(height: AppSpace.md),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            tr.t('Balance outlook', ne: 'ब्यालेन्स प्रक्षेपण', es: 'Perspectiva de saldo', fr: 'Évolution du solde', de: 'Saldo-Ausblick', ja: '残高の見通し', zh: '余额走势', it: 'Andamento saldo'),
+                            style: text.labelSmall?.copyWith(color: colors.onHeroSecondary, fontSize: 11),
+                          ),
+                          Text(
+                            '${MoneyFormatter.compact(viewModel.sparklinePoints.reduce((a, b) => a < b ? a : b).round(), viewModel.baseCurrency)} – ${MoneyFormatter.compact(viewModel.sparklinePoints.reduce((a, b) => a > b ? a : b).round(), viewModel.baseCurrency)}',
+                            style: text.labelSmall?.copyWith(color: colors.onHeroSecondary, fontSize: 11, fontFamily: 'RedditMono'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.xs),
                       Sparkline(viewModel.sparklinePoints, color: colors.brand, height: 48),
                     ],
                     const SizedBox(height: AppSpace.lg),
+                    Text(
+                      tr.thisMonthSoFarSubtitle,
+                      style: text.labelSmall?.copyWith(color: colors.onHeroSecondary, fontSize: 11),
+                    ),
+                    const SizedBox(height: AppSpace.xs),
                     Row(
                       children: [
                         Expanded(

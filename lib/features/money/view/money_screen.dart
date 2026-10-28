@@ -7,6 +7,8 @@ import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
+import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/money/view/widgets/transaction_item_row.dart';
@@ -166,6 +168,15 @@ class _MoneyScreenState extends State<MoneyScreen> {
                     ),
                   ),
 
+                if (txs.isNotEmpty) ...[
+                  _SummaryStrip(
+                    income: txs.where((t) => t.type == 'income').fold(0, (a, t) => a + t.amountMinor),
+                    expense: txs.where((t) => t.type == 'expense').fold(0, (a, t) => a + t.amountMinor),
+                    currency: viewModel.baseCurrency,
+                  ),
+                  const SizedBox(height: AppSpace.md),
+                ],
+
                 if (txs.isEmpty)
                   SizedBox(
                     height: 340,
@@ -190,9 +201,29 @@ class _MoneyScreenState extends State<MoneyScreen> {
                   for (final group in _groupTransactions(txs)) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
-                      child: Text(
-                        AppDate.weekdayDay(group.date),
-                        style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              AppDate.weekdayDay(group.date),
+                              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          Builder(builder: (context) {
+                            final net = group.transactions.fold<int>(
+                              0,
+                              (a, t) => a + (t.type == 'income' ? t.amountMinor : -t.amountMinor),
+                            );
+                            return Text(
+                              '${net >= 0 ? '+' : '−'}${MoneyFormatter.format(net.abs(), viewModel.baseCurrency)}',
+                              style: text.labelMedium?.copyWith(
+                                fontFamily: 'RedditMono',
+                                fontWeight: FontWeight.w600,
+                                color: net >= 0 ? context.colors.income : context.colors.expense,
+                              ),
+                            );
+                          }),
+                        ],
                       ),
                     ),
                     AppCard(
@@ -227,6 +258,57 @@ class _MoneyScreenState extends State<MoneyScreen> {
       groups.putIfAbsent(date, () => []).add(t);
     }
     return groups.entries.map((e) => _DayGroup(date: e.key, transactions: e.value)).toList();
+  }
+}
+
+class _SummaryStrip extends StatelessWidget {
+  const _SummaryStrip({required this.income, required this.expense, required this.currency});
+
+  final int income;
+  final int expense;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = context.strings;
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final colors = context.colors;
+    final net = income - expense;
+    Widget cell(String label, String value, Color color) => Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: text.titleSmall?.copyWith(
+                    fontFamily: 'RedditMono',
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+    return AppCard(
+      child: Row(
+        children: [
+          cell(tr.income, MoneyFormatter.format(income, currency), colors.income),
+          cell(tr.expense, MoneyFormatter.format(expense, currency), colors.expense),
+          cell(
+            tr.t('Net', ne: 'खुद', es: 'Neto', fr: 'Net', de: 'Netto', ja: '差額', zh: '净额', it: 'Netto'),
+            '${net >= 0 ? '+' : '−'}${MoneyFormatter.format(net.abs(), currency)}',
+            net >= 0 ? colors.income : colors.expense,
+          ),
+        ],
+      ),
+    );
   }
 }
 

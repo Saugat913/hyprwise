@@ -298,6 +298,18 @@ class PlanScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpace.md),
                       ProgressLine(gf.progress.fraction),
+                      if (gf.progress.fraction < 1.0) ...[
+                        const SizedBox(height: AppSpace.sm),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: StatusChip(
+                            gf.onTrack
+                                ? tr.t('On track', ne: 'ठीक बाटोमा', es: 'En camino', fr: 'Dans les temps', de: 'Im Plan', ja: '順調', zh: '进度正常', it: 'In linea')
+                                : '${tr.t('Short by', ne: 'कम', es: 'Faltan', fr: 'Manque', de: 'Fehlt', ja: '不足', zh: '缺口', it: 'Mancano')} ${MoneyFormatter.format(gf.shortfallMinor, gf.goal.currencyCode)}',
+                            tone: gf.onTrack ? ChipTone.success : ChipTone.warning,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: AppSpace.md),
                       Row(
                         children: [
