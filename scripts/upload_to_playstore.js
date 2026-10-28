@@ -155,6 +155,55 @@ async function getAccessToken() {
   });
 }
 
+function uploadAabStream(url, token, filePath, fileSize) {
+  return new Promise((resolve, reject) => {
+    let resolved = false;
+    let resBody = '';
+    let responseStatus = 0;
+
+    const req = https.request(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': fileSize,
+        },
+        timeout: 600000, // 10 minutes timeout for bundle upload
+      },
+      (res) => {
+        responseStatus = res.statusCode;
+        res.on('data', (chunk) => (resBody += chunk));
+        res.on('end', () => {
+          resolved = true;
+          resolve({ statusCode: responseStatus, body: resBody });
+        });
+      }
+    );
+
+    req.on('error', (err) => {
+      setTimeout(() => {
+        if (!resolved) {
+          if (responseStatus > 0) {
+            resolve({ statusCode: responseStatus, body: resBody });
+          } else {
+            reject(err);
+          }
+        }
+      }, 500);
+    });
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.on('error', (err) => {
+      req.destroy();
+      reject(err);
+    });
+
+    fileStream.pipe(req);
+  });
+}
+
 function httpsRequest(url, options, data = null) {
   return new Promise((resolve, reject) => {
     const req = https.request(url, options, (res) => {
@@ -264,18 +313,11 @@ async function run() {
   console.log(`4. Uploading App Bundle (${aabSizeMb} MB) to Google Play...`);
   console.log(`   Path: ${aabPath}`);
 
-  const aabBuffer = fs.readFileSync(aabPath);
-  const uploadRes = await httpsRequest(
+  const uploadRes = await uploadAabStream(
     `https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${packageName}/edits/${editId}/bundles?uploadType=media`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': aabBuffer.length,
-      },
-    },
-    aabBuffer
+    token,
+    aabPath,
+    aabStats.size
   );
 
   if (uploadRes.statusCode < 200 || uploadRes.statusCode >= 300) {
