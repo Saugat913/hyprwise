@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -786,7 +787,7 @@ class AnimatedBarChart extends StatelessWidget {
     final values = trend.values;
     final peak = values.isEmpty ? 0.0 : values.reduce((a, b) => a > b ? a : b);
     final total = values.fold(0.0, (sum, v) => sum + v);
-    final effectiveMax = peak <= 0 ? 1.0 : peak;
+    final effectiveMax = _niceCeil(peak);
     final brand = context.colors.brand;
     final labelEvery = values.length > 16 ? 4 : (values.length > 8 ? 2 : 1);
     final showValueAboveBar = values.length <= 14;
@@ -829,7 +830,23 @@ class AnimatedBarChart extends StatelessWidget {
           builder:
               (context, t, _) => SizedBox(
                 height: height,
-                child: Row(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _ChartGridPainter(
+                          maxValue: effectiveMax,
+                          labelBuilder: (v) => _formatValue(context, v),
+                          lineColor: scheme.outlineVariant.withValues(alpha: 0.5),
+                          textColor: scheme.onSurfaceVariant,
+                          bottomInset: 20,
+                          topInset: 18,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: _ChartGridPainter.gutter),
+                      child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     for (var i = 0; i < values.length; i++)
@@ -944,11 +961,78 @@ class AnimatedBarChart extends StatelessWidget {
                       ),
                   ],
                 ),
+                    ),
+                  ],
+                ),
               ),
         ),
       ],
     );
   }
+}
+
+/// Nice rounded ceiling so gridline labels are clean (1, 2, 2.5, 5, 10 x 10^n).
+double _niceCeil(double v) {
+  if (v <= 0) return 1;
+  final mag = math.pow(10, (math.log(v) / math.ln10).floor()).toDouble();
+  final n = v / mag;
+  final step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return step * mag;
+}
+
+/// Draws horizontal gridlines with y-axis value labels behind bar charts.
+class _ChartGridPainter extends CustomPainter {
+  _ChartGridPainter({
+    required this.maxValue,
+    required this.labelBuilder,
+    required this.lineColor,
+    required this.textColor,
+    required this.bottomInset,
+    required this.topInset,
+  });
+
+  static const double gutter = 40;
+
+  final double maxValue;
+  final String Function(double) labelBuilder;
+  final Color lineColor;
+  final Color textColor;
+  final double bottomInset;
+  final double topInset;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final plotH = size.height - bottomInset - topInset;
+    if (plotH <= 0) return;
+    final paint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 1;
+    const steps = 4;
+    for (var i = 0; i <= steps; i++) {
+      final f = i / steps;
+      final y = size.height - bottomInset - plotH * f;
+      canvas.drawLine(Offset(gutter - 4, y), Offset(size.width, y), paint);
+      final tp = TextPainter(
+        text: TextSpan(
+          text: labelBuilder(maxValue * f),
+          style: TextStyle(
+            color: textColor,
+            fontSize: 9,
+            fontFamily: 'RedditMono',
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout(maxWidth: gutter - 6);
+      tp.paint(canvas, Offset(gutter - 6 - tp.width, y - tp.height / 2));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ChartGridPainter old) =>
+      old.maxValue != maxValue ||
+      old.lineColor != lineColor ||
+      old.textColor != textColor;
 }
 
 class _CurrentWeekDayColumn extends StatelessWidget {
