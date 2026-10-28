@@ -1,13 +1,15 @@
 name: finance_tracker
-description: "An offline-first personal finance planner."
+description: "Hyprwise - Offline-first personal finance planner & shift manager."
 publish_to: 'none'
-version: 1.0.0+1
+version: 0.1.1+2
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
   cupertino_icons: ^1.0.8
   drift: ^2.28.1
@@ -16,6 +18,25 @@ dependencies:
   go_router: ^16.2.1
   hugeicons: ^1.2.0
   flutter_svg: ^2.2.0
+  intl: any
+  flutter_secure_storage: ^9.2.2
+  crypto: ^3.0.3
+  path_provider: ^2.1.6
+  share_plus: ^12.0.2
+  csv: ^8.0.0
+  flutter_local_notifications: ^22.3.2
+  timezone: ^0.11.2
+  firebase_core: ^4.15.0
+  firebase_analytics: ^12.6.0
+  firebase_auth: ^6.7.0
+  google_sign_in: ^6.2.2
+  purchases_flutter: ^8.5.0
+  file_picker: ^10.2.4
+  pdf: ^3.13.1
+  http: ^1.6.0
+  flutter_markdown: ^0.7.7+1
+  purchases_ui_flutter: ^8.11.0
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:
@@ -25,32 +46,44 @@ dev_dependencies:
   drift_dev: ^2.28.1
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.6
+  change_app_package_name: ^1.5.0
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: GoogleSans
+      fonts:
+        - asset: assets/fonts/GoogleSans.ttf
+    - family: RedditMono
+      fonts:
+        - asset: assets/fonts/RedditMono.ttf
   assets:
-    - assets/logo.svg
+    - assets/icons/merchants/
+    - assets/icons/
+    - assets/brand/
+    - assets/brand/logo/
+    - assets/brand/app-icon/
+    - assets/brand/android/
+    - assets/brand/web/
 
-# Export assets/logo.svg to a transparent PNG at this path before generating
-# platform icons. Keep the symbol centered within the adaptive-icon safe area.
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/logo.png
-  adaptive_icon_background: "#F8FAFB"
-  adaptive_icon_foreground: assets/logo.png
+  image_path: "assets/brand/app-icon/hyprwise-app-icon-1024.png"
+  image_path_ios: "assets/brand/app-icon/hyprwise-app-icon-ios-1024.png"
+  adaptive_icon_background: "assets/brand/android/ic_launcher_background.png"
+  adaptive_icon_foreground: "assets/brand/android/ic_launcher_foreground.png"
+  adaptive_icon_monochrome: "assets/brand/android/ic_launcher_monochrome.png"
   remove_alpha_ios: true
   min_sdk_android: 23
 
-# The native splash is the branded entry surface before Flutter is ready.
-# Export assets/logo.svg to assets/logo.png before running the splash generator.
 flutter_native_splash:
-  color: "#F8FAFB"
-  color_dark: "#11191E"
-  image: assets/logo.png
-  image_dark: assets/logo.png
+  color: "#F6FBF8"
+  color_dark: "#0C1210"
+  image: assets/brand/android/splash-light.png
+  image_dark: assets/brand/android/splash-dark.png
   android_12:
-    color: "#F8FAFB"
-    color_dark: "#11191E"
-    image: assets/logo.png
-    image_dark: assets/logo.png
+    color: "#F6FBF8"
+    color_dark: "#0C1210"
+    image: assets/brand/android/splash-light.png
+    image_dark: assets/brand/android/splash-dark.png

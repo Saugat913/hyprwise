@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "534651621591",
+    "project_id": "tilvane",
+    "storage_bucket": "tilvane.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:534651621591:android:949cb06c0a6328df942092",
+        "android_client_info": {
+          "package_name": "com.hypr.hyprwise"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "534651621591-54bbfi6f03ls8prsd1qefs1j6gg7c5ue.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hypr.hyprwise",
+            "certificate_hash": "42056c61cdd4d9d7ba60f5f43c7aac6fab23c5e1"
+          }
+        },
+        {
+          "client_id": "534651621591-gosjfaldid56iin2h63l2uusq57e6n25.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hypr.hyprwise",
+            "certificate_hash": "633f0375505aac6033044dfb99ee2c13aebb7399"
+          }
+        },
+        {
+          "client_id": "534651621591-6ibqlraqeradqqu2qcteeg1e5bun69m7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFaQk0F4vsiaH5f_5-rPPzvdbMPwfF9rI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "534651621591-6ibqlraqeradqqu2qcteeg1e5bun69m7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "534651621591-7v4e8ni800a1260tnh6fi5brsr3er4no.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.hypr.hyprwise"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

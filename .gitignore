@@ -46,3 +46,16 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Secrets, Env, and Firebase Credentials
+.env
+.env.*
+!.env.example
+*firebase-adminsdk*.json
+server/.env
+server/.env.*
+*.key
+*.pem
+firepit-log.txt
+android/build/
+scratch_cmp/

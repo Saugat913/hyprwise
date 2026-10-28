@@ -1,28 +1,31 @@
-/// Shared spacing, sizing and radius tokens. Keep feature layouts consistent.
-abstract final class AppDimensions {
-  static const double screenPadding = 20;
-  static const double screenPaddingCompact = 16;
-  static const double sectionSpacing = 28;
-  static const double cardPadding = 16;
-  static const double itemSpacing = 12;
-  static const double compactSpacing = 8;
-  static const double tinySpacing = 4;
-  static const double largeSpacing = 32;
+/// Spacing, radii and fixed sizes. The only place layout numbers are defined.
+abstract final class AppSpace {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 20;
+  static const double xxl = 24;
+  static const double xxxl = 32;
 
-  static const double minTapTarget = 48;
-  static const double buttonHeight = 48;
-  static const double inputHeight = 52;
-  static const double iconSize = 24;
-  static const double iconSizeSmall = 18;
+  /// Horizontal padding of every page.
+  static const double page = 20;
+}
 
-  static const double radiusSmall = 8;
-  static const double radiusInput = 12;
-  static const double radiusButton = 14;
-  static const double radiusCard = 20;
-  static const double radiusLarge = 28;
-  static const double radiusPill = 999;
+abstract final class AppRadius {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 12;
+  static const double xl = 16;
+  static const double pill = 999;
+}
 
-  static const double contentMaxWidth = 720;
-  static const double pageMaxWidth = 1120;
-  static const double dividerThickness = 1;
+abstract final class AppSize {
+  static const double button = 56;
+  static const double input = 52;
+  static const double iconBox = 40;
+  static const double avatar = 44;
+  static const double navBar = 72;
+  static const double progressStep = 3;
 }

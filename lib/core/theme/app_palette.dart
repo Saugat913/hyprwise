@@ -1,54 +1,39 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
 
-/// Raw design-system colors. Semantic theme roles belong in AppColors.
+/// Raw colour tokens sampled from the "Finance Planner" design. Nothing in the
+/// UI reads these directly: they feed `AppColorScheme`, and widgets read the
+/// resulting `ColorScheme` / `AppColors`. Swapping a token re-themes the app.
 abstract final class AppPalette {
-  // Brand: calm teal for a trustworthy, modern financial product.
-  static const Color brand = Color(0xFF087F8C);
-  static const Color brandHover = Color(0xFF066B75);
-  static const Color brandPressed = Color(0xFF055861);
-  static const Color brandSubtle = Color(0xFFE5F5F5);
-  static const Color brandOn = Color(0xFFFFFFFF);
-  static const Color brandLight = Color(0xFF80D8DE);
-  static const Color brandOnDark = Color(0xFF11191E);
-  static const Color brandContainerDark = Color(0xFF164C52);
-  static const Color brandOnContainerDark = Color(0xFFD2F5F6);
-  static const Color infoLight = Color(0xFF9BBEFF);
-  static const Color infoContainerDark = Color(0xFF203C65);
-  static const Color infoOnContainerDark = Color(0xFFDCE8FF);
-  static const Color expenseLight = Color(0xFFFFB4AB);
-  static const Color expenseContainerDark = Color(0xFF7F2929);
-  static const Color expenseOnContainerDark = Color(0xFFFFDAD6);
+  // Light
+  static const lightPage = Color(0xFFF6F6F6);
+  static const lightCard = Color(0xFFFFFFFF);
+  static const lightInk = Color(0xFF121816);
+  static const lightMuted = Color(0xFF7A827E);
+  static const lightHairline = Color(0xFFE6E8E7);
+  static const lightFill = Color(0xFFEDEEED); // tab tracks, input fills
 
-  // Neutral scale.
-  static const Color white = Color(0xFFFFFFFF);
-  static const Color black = Color(0xFF101820);
-  static const Color neutral50 = Color(0xFFF8FAFB);
-  static const Color neutral100 = Color(0xFFF0F3F5);
-  static const Color neutral200 = Color(0xFFE1E7EA);
-  static const Color neutral300 = Color(0xFFCCD5DA);
-  static const Color neutral400 = Color(0xFFAAB7BE);
-  static const Color neutral500 = Color(0xFF84939B);
-  static const Color neutral600 = Color(0xFF62727B);
-  static const Color neutral700 = Color(0xFF46565F);
-  static const Color neutral800 = Color(0xFF2D3B43);
-  static const Color neutral900 = Color(0xFF1B272E);
-  static const Color neutral950 = Color(0xFF11191E);
+  // Dark (Neutral modern dark palette: pure obsidian, slate cards, neutral grey borders)
+  static const darkPage = Color(0xFF0F0F11);
+  static const darkCard = Color(0xFF18181B);
+  static const darkInk = Color(0xFFF4F4F6);
+  static const darkMuted = Color(0xFF8F8F99);
+  static const darkHairline = Color(0xFF27272A);
+  static const darkFill = Color(0xFF232326);
 
-  // Financial semantics.
-  static const Color income = Color(0xFF16845B);
-  static const Color incomeSubtle = Color(0xFFE6F5ED);
-  static const Color expense = Color(0xFFC34242);
-  static const Color expenseSubtle = Color(0xFFFCECEC);
-  static const Color warning = Color(0xFF986300);
-  static const Color warningSubtle = Color(0xFFFFF4D6);
-  static const Color info = Color(0xFF2864B4);
-  static const Color infoSubtle = Color(0xFFEAF2FF);
-  static const Color success = Color(0xFF16845B);
-  static const Color successSubtle = Color(0xFFE6F5ED);
+  // Hero card (the sleek neutral deep surface with subtle depth)
+  static const lightHero = Color(0xFF121816);
+  static const darkHero = Color(0xFF18181C);
 
-  // Utility colors.
-  static const Color transparent = Colors.transparent;
-  static const Color scrim = Color(0x66000000);
-  static const Color overlayLight = Color(0x0A101820);
-  static const Color overlayDark = Color(0x14FFFFFF);
+  // Semantic
+  static const lightGreen = Color(0xFF1F7A45);
+  static const darkGreen = Color(0xFF4CC38A);
+  static const lightRed = Color(0xFFB42318);
+  static const darkRed = Color(0xFFF2766B);
+  static const lightAmber = Color(0xFF9A5B00);
+  static const darkAmber = Color(0xFFF0B24A);
+  static const lightAmberBg = Color(0xFFFFF1D6);
+  static const darkAmberBg = Color(0xFF3A2C10);
+  static const lightGreenBg = Color(0xFFE3F3EA);
+  static const darkGreenBg = Color(0xFF16301F);
+  static const sparkline = Color(0xFF5EE6A0);
 }
