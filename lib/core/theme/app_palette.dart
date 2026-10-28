@@ -7,7 +7,7 @@ abstract final class AppPalette {
   // Light
   static const lightPage = Color(0xFFF6F6F6);
   static const lightCard = Color(0xFFFFFFFF);
-  static const lightInk = Color(0xFF121816);
+  static const lightInk = Color(0xFF0F0F11);
   static const lightMuted = Color(0xFF7A827E);
   static const lightHairline = Color(0xFFE6E8E7);
   static const lightFill = Color(0xFFEDEEED); // tab tracks, input fills

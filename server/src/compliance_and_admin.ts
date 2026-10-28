@@ -60,10 +60,13 @@ function wrapHtml({
       --surface-elevated: #F0F4F2;
       --surface-hover: #E6ECE8;
       --border: #DDE4E0;
-      --border-focus: #FF6500;
-      --primary: #FF6500;
-      --primary-hover: #E05800;
+      --border-focus: #0F0F11;
+      --primary: #0F0F11;
+      --primary-hover: #262629;
       --primary-ink: #FFFFFF;
+      --brand: #FF6500;
+      --brand-hover: #E05800;
+      --brand-bg: #FFF0E6;
       --accent-green: #28A050;
       --accent-red: #D93829;
       --accent-amber: #B86E00;

@@ -214,17 +214,17 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         height: AppSize.button,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: brandOrange,
-                            foregroundColor: Colors.white,
+                            backgroundColor: isDark ? Colors.white : const Color(0xFF0F0F11),
+                            foregroundColor: isDark ? Colors.black : Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
-                          icon: const AppIcon(
+                          icon: AppIcon(
                             HugeIcons.strokeRoundedGoogle,
                             size: 20,
-                            color: Colors.white,
+                            color: isDark ? Colors.black : Colors.white,
                           ),
                           label: const Text(
                             'Continue with Google',

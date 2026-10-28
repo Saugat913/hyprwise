@@ -86,10 +86,12 @@ extension AppColorsContext on BuildContext {
 abstract final class AppColorScheme {
   static const light = ColorScheme(
     brightness: Brightness.light,
-    primary: AppPalette.brandOrange,
+    primary: AppPalette.lightInk,
     onPrimary: Color(0xFFFFFFFF),
-    secondary: AppPalette.brandOrangeDark,
+    secondary: AppPalette.lightGreen,
     onSecondary: Color(0xFFFFFFFF),
+    tertiary: AppPalette.brandOrange,
+    onTertiary: Color(0xFFFFFFFF),
     error: AppPalette.lightRed,
     onError: Color(0xFFFFFFFF),
     surface: AppPalette.lightCard,
@@ -102,10 +104,12 @@ abstract final class AppColorScheme {
 
   static const dark = ColorScheme(
     brightness: Brightness.dark,
-    primary: AppPalette.brandOrange,
-    onPrimary: Color(0xFFFFFFFF),
-    secondary: AppPalette.brandOrangeLight,
-    onSecondary: Color(0xFFFFFFFF),
+    primary: AppPalette.darkInk,
+    onPrimary: AppPalette.darkPage,
+    secondary: AppPalette.darkGreen,
+    onSecondary: AppPalette.darkPage,
+    tertiary: AppPalette.brandOrange,
+    onTertiary: Color(0xFFFFFFFF),
     error: AppPalette.darkRed,
     onError: AppPalette.darkPage,
     surface: AppPalette.darkCard,
