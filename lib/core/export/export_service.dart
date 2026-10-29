@@ -10,9 +10,12 @@ import 'package:finance_tracker/core/export/analytics_pdf_service.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
+import 'package:finance_tracker/features/analytics/data/analytics_tab_data.dart';
 import 'package:finance_tracker/features/analytics/viewmodels/analytics_view_model.dart';
+import 'package:finance_tracker/features/debts/data/model/debt.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/settings/data/repository/data_repository.dart';
+import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
@@ -203,32 +206,40 @@ abstract final class ExportService {
                           // Format Selection
                           Text(tr.chooseFormatLabel, style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
                           const SizedBox(height: AppSpace.sm),
-                          for (final fmt in ExportFormat.values) ...[
-                            OptionTile(
-                              title: fmt.label,
-                              subtitle: fmt.description,
-                              selected: selectedFormat == fmt,
-                              trailing: (fmt == ExportFormat.report || fmt == ExportFormat.analyticsReport)
-                                  ? const ProCrownBadge(isCompact: true)
-                                  : null,
-                              onTap: () => setState(() => selectedFormat = fmt),
-                            ),
-                            const SizedBox(height: AppSpace.sm),
-                          ],
-                          const SizedBox(height: AppSpace.md),
+                          HorizontalOptionSelector<ExportFormat>(
+                            height: 64,
+                            selectedValue: selectedFormat,
+                            onChanged: (fmt) => setState(() => selectedFormat = fmt),
+                            items: [
+                              for (final fmt in ExportFormat.values)
+                                HorizontalOptionItem<ExportFormat>(
+                                  value: fmt,
+                                  label: fmt.label,
+                                  subtitle: fmt.description,
+                                  trailing: (fmt == ExportFormat.report || fmt == ExportFormat.analyticsReport)
+                                      ? const ProCrownBadge(isCompact: true)
+                                      : null,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpace.lg),
 
                           // Destination Selection
                           Text(tr.deliveryMethodLabel, style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
                           const SizedBox(height: AppSpace.sm),
-                          for (final dest in ExportDestination.values) ...[
-                            OptionTile(
-                              title: dest.label,
-                              subtitle: dest.description,
-                              selected: selectedDestination == dest,
-                              onTap: () => setState(() => selectedDestination = dest),
-                            ),
-                            const SizedBox(height: AppSpace.sm),
-                          ],
+                          HorizontalOptionSelector<ExportDestination>(
+                            height: 64,
+                            selectedValue: selectedDestination,
+                            onChanged: (dest) => setState(() => selectedDestination = dest),
+                            items: [
+                              for (final dest in ExportDestination.values)
+                                HorizontalOptionItem<ExportDestination>(
+                                  value: dest,
+                                  label: dest.label,
+                                  subtitle: dest.description,
+                                ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -361,21 +372,34 @@ abstract final class ExportService {
     }
   }
 
-  /// Generates CSV format for active analytics period
+  /// Generates CSV format for comprehensive analytics covering overview and all tab views
   static String generateAnalyticsCsv(AnalyticsViewModel vm) {
     final (start, end) = vm.dateRange;
-    final isExpense = vm.activeType == TransactionType.expense;
-    final typeName = isExpense ? 'Spending' : 'Income';
     final currency = vm.baseCurrency;
-    final total = (vm.activeTotalMinor / 100).toStringAsFixed(2);
     final startDateStr = DateFormatter.numeric(start);
     final endDateStr = DateFormatter.numeric(end);
 
+    final incomeData = vm.txTabData(TransactionType.income);
+    final expenseData = vm.txTabData(TransactionType.expense);
+    final lendData = vm.debtTabData(DebtType.lent);
+    final borrowData = vm.debtTabData(DebtType.borrowed);
+    final workData = vm.workTabData();
+
+    final incomeTotal = incomeData.totalMinor;
+    final expenseTotal = expenseData.totalMinor;
+    final netSavingsMinor = incomeTotal - expenseTotal;
+    final savingsRate = incomeTotal > 0
+        ? (((incomeTotal - expenseTotal) / incomeTotal) * 100).clamp(0.0, 100.0)
+        : 0.0;
+    final netDebtMinor = lendData.totalMinor - borrowData.totalMinor;
+
     final rows = <List<dynamic>>[];
-    rows.add(['HYPRWISE ANALYTICS REPORT - $typeName']);
+
+    // Report Header
+    rows.add(['[HYPRWISE COMPREHENSIVE ANALYTICS REPORT]']);
     rows.add(['Period', '$startDateStr to $endDateStr']);
     rows.add(['Date Filter', vm.dateFilter.label]);
-    rows.add(['Total $typeName ($currency)', total]);
+    rows.add(['Base Currency', currency]);
     if (vm.selectedCategory != null) {
       rows.add(['Category Filter', vm.selectedCategory!]);
     }
@@ -385,72 +409,231 @@ abstract final class ExportService {
     }
     rows.add([]);
 
-    // Category Breakdown
+    // 1. Overview Metrics
+    rows.add(['[OVERVIEW METRICS]']);
+    rows.add(['Metric', 'Value ($currency)']);
+    rows.add(['Total Income', (incomeTotal / 100).toStringAsFixed(2)]);
+    rows.add(['Total Expenses', (expenseTotal / 100).toStringAsFixed(2)]);
+    rows.add(['Net Savings', (netSavingsMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Savings Rate', '${savingsRate.toStringAsFixed(1)}%']);
+    rows.add(['Total Lent', (lendData.totalMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Total Borrowed', (borrowData.totalMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Net Debt Position (Lent - Borrowed)', (netDebtMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Work Earnings', (workData.earningsMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Work Shifts Count', workData.shiftCount]);
+    rows.add(['Work Hours Worked', (workData.totalMinutes / 60.0).toStringAsFixed(2)]);
+    rows.add([]);
+
+    // 2. Income Breakdown
+    rows.add(['[INCOME BREAKDOWN]']);
+    rows.add(['Total Income ($currency)', (incomeTotal / 100).toStringAsFixed(2)]);
+    rows.add(['Transactions Count', incomeData.count]);
+    rows.add(['Average Income ($currency)', (incomeData.averageMinor / 100).toStringAsFixed(2)]);
     rows.add(['CATEGORY BREAKDOWN']);
     rows.add(['Category', 'Amount ($currency)', 'Share (%)']);
-    final cats = vm.categoryBreakdown;
-    final totalMinor = vm.activeTotalMinor > 0 ? vm.activeTotalMinor : 1;
-    for (final c in cats) {
-      final share = ((c.amountMinor / totalMinor) * 100).toStringAsFixed(1);
+    final incTotalMinor = incomeTotal > 0 ? incomeTotal : 1;
+    for (final c in incomeData.categories) {
+      final share = ((c.amountMinor / incTotalMinor) * 100).toStringAsFixed(1);
       final amt = (c.amountMinor / 100).toStringAsFixed(2);
       rows.add([c.label, amt, '$share%']);
     }
-    rows.add([]);
-
-    // Top Merchants
     rows.add(['TOP MERCHANTS / PAYEES']);
-    rows.add(['Merchant', 'Category', 'Transactions Count', 'Total Amount ($currency)']);
-    for (final m in vm.topMerchants) {
+    rows.add(['Source / Payer', 'Category', 'Count', 'Total Amount ($currency)']);
+    for (final m in incomeData.top) {
       final amt = (m.amountMinor / 100).toStringAsFixed(2);
       rows.add([m.name, m.category, m.count, amt]);
     }
     rows.add([]);
 
-    // Transactions detail
+    // 3. Expense Breakdown
+    rows.add(['[EXPENSE BREAKDOWN]']);
+    rows.add(['Total Expenses ($currency)', (expenseTotal / 100).toStringAsFixed(2)]);
+    rows.add(['Transactions Count', expenseData.count]);
+    rows.add(['Average Expense ($currency)', (expenseData.averageMinor / 100).toStringAsFixed(2)]);
+    rows.add(['CATEGORY BREAKDOWN']);
+    rows.add(['Category', 'Amount ($currency)', 'Share (%)']);
+    final expTotalMinor = expenseTotal > 0 ? expenseTotal : 1;
+    for (final c in expenseData.categories) {
+      final share = ((c.amountMinor / expTotalMinor) * 100).toStringAsFixed(1);
+      final amt = (c.amountMinor / 100).toStringAsFixed(2);
+      rows.add([c.label, amt, '$share%']);
+    }
+    rows.add(['TOP MERCHANTS / PAYEES']);
+    rows.add(['Merchant', 'Category', 'Count', 'Total Amount ($currency)']);
+    for (final m in expenseData.top) {
+      final amt = (m.amountMinor / 100).toStringAsFixed(2);
+      rows.add([m.name, m.category, m.count, amt]);
+    }
+    rows.add([]);
+
+    // 4. Lending Breakdown
+    rows.add(['[LENDING BREAKDOWN]']);
+    rows.add(['Total Lent ($currency)', (lendData.totalMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Outstanding ($currency)', (lendData.outstandingMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Settled ($currency)', (lendData.settledMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Records Count', lendData.count]);
+    rows.add(['PARTIES BREAKDOWN']);
+    rows.add(['Borrower / Party', 'Amount ($currency)', 'Debts Count']);
+    for (final p in lendData.parties) {
+      rows.add([p.name, (p.amountMinor / 100).toStringAsFixed(2), p.count]);
+    }
+    rows.add([]);
+
+    // 5. Borrowing Breakdown
+    rows.add(['[BORROWING BREAKDOWN]']);
+    rows.add(['Total Borrowed ($currency)', (borrowData.totalMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Outstanding ($currency)', (borrowData.outstandingMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Settled ($currency)', (borrowData.settledMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Records Count', borrowData.count]);
+    rows.add(['PARTIES BREAKDOWN']);
+    rows.add(['Lender / Party', 'Amount ($currency)', 'Debts Count']);
+    for (final p in borrowData.parties) {
+      rows.add([p.name, (p.amountMinor / 100).toStringAsFixed(2), p.count]);
+    }
+    rows.add([]);
+
+    // 6. Shifts & Work Breakdown
+    rows.add(['[SHIFTS & WORK BREAKDOWN]']);
+    rows.add(['Completed Shifts Count', workData.shiftCount]);
+    rows.add(['Total Hours Worked', (workData.totalMinutes / 60.0).toStringAsFixed(2)]);
+    rows.add(['Total Work Earnings ($currency)', (workData.earningsMinor / 100).toStringAsFixed(2)]);
+    rows.add(['Overtime Minutes', workData.overtimeMinutes]);
+    rows.add(['Break Minutes', workData.breakMinutes]);
+    rows.add(['Average Shift Minutes', workData.averageShiftMinutes]);
+    rows.add(['JOBS BREAKDOWN']);
+    rows.add(['Job Name', 'Hours', 'Shifts', 'Earnings ($currency)']);
+    for (final j in workData.jobs) {
+      rows.add([j.job.name, (j.minutes / 60.0).toStringAsFixed(2), j.shifts, (j.earningsMinor / 100).toStringAsFixed(2)]);
+    }
+    rows.add([]);
+
+    // 7. Transactions Register
+    rows.add(['[TRANSACTIONS REGISTER]']);
     rows.add(['TRANSACTIONS']);
     rows.add(['Date', 'Type', 'Category', 'Merchant / Note', 'Amount ($currency)']);
     for (final t in vm.filteredTransactions) {
       final d = DateFormatter.numeric(DateTime.fromMillisecondsSinceEpoch(t.occurredAt));
+      final cat = TransactionCategories.fromValue(t.category, t.type == 'income' ? TransactionType.income : TransactionType.expense).label;
       final amt = (t.amountMinor / 100).toStringAsFixed(2);
-      rows.add([d, t.type, t.category, t.note ?? '', amt]);
+      rows.add([d, t.type, cat, t.note ?? '', amt]);
     }
 
     return csv.encode(rows);
   }
 
-  /// Generates a human-readable text report for active analytics period
+  /// Generates a human-readable text report for comprehensive analytics covering all tabs
   static String generateAnalyticsReport(AnalyticsViewModel vm) {
     final (start, end) = vm.dateRange;
-    final isExpense = vm.activeType == TransactionType.expense;
-    final typeName = isExpense ? 'Spending' : 'Income';
     final currency = vm.baseCurrency;
-    final total = (vm.activeTotalMinor / 100).toStringAsFixed(2);
     final startDateStr = DateFormatter.numeric(start);
     final endDateStr = DateFormatter.numeric(end);
 
+    final incomeData = vm.txTabData(TransactionType.income);
+    final expenseData = vm.txTabData(TransactionType.expense);
+    final lendData = vm.debtTabData(DebtType.lent);
+    final borrowData = vm.debtTabData(DebtType.borrowed);
+    final workData = vm.workTabData();
+
+    final incomeTotal = incomeData.totalMinor;
+    final expenseTotal = expenseData.totalMinor;
+    final netSavingsMinor = incomeTotal - expenseTotal;
+    final savingsRate = incomeTotal > 0
+        ? (((incomeTotal - expenseTotal) / incomeTotal) * 100).clamp(0.0, 100.0)
+        : 0.0;
+    final netDebtMinor = lendData.totalMinor - borrowData.totalMinor;
+    final incTotalMinor = incomeTotal > 0 ? incomeTotal : 1;
+    final expTotalMinor = expenseTotal > 0 ? expenseTotal : 1;
+
     final buffer = StringBuffer();
     buffer.writeln('========================================');
-    buffer.writeln('HYPRWISE ANALYTICS REPORT - $typeName');
+    buffer.writeln('HYPRWISE ANALYTICS REPORT - COMPREHENSIVE');
     buffer.writeln('Period: $startDateStr to $endDateStr (${vm.dateFilter.label})');
     buffer.writeln('Generated: ${DateTime.now().toIso8601String()}');
-    buffer.writeln('Total $typeName: $currency $total');
+    buffer.writeln('Base Currency: $currency');
     if (vm.selectedCategory != null) buffer.writeln('Category Filter: ${vm.selectedCategory}');
+    if (vm.selectedAccountId != null) {
+      final acc = vm.accounts.firstWhere((a) => a.id == vm.selectedAccountId, orElse: () => vm.accounts.first);
+      buffer.writeln('Account Filter: ${acc.name}');
+    }
     buffer.writeln('========================================\n');
 
+    // Section 1: Overview Metrics
+    buffer.writeln('OVERVIEW METRICS');
+    buffer.writeln('- Total Income: $currency ${(incomeTotal / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Total Expenses: $currency ${(expenseTotal / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Net Savings: $currency ${(netSavingsMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Savings Rate: ${savingsRate.toStringAsFixed(1)}%');
+    buffer.writeln('- Total Lent: $currency ${(lendData.totalMinor / 100).toStringAsFixed(2)} (Outstanding: $currency ${(lendData.outstandingMinor / 100).toStringAsFixed(2)})');
+    buffer.writeln('- Total Borrowed: $currency ${(borrowData.totalMinor / 100).toStringAsFixed(2)} (Outstanding: $currency ${(borrowData.outstandingMinor / 100).toStringAsFixed(2)})');
+    buffer.writeln('- Net Debt: $currency ${(netDebtMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Work Earnings: $currency ${(workData.earningsMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Work Shifts: ${workData.shiftCount} (${(workData.totalMinutes / 60.0).toStringAsFixed(1)} hrs)');
+    buffer.writeln('');
+
+    // Section 2: Income Breakdown
+    buffer.writeln('INCOME BREAKDOWN');
+    buffer.writeln('Total Income: $currency ${(incomeTotal / 100).toStringAsFixed(2)} (${incomeData.count} transactions, avg: $currency ${(incomeData.averageMinor / 100).toStringAsFixed(2)})');
     buffer.writeln('CATEGORY BREAKDOWN');
-    final cats = vm.categoryBreakdown;
-    final totalMinor = vm.activeTotalMinor > 0 ? vm.activeTotalMinor : 1;
-    for (final c in cats) {
-      final share = ((c.amountMinor / totalMinor) * 100).toStringAsFixed(1);
+    for (final c in incomeData.categories) {
+      final share = ((c.amountMinor / incTotalMinor) * 100).toStringAsFixed(1);
       final amt = (c.amountMinor / 100).toStringAsFixed(2);
       buffer.writeln('- ${c.label}: $currency $amt ($share%)');
     }
-    buffer.writeln('');
-
     buffer.writeln('TOP MERCHANTS / PAYEES');
-    for (final m in vm.topMerchants) {
+    for (final m in incomeData.top) {
       final amt = (m.amountMinor / 100).toStringAsFixed(2);
       buffer.writeln('- ${m.name} (${m.category}): $currency $amt (${m.count} txns)');
+    }
+    buffer.writeln('');
+
+    // Section 3: Expense Breakdown
+    buffer.writeln('EXPENSE BREAKDOWN');
+    buffer.writeln('Total Expenses: $currency ${(expenseTotal / 100).toStringAsFixed(2)} (${expenseData.count} transactions, avg: $currency ${(expenseData.averageMinor / 100).toStringAsFixed(2)})');
+    buffer.writeln('CATEGORY BREAKDOWN');
+    for (final c in expenseData.categories) {
+      final share = ((c.amountMinor / expTotalMinor) * 100).toStringAsFixed(1);
+      final amt = (c.amountMinor / 100).toStringAsFixed(2);
+      buffer.writeln('- ${c.label}: $currency $amt ($share%)');
+    }
+    buffer.writeln('TOP MERCHANTS / PAYEES');
+    for (final m in expenseData.top) {
+      final amt = (m.amountMinor / 100).toStringAsFixed(2);
+      buffer.writeln('- ${m.name} (${m.category}): $currency $amt (${m.count} txns)');
+    }
+    buffer.writeln('');
+
+    // Section 4: Lending Breakdown
+    buffer.writeln('LENDING BREAKDOWN');
+    buffer.writeln('- Total Lent: $currency ${(lendData.totalMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Outstanding: $currency ${(lendData.outstandingMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Settled: $currency ${(lendData.settledMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('PARTIES BREAKDOWN: ${lendData.parties.length} parties');
+    for (final p in lendData.parties) {
+      buffer.writeln('- ${p.name}: $currency ${(p.amountMinor / 100).toStringAsFixed(2)} (${p.count} debts)');
+    }
+    buffer.writeln('');
+
+    // Section 5: Borrowing Breakdown
+    buffer.writeln('BORROWING BREAKDOWN');
+    buffer.writeln('- Total Borrowed: $currency ${(borrowData.totalMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Outstanding: $currency ${(borrowData.outstandingMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Settled: $currency ${(borrowData.settledMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('PARTIES BREAKDOWN: ${borrowData.parties.length} parties');
+    for (final p in borrowData.parties) {
+      buffer.writeln('- ${p.name}: $currency ${(p.amountMinor / 100).toStringAsFixed(2)} (${p.count} debts)');
+    }
+    buffer.writeln('');
+
+    // Section 6: Shifts & Work Breakdown
+    buffer.writeln('SHIFTS & WORK BREAKDOWN');
+    buffer.writeln('- Total Completed Shifts: ${workData.shiftCount}');
+    buffer.writeln('- Total Hours: ${(workData.totalMinutes / 60.0).toStringAsFixed(1)} hrs');
+    buffer.writeln('- Total Earnings: $currency ${(workData.earningsMinor / 100).toStringAsFixed(2)}');
+    buffer.writeln('- Overtime: ${workData.overtimeMinutes} mins');
+    buffer.writeln('- Breaks: ${workData.breakMinutes} mins');
+    buffer.writeln('JOBS BREAKDOWN');
+    for (final j in workData.jobs) {
+      buffer.writeln('- ${j.job.name}: ${(j.minutes / 60.0).toStringAsFixed(1)} hrs, ${j.shifts} shifts, $currency ${(j.earningsMinor / 100).toStringAsFixed(2)}');
     }
     buffer.writeln('');
 

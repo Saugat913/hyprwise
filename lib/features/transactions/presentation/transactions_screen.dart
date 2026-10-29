@@ -7,6 +7,7 @@ import 'package:finance_tracker/features/transactions/domain/transaction_categor
 import 'package:finance_tracker/features/transactions/domain/transaction_draft.dart';
 import 'package:finance_tracker/features/transactions/domain/transaction_type.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -560,16 +561,25 @@ class _TransactionFormState extends State<_TransactionForm> {
                 ),
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: _category,
-                decoration: const InputDecoration(labelText: 'Category'),
+              Text(
+                'Category',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              HorizontalOptionSelector<String>(
+                height: 48,
+                selectedValue: _category,
+                onChanged: (value) => setState(() => _category = value),
                 items: categories
-                    .map((category) => DropdownMenuItem(
+                    .map((category) => HorizontalOptionItem<String>(
                           value: category.value,
-                          child: Text(category.label),
+                          label: category.label,
+                          icon: HugeIcons.strokeRoundedTag01,
                         ))
                     .toList(),
-                onChanged: (value) => setState(() => _category = value ?? _category),
               ),
               const SizedBox(height: 14),
               ListTile(

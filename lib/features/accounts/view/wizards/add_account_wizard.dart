@@ -98,38 +98,34 @@ class _AddAccountWizardState extends State<AddAccountWizard> {
           primaryLabel: tr.next,
           onPrimary: _onNext,
           onClose: () => context.pop(),
-          child: Column(
-            children: [
-              OptionTile(
-                title: tr.cash,
+          child: HorizontalOptionSelector<AccountType>(
+            height: 64,
+            selectedValue: _selectedType,
+            onChanged: (type) => setState(() => _selectedType = type),
+            items: [
+              HorizontalOptionItem(
+                value: AccountType.cash,
+                label: tr.cash,
                 subtitle: tr.moneyInYourPocket,
                 icon: HugeIcons.strokeRoundedCoins01,
-                selected: _selectedType == AccountType.cash,
-                onTap: () => setState(() => _selectedType = AccountType.cash),
               ),
-              const SizedBox(height: AppSpace.sm),
-              OptionTile(
-                title: tr.everydayAccount,
+              HorizontalOptionItem(
+                value: AccountType.bank,
+                label: tr.everydayAccount,
                 subtitle: tr.everydaySpending,
                 icon: HugeIcons.strokeRoundedBank,
-                selected: _selectedType == AccountType.bank,
-                onTap: () => setState(() => _selectedType = AccountType.bank),
               ),
-              const SizedBox(height: AppSpace.sm),
-              OptionTile(
-                title: tr.digitalWallet,
+              HorizontalOptionItem(
+                value: AccountType.wallet,
+                label: tr.digitalWallet,
                 subtitle: tr.appsAndCards,
                 icon: HugeIcons.strokeRoundedWallet01,
-                selected: _selectedType == AccountType.wallet,
-                onTap: () => setState(() => _selectedType = AccountType.wallet),
               ),
-              const SizedBox(height: AppSpace.sm),
-              OptionTile(
-                title: tr.savingsAccount,
+              HorizontalOptionItem(
+                value: AccountType.savings,
+                label: tr.savingsAccount,
                 subtitle: tr.moneySetAside,
                 icon: HugeIcons.strokeRoundedPiggyBank,
-                selected: _selectedType == AccountType.savings,
-                onTap: () => setState(() => _selectedType = AccountType.savings),
               ),
             ],
           ),

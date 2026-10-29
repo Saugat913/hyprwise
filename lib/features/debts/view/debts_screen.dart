@@ -780,7 +780,6 @@ class _DebtPartyFilterButton extends StatelessWidget {
   void _showPartySheet(BuildContext context) {
     final theme = Theme.of(context);
     final tr = context.strings;
-    final colors = context.colors;
 
     showModalBottomSheet<void>(
       context: context,
@@ -815,72 +814,51 @@ class _DebtPartyFilterButton extends StatelessWidget {
                 ),
               ),
               const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.people_alt_rounded),
-                title: Text(tr.allParties),
-                trailing: selectedParty == null
-                    ? Icon(Icons.check, color: theme.colorScheme.primary)
-                    : null,
-                onTap: () {
-                  onChanged(null);
-                  Navigator.pop(ctx);
-                },
-              ),
-              if (existingParties.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(AppSpace.xl),
-                  child: Center(
-                    child: Text(
-                      tr.noCounterpartiesYet,
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                )
-              else
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: existingParties.length,
-                    separatorBuilder: (ctx, i) => const Divider(height: 1, indent: 56),
-                    itemBuilder: (ctx, index) {
-                      final party = existingParties[index];
-                      final net = netForParty(party);
-                      final isSelected = selectedParty == party;
-                      final isPositive = net >= 0;
-
-                      return ListTile(
-                        leading: LetterAvatar(party, size: 36),
-                        title: Text(
-                          party,
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.page, vertical: AppSpace.md),
+                child: existingParties.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpace.md),
+                          child: Text(
+                            tr.noCounterpartiesYet,
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                           ),
                         ),
-                        subtitle: Text(
-                          isPositive
-                              ? (tr.isNepali
-                                  ? 'उनीहरूले तिर्नुपर्ने: +${MoneyFormatter.format(net.abs(), baseCurrency)}'
-                                  : 'Owes you: +${MoneyFormatter.format(net.abs(), baseCurrency)}')
-                              : (tr.isNepali
-                                  ? 'तपाईंले तिर्नुपर्ने: −${MoneyFormatter.format(net.abs(), baseCurrency)}'
-                                  : 'You owe: −${MoneyFormatter.format(net.abs(), baseCurrency)}'),
-                          style: TextStyle(
-                            color: isPositive ? colors.income : colors.expense,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        trailing: isSelected
-                            ? Icon(Icons.check, color: theme.colorScheme.primary)
-                            : null,
-                        onTap: () {
+                      )
+                    : HorizontalOptionSelector<String?>(
+                        height: 56,
+                        selectedValue: selectedParty,
+                        onChanged: (party) {
                           onChanged(party);
                           Navigator.pop(ctx);
                         },
-                      );
-                    },
-                  ),
-                ),
+                        items: [
+                          HorizontalOptionItem<String?>(
+                            value: null,
+                            label: tr.allParties,
+                            iconData: Icons.people_alt_rounded,
+                          ),
+                          for (final party in existingParties)
+                            HorizontalOptionItem<String?>(
+                              value: party,
+                              label: party,
+                              subtitle: () {
+                                final net = netForParty(party);
+                                final isPositive = net >= 0;
+                                return isPositive
+                                    ? (tr.isNepali
+                                        ? 'उनीहरूले: +${MoneyFormatter.format(net.abs(), baseCurrency)}'
+                                        : 'Owes: +${MoneyFormatter.format(net.abs(), baseCurrency)}')
+                                    : (tr.isNepali
+                                        ? 'तपाईंले: −${MoneyFormatter.format(net.abs(), baseCurrency)}'
+                                        : 'Owe: −${MoneyFormatter.format(net.abs(), baseCurrency)}');
+                              }(),
+                              avatar: LetterAvatar(party, size: 28),
+                            ),
+                        ],
+                      ),
+              ),
             ],
           ),
         );

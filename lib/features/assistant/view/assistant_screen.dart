@@ -100,22 +100,27 @@ class _AssistantScreenState extends State<AssistantScreen> {
               top: AppSpace.md,
               bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpace.md,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const IconTile(HugeIcons.strokeRoundedCamera01),
-                  title: Text(tr.takePhotoReceiptBill),
-                  subtitle: Text(tr.opensCameraToScan),
-                  onTap: () => Navigator.pop(ctx, ImageSource.camera),
-                ),
-                ListTile(
-                  leading: const IconTile(HugeIcons.strokeRoundedImage01),
-                  title: Text(tr.uploadFromLibrary),
-                  subtitle: Text(tr.chooseExistingBill),
-                  onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
+              child: HorizontalOptionSelector<ImageSource>(
+                height: 64,
+                selectedValue: null,
+                onChanged: (src) => Navigator.pop(ctx, src),
+                items: [
+                  HorizontalOptionItem(
+                    value: ImageSource.camera,
+                    label: tr.takePhotoReceiptBill,
+                    subtitle: tr.opensCameraToScan,
+                    icon: HugeIcons.strokeRoundedCamera01,
+                  ),
+                  HorizontalOptionItem(
+                    value: ImageSource.gallery,
+                    label: tr.uploadFromLibrary,
+                    subtitle: tr.chooseExistingBill,
+                    icon: HugeIcons.strokeRoundedImage01,
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -156,37 +161,46 @@ class _AssistantScreenState extends State<AssistantScreen> {
     final scheme = Theme.of(context).colorScheme;
     final colors = context.colors;
     final tr = context.strings;
-    final isPro = getIt<SubscriptionService>().isPro;
+    final subService = getIt<SubscriptionService>();
 
     return ListenableBuilder(
-      listenable: _viewModel,
+      listenable: Listenable.merge([_viewModel, subService]),
       builder:
-          (context, _) => Scaffold(
-            appBar: AppTopBar(
-              title: tr.assistantTitle,
-              subtitle:
-                  _viewModel.messages.isEmpty
-                      ? null
-                      : (isPro ? tr.unlimitedAiPro : tr.asksBeforeChanges),
-              actions: [
-                if (!isPro)
-                  IconButton(
-                    icon: const ProCrownBadge(isCompact: true),
-                    tooltip: tr.upgradeToPro,
-                    onPressed:
-                        () => showProUpgradeSheet(
-                          context,
-                          title: tr.unlimitedAiAssistantTitle,
-                          message: tr.unlimitedAiAssistantDesc,
-                          featureHighlight: 'ai',
-                        ),
+          (context, _) {
+            final isPro = subService.isPro;
+            return Scaffold(
+              appBar: AppTopBar(
+                title: tr.assistantTitle,
+                subtitle:
+                    _viewModel.messages.isEmpty
+                        ? null
+                        : (isPro ? tr.unlimitedAiPro : tr.asksBeforeChanges),
+                actions: [
+                  if (!isPro)
+                    IconButton(
+                      icon: const ProCrownBadge(isCompact: true),
+                      tooltip: tr.upgradeToPro,
+                      onPressed:
+                          () => showProUpgradeSheet(
+                            context,
+                            title: tr.unlimitedAiAssistantTitle,
+                            message: tr.unlimitedAiAssistantDesc,
+                            featureHighlight: 'ai',
+                          ),
+                    )
+                  else
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Center(
+                        child: ProCrownBadge(isCompact: true),
+                      ),
+                    ),
+                  TopBarAction(
+                    HugeIcons.strokeRoundedRefresh,
+                    onPressed: _viewModel.clear,
                   ),
-                TopBarAction(
-                  HugeIcons.strokeRoundedRefresh,
-                  onPressed: _viewModel.clear,
-                ),
-              ],
-            ),
+                ],
+              ),
             body: SafeArea(
               child: Column(
                 children: [
@@ -689,7 +703,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 ],
               ),
             ),
-          ),
+          );
+        },
     );
   }
 }

@@ -21,14 +21,25 @@ abstract final class AnalyticsPdfService {
     final pdf = pw.Document();
 
     final (start, end) = vm.dateRange;
-    final isExpense = vm.activeType == TransactionType.expense;
-    final typeName = isExpense ? 'Spending' : 'Income';
     final currency = vm.baseCurrency;
-    final totalMinor = vm.activeTotalMinor;
-    final totalFormatted = '$currency ${(totalMinor / 100).toStringAsFixed(2)}';
     final startDateStr = DateFormatter.numeric(start);
     final endDateStr = DateFormatter.numeric(end);
     final nowFormatted = DateFormat('MMM d, yyyy · h:mm a').format(DateTime.now());
+
+    final incomeData = vm.txTabData(TransactionType.income);
+    final expenseData = vm.txTabData(TransactionType.expense);
+    final lendData = vm.debtTabData(DebtType.lent);
+    final borrowData = vm.debtTabData(DebtType.borrowed);
+    final workData = vm.workTabData();
+
+    final incomeTotal = incomeData.totalMinor;
+    final expenseTotal = expenseData.totalMinor;
+    final netSavingsMinor = incomeTotal - expenseTotal;
+    final savingsRate = incomeTotal > 0
+        ? (((incomeTotal - expenseTotal) / incomeTotal) * 100).clamp(0.0, 100.0)
+        : 0.0;
+    final netDebtMinor = lendData.totalMinor - borrowData.totalMinor;
+    final transactions = vm.filteredTransactions;
 
     // Load brand icon if available
     pw.ImageProvider? brandLogo;
@@ -45,12 +56,6 @@ abstract final class AnalyticsPdfService {
     final borderColor = PdfColor.fromHex('#E2E8F0');
     final accentGreen = PdfColor.fromHex('#16A34A');
     final accentOrange = PdfColor.fromHex('#EA580C');
-    final accentColor = isExpense ? accentOrange : accentGreen;
-
-    final categories = vm.categoryBreakdown;
-    final topMerchants = vm.topMerchants;
-    final transactions = vm.filteredTransactions;
-    final baseTotal = totalMinor > 0 ? totalMinor : 1;
 
     pdf.addPage(
       pw.MultiPage(
@@ -85,7 +90,7 @@ abstract final class AnalyticsPdfService {
                       ),
                     ),
                     pw.Text(
-                      ' · Analytics Report',
+                      ' · Comprehensive Analytics Report',
                       style: pw.TextStyle(
                         color: secondaryTextColor,
                         fontSize: 10,
@@ -135,37 +140,124 @@ abstract final class AnalyticsPdfService {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    '$typeName Analytics',
+                    'Comprehensive Analytics Report',
                     style: pw.TextStyle(
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: pw.FontWeight.bold,
                       color: darkColor,
                     ),
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    'Period: $startDateStr to $endDateStr (${vm.dateFilter.label})',
-                    style: pw.TextStyle(fontSize: 11, color: secondaryTextColor),
+                    'Period: $startDateStr to $endDateStr (${vm.dateFilter.label}) · Base Currency: $currency',
+                    style: pw.TextStyle(fontSize: 10, color: secondaryTextColor),
                   ),
                 ],
               ),
               pw.Container(
-                padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: pw.BoxDecoration(
-                  color: isExpense ? PdfColor.fromHex('#FFF7ED') : PdfColor.fromHex('#F0FDF4'),
+                  color: PdfColor.fromHex('#FFF7ED'),
                   borderRadius: pw.BorderRadius.circular(6),
-                  border: pw.Border.all(
-                    color: isExpense ? PdfColor.fromHex('#FDBA74') : PdfColor.fromHex('#86EFAC'),
-                    width: 0.8,
-                  ),
+                  border: pw.Border.all(color: PdfColor.fromHex('#FDBA74'), width: 0.8),
                 ),
                 child: pw.Text(
-                  isExpense ? 'EXPENSE REPORT' : 'INCOME REPORT',
+                  'EXECUTIVE REPORT',
                   style: pw.TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: pw.FontWeight.bold,
-                    color: accentColor,
+                    color: primaryColor,
                   ),
+                ),
+              ),
+            ],
+          ),
+
+          pw.SizedBox(height: 14),
+
+          // Section 1: Executive Overview KPIs
+          pw.Text(
+            '1. EXECUTIVE OVERVIEW',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Total Income',
+                  value: '$currency ${(incomeTotal / 100).toStringAsFixed(2)}',
+                  valueColor: accentGreen,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
+                ),
+              ),
+              pw.SizedBox(width: 8),
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Total Expenses',
+                  value: '$currency ${(expenseTotal / 100).toStringAsFixed(2)}',
+                  valueColor: accentOrange,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
+                ),
+              ),
+              pw.SizedBox(width: 8),
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Net Savings',
+                  value: '$currency ${(netSavingsMinor / 100).toStringAsFixed(2)}',
+                  valueColor: netSavingsMinor >= 0 ? accentGreen : accentOrange,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Savings Rate',
+                  value: '${savingsRate.toStringAsFixed(1)}%',
+                  valueColor: savingsRate >= 20 ? accentGreen : darkColor,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
+                ),
+              ),
+              pw.SizedBox(width: 8),
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Net Debt Position',
+                  value: '$currency ${(netDebtMinor / 100).toStringAsFixed(2)}',
+                  subtitle: 'Lent: ${(lendData.totalMinor / 100).toStringAsFixed(2)} | Borrowed: ${(borrowData.totalMinor / 100).toStringAsFixed(2)}',
+                  valueColor: darkColor,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
+                ),
+              ),
+              pw.SizedBox(width: 8),
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Work Earnings',
+                  value: '$currency ${(workData.earningsMinor / 100).toStringAsFixed(2)}',
+                  subtitle: '${workData.shiftCount} shifts · ${(workData.totalMinutes / 60.0).toStringAsFixed(1)} hrs',
+                  valueColor: darkColor,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
                 ),
               ),
             ],
@@ -173,53 +265,155 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Overview Metric Cards
+          // Section 2: Income Analysis
+          pw.Text(
+            '2. INCOME ANALYSIS',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.white,
+              borderRadius: pw.BorderRadius.circular(6),
+              border: pw.Border.all(color: borderColor, width: 0.7),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Income Categories (${incomeData.categories.length})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: darkColor)),
+                    pw.Text('Total: $currency ${(incomeTotal / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 9, color: secondaryTextColor, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                if (incomeData.categories.isEmpty)
+                  pw.Text('No income records for this period.', style: pw.TextStyle(fontSize: 9, color: secondaryTextColor))
+                else
+                  for (final cat in incomeData.categories.take(6)) ...[
+                    _buildCategoryChartBar(
+                      label: cat.label,
+                      amountMinor: cat.amountMinor,
+                      totalMinor: incomeTotal > 0 ? incomeTotal : 1,
+                      currency: currency,
+                      barColor: accentGreen,
+                      textColor: darkColor,
+                      secondaryTextColor: secondaryTextColor,
+                    ),
+                    pw.SizedBox(height: 6),
+                  ],
+              ],
+            ),
+          ),
+          if (incomeData.top.isNotEmpty) ...[
+            pw.SizedBox(height: 8),
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: borderColor, width: 0.5),
+              headerStyle: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+              headerDecoration: pw.BoxDecoration(color: surfaceColor),
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              cellAlignment: pw.Alignment.centerLeft,
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              headers: ['Top Income Source / Payer', 'Category', 'Count', 'Total Amount'],
+              data: [
+                for (final s in incomeData.top.take(5))
+                  [s.name, s.category, '${s.count} txns', '$currency ${(s.amountMinor / 100).toStringAsFixed(2)}'],
+              ],
+            ),
+          ],
+
+          pw.SizedBox(height: 16),
+
+          // Section 3: Expense Analysis
+          pw.Text(
+            '3. EXPENSE ANALYSIS',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.white,
+              borderRadius: pw.BorderRadius.circular(6),
+              border: pw.Border.all(color: borderColor, width: 0.7),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Expense Categories (${expenseData.categories.length})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: darkColor)),
+                    pw.Text('Total: $currency ${(expenseTotal / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 9, color: secondaryTextColor, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                if (expenseData.categories.isEmpty)
+                  pw.Text('No expense records for this period.', style: pw.TextStyle(fontSize: 9, color: secondaryTextColor))
+                else
+                  for (final cat in expenseData.categories.take(6)) ...[
+                    _buildCategoryChartBar(
+                      label: cat.label,
+                      amountMinor: cat.amountMinor,
+                      totalMinor: expenseTotal > 0 ? expenseTotal : 1,
+                      currency: currency,
+                      barColor: accentOrange,
+                      textColor: darkColor,
+                      secondaryTextColor: secondaryTextColor,
+                    ),
+                    pw.SizedBox(height: 6),
+                  ],
+              ],
+            ),
+          ),
+          if (expenseData.top.isNotEmpty) ...[
+            pw.SizedBox(height: 8),
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: borderColor, width: 0.5),
+              headerStyle: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+              headerDecoration: pw.BoxDecoration(color: surfaceColor),
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              cellAlignment: pw.Alignment.centerLeft,
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              headers: ['Top Merchant / Payee', 'Category', 'Count', 'Total Amount'],
+              data: [
+                for (final m in expenseData.top.take(5))
+                  [m.name, m.category, '${m.count} txns', '$currency ${(m.amountMinor / 100).toStringAsFixed(2)}'],
+              ],
+            ),
+          ],
+
+          pw.SizedBox(height: 16),
+
+          // Section 4: Lending & Borrowing Analysis
+          pw.Text(
+            '4. LENDING & BORROWING (DEBTS)',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+          ),
+          pw.SizedBox(height: 8),
           pw.Row(
             children: [
               pw.Expanded(
                 child: _buildMetricCard(
-                  title: 'Total $typeName',
-                  value: totalFormatted,
-                  valueColor: accentColor,
+                  title: 'Total Lent (Money You Lent)',
+                  value: '$currency ${(lendData.totalMinor / 100).toStringAsFixed(2)}',
+                  subtitle: 'Outstanding: $currency ${(lendData.outstandingMinor / 100).toStringAsFixed(2)} · Settled: $currency ${(lendData.settledMinor / 100).toStringAsFixed(2)}',
+                  valueColor: accentGreen,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
                   secondaryColor: secondaryTextColor,
                 ),
               ),
-              pw.SizedBox(width: 10),
+              pw.SizedBox(width: 8),
               pw.Expanded(
                 child: _buildMetricCard(
-                  title: 'Transactions',
-                  value: '${transactions.length}',
-                  valueColor: darkColor,
-                  surfaceColor: surfaceColor,
-                  borderColor: borderColor,
-                  textColor: darkColor,
-                  secondaryColor: secondaryTextColor,
-                ),
-              ),
-              pw.SizedBox(width: 10),
-              pw.Expanded(
-                child: _buildMetricCard(
-                  title: 'Categories',
-                  value: '${categories.length}',
-                  valueColor: darkColor,
-                  surfaceColor: surfaceColor,
-                  borderColor: borderColor,
-                  textColor: darkColor,
-                  secondaryColor: secondaryTextColor,
-                ),
-              ),
-              pw.SizedBox(width: 10),
-              pw.Expanded(
-                child: _buildMetricCard(
-                  title: 'Top Category',
-                  value: categories.isNotEmpty ? categories.first.label : 'None',
-                  subtitle: categories.isNotEmpty
-                      ? '${((categories.first.amountMinor / baseTotal) * 100).toStringAsFixed(1)}%'
-                      : null,
-                  valueColor: darkColor,
+                  title: 'Total Borrowed (Money You Owe)',
+                  value: '$currency ${(borrowData.totalMinor / 100).toStringAsFixed(2)}',
+                  subtitle: 'Outstanding: $currency ${(borrowData.outstandingMinor / 100).toStringAsFixed(2)} · Settled: $currency ${(borrowData.settledMinor / 100).toStringAsFixed(2)}',
+                  valueColor: accentOrange,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
@@ -228,137 +422,114 @@ abstract final class AnalyticsPdfService {
               ),
             ],
           ),
-
-          pw.SizedBox(height: 24),
-
-          // Visual Chart: Category Share Breakdown
-          pw.Container(
-            padding: const pw.EdgeInsets.all(16),
-            decoration: pw.BoxDecoration(
-              color: PdfColors.white,
-              borderRadius: pw.BorderRadius.circular(8),
-              border: pw.Border.all(color: borderColor, width: 0.8),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      'CATEGORY BREAKDOWN & SHARE',
-                      style: pw.TextStyle(
-                        fontSize: 11,
-                        fontWeight: pw.FontWeight.bold,
-                        color: primaryColor,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    pw.Text(
-                      'Share of total $typeName',
-                      style: pw.TextStyle(fontSize: 9, color: secondaryTextColor),
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 12),
-                if (categories.isEmpty)
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                    child: pw.Text(
-                      'No category transactions in this period.',
-                      style: pw.TextStyle(color: secondaryTextColor, fontSize: 10),
-                    ),
-                  )
-                else
-                  for (final cat in categories) ...[
-                    _buildCategoryChartBar(
-                      label: cat.label,
-                      amountMinor: cat.amountMinor,
-                      totalMinor: baseTotal,
-                      currency: currency,
-                      barColor: primaryColor,
-                      textColor: darkColor,
-                      secondaryTextColor: secondaryTextColor,
-                    ),
-                    pw.SizedBox(height: 8),
-                  ],
-              ],
-            ),
-          ),
-
-          pw.SizedBox(height: 20),
-
-          // Top Merchants Table (if any)
-          if (topMerchants.isNotEmpty) ...[
-            pw.Text(
-              'TOP MERCHANTS / PAYEES',
-              style: pw.TextStyle(
-                fontSize: 11,
-                fontWeight: pw.FontWeight.bold,
-                color: primaryColor,
-                letterSpacing: 0.5,
-              ),
-            ),
+          if (lendData.parties.isNotEmpty || borrowData.parties.isNotEmpty) ...[
             pw.SizedBox(height: 8),
             pw.TableHelper.fromTextArray(
               border: pw.TableBorder.all(color: borderColor, width: 0.5),
-              headerStyle: pw.TextStyle(
-                fontSize: 9,
-                fontWeight: pw.FontWeight.bold,
-                color: darkColor,
-              ),
-              headerDecoration: pw.BoxDecoration(color: surfaceColor),
-              cellStyle: const pw.TextStyle(fontSize: 8.5),
-              cellAlignment: pw.Alignment.centerLeft,
-              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              headers: ['Rank', 'Merchant / Payee', 'Category', 'Count', 'Amount'],
-              data: [
-                for (var i = 0; i < topMerchants.take(8).length; i++)
-                  [
-                    '#${i + 1}',
-                    topMerchants[i].name,
-                    topMerchants[i].category,
-                    '${topMerchants[i].count} txns',
-                    '$currency ${(topMerchants[i].amountMinor / 100).toStringAsFixed(2)}',
-                  ],
-              ],
-            ),
-            pw.SizedBox(height: 20),
-          ],
-
-          // Transactions Register
-          pw.Text(
-            'TRANSACTION REGISTER (${transactions.length} records)',
-            style: pw.TextStyle(
-              fontSize: 11,
-              fontWeight: pw.FontWeight.bold,
-              color: primaryColor,
-              letterSpacing: 0.5,
-            ),
-          ),
-          pw.SizedBox(height: 8),
-          if (transactions.isEmpty)
-            pw.Text(
-              'No transactions recorded in this period.',
-              style: pw.TextStyle(color: secondaryTextColor, fontSize: 10),
-            )
-          else
-            pw.TableHelper.fromTextArray(
-              border: pw.TableBorder.all(color: borderColor, width: 0.5),
-              headerStyle: pw.TextStyle(
-                fontSize: 9,
-                fontWeight: pw.FontWeight.bold,
-                color: darkColor,
-              ),
+              headerStyle: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: darkColor),
               headerDecoration: pw.BoxDecoration(color: surfaceColor),
               cellStyle: const pw.TextStyle(fontSize: 8),
               cellAlignment: pw.Alignment.centerLeft,
-              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              headers: ['Date', 'Category', 'Description / Note', 'Amount'],
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              headers: ['Party Name', 'Type', 'Amount', 'Debts Count'],
+              data: [
+                for (final p in lendData.parties.take(5))
+                  [p.name, 'Lent (To Them)', '$currency ${(p.amountMinor / 100).toStringAsFixed(2)}', '${p.count}'],
+                for (final p in borrowData.parties.take(5))
+                  [p.name, 'Borrowed (From Them)', '$currency ${(p.amountMinor / 100).toStringAsFixed(2)}', '${p.count}'],
+              ],
+            ),
+          ],
+
+          pw.SizedBox(height: 16),
+
+          // Section 5: Shifts & Work Wage Analysis
+          pw.Text(
+            '5. SHIFTS & WORK ANALYSIS',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Completed Shifts',
+                  value: '${workData.shiftCount}',
+                  valueColor: darkColor,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
+                ),
+              ),
+              pw.SizedBox(width: 8),
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Total Hours Worked',
+                  value: '${(workData.totalMinutes / 60.0).toStringAsFixed(1)} hrs',
+                  subtitle: 'Overtime: ${workData.overtimeMinutes}m · Breaks: ${workData.breakMinutes}m',
+                  valueColor: darkColor,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
+                ),
+              ),
+              pw.SizedBox(width: 8),
+              pw.Expanded(
+                child: _buildMetricCard(
+                  title: 'Total Shift Earnings',
+                  value: '$currency ${(workData.earningsMinor / 100).toStringAsFixed(2)}',
+                  valueColor: primaryColor,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  textColor: darkColor,
+                  secondaryColor: secondaryTextColor,
+                ),
+              ),
+            ],
+          ),
+          if (workData.jobs.isNotEmpty) ...[
+            pw.SizedBox(height: 8),
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: borderColor, width: 0.5),
+              headerStyle: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+              headerDecoration: pw.BoxDecoration(color: surfaceColor),
+              cellStyle: const pw.TextStyle(fontSize: 8),
+              cellAlignment: pw.Alignment.centerLeft,
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              headers: ['Job Name', 'Hours Worked', 'Completed Shifts', 'Total Earnings'],
+              data: [
+                for (final j in workData.jobs)
+                  [j.job.name, '${(j.minutes / 60.0).toStringAsFixed(1)} hrs', '${j.shifts}', '$currency ${(j.earningsMinor / 100).toStringAsFixed(2)}'],
+              ],
+            ),
+          ],
+
+          pw.SizedBox(height: 16),
+
+          // Section 6: Itemized Transaction Register
+          pw.Text(
+            '6. ITEMIZED TRANSACTION REGISTER (${transactions.length} records)',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+          ),
+          pw.SizedBox(height: 8),
+          if (transactions.isEmpty)
+            pw.Text('No transactions recorded in this period.', style: pw.TextStyle(color: secondaryTextColor, fontSize: 9))
+          else
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: borderColor, width: 0.5),
+              headerStyle: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: darkColor),
+              headerDecoration: pw.BoxDecoration(color: surfaceColor),
+              cellStyle: const pw.TextStyle(fontSize: 7.5),
+              cellAlignment: pw.Alignment.centerLeft,
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+              headers: ['Date', 'Type', 'Category', 'Description / Note', 'Amount'],
               data: [
                 for (final t in transactions.take(100))
                   [
                     DateFormatter.numeric(DateTime.fromMillisecondsSinceEpoch(t.occurredAt)),
+                    t.type.toUpperCase(),
                     t.category,
                     t.note != null && t.note!.isNotEmpty ? t.note! : '—',
                     '$currency ${(t.amountMinor / 100).toStringAsFixed(2)}',
@@ -372,7 +543,7 @@ abstract final class AnalyticsPdfService {
     // Save PDF to Public Downloads directory
     final targetDir = await ExportService.getPublicDownloadsDirectory();
     final dateStr = DateFormatter.numeric(DateTime.now(), locale: 'en').replaceAll('/', '-');
-    final fileName = 'hyprwise_${typeName.toLowerCase()}_report_$dateStr.pdf';
+    final fileName = 'hyprwise_analytics_report_$dateStr.pdf';
     final file = File('${targetDir.path}/$fileName');
     await file.writeAsBytes(await pdf.save(), flush: true);
 

@@ -125,15 +125,22 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
                     padding: EdgeInsets.symmetric(vertical: AppSpace.md),
                     child: Center(child: CircularProgressIndicator.adaptive()),
                   ),
-                for (final cur in Currency.supported) ...[
-                  OptionTile(
-                    title: '${cur.symbolForLocale(viewModel.localeCode)} · ${cur.name}',
-                    subtitle: cur.code,
-                    selected: viewModel.baseCurrency == cur.code,
-                    onTap: () => _handleCurrencySelect(viewModel, cur),
-                  ),
-                  const SizedBox(height: AppSpace.sm),
-                ],
+                HorizontalOptionSelector<String>(
+                  height: 64,
+                  selectedValue: viewModel.baseCurrency,
+                  onChanged: (code) {
+                    final selectedCur = Currency.supported.firstWhere((c) => c.code == code);
+                    _handleCurrencySelect(viewModel, selectedCur);
+                  },
+                  items: [
+                    for (final cur in Currency.supported)
+                      HorizontalOptionItem<String>(
+                        value: cur.code,
+                        label: '${cur.symbolForLocale(viewModel.localeCode)} · ${cur.code}',
+                        subtitle: cur.name,
+                      ),
+                  ],
+                ),
               ],
             ),
           ),

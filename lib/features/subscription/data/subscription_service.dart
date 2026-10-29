@@ -89,6 +89,7 @@ class SubscriptionService extends ChangeNotifier {
   }
 
   static const _proKey = 'subscription_is_pro';
+  static const _proLegacyKey = 'hyprwise_pro_access';
   static const _supporterKey = 'subscription_is_supporter';
   static const _everSupportedKey = 'subscription_ever_supported';
   static const _proExpiryKey = 'subscription_pro_expiry';
@@ -177,7 +178,7 @@ class SubscriptionService extends ChangeNotifier {
 
   Future<void> load() async {
     try {
-      final rawPro = await _storage.read(key: _proKey);
+      final rawPro = (await _storage.read(key: _proKey)) ?? (await _storage.read(key: _proLegacyKey));
       _isPro = rawPro == 'true';
       final rawSupporter = await _storage.read(key: _supporterKey);
       _isSupporter = rawSupporter == 'true';
@@ -186,6 +187,9 @@ class SubscriptionService extends ChangeNotifier {
       final rawExpiry = await _storage.read(key: _proExpiryKey);
       if (rawExpiry != null) {
         _proExpiryDate = DateTime.tryParse(rawExpiry);
+      }
+      if (_isPro) {
+        authService.updateProStatus(true);
       }
       _syncNotifiers();
       notifyListeners();
@@ -291,11 +295,20 @@ class SubscriptionService extends ChangeNotifier {
   void _handleCustomerInfo(CustomerInfo info) {
     _customerInfo = info;
     final activeEntitlements = info.entitlements.active;
+    final hasKnownPro = activeEntitlements.containsKey(entitlementPro) ||
+        activeEntitlements.containsKey('hyprwise_pro') ||
+        activeEntitlements.containsKey('pro') ||
+        activeEntitlements.containsKey('premium') ||
+        activeEntitlements.containsKey('pro_access');
+    final hasSupporter = activeEntitlements.containsKey(entitlementSupporter);
+    final hasActiveSubscriptions = info.activeSubscriptions.isNotEmpty;
+    final active = hasKnownPro || hasSupporter || activeEntitlements.isNotEmpty || hasActiveSubscriptions;
+
     final proEntitlement = activeEntitlements[entitlementPro] ??
+        activeEntitlements['hyprwise_pro'] ??
+        activeEntitlements['pro'] ??
         activeEntitlements[entitlementSupporter] ??
         info.entitlements.all[entitlementPro];
-    final hasSupporter = activeEntitlements.containsKey(entitlementSupporter);
-    final active = activeEntitlements.containsKey(entitlementPro) || hasSupporter;
 
     _hasActiveRevenueCatEntitlement = active;
     _isPro = active;
@@ -316,6 +329,7 @@ class SubscriptionService extends ChangeNotifier {
     }
 
     _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+    _storage.write(key: _proLegacyKey, value: _isPro ? 'true' : 'false');
     _storage.write(key: _supporterKey, value: _isSupporter ? 'true' : 'false');
     if (_proExpiryDate != null) {
       _storage.write(key: _proExpiryKey, value: _proExpiryDate!.toIso8601String());
@@ -372,9 +386,9 @@ class SubscriptionService extends ChangeNotifier {
         }
         if (status['isPro'] != null) {
           final serverPro = status['isPro'] as bool;
-          // If RevenueCat reports an active entitlement locally, never downgrade to false;
+          // If RevenueCat reports an active entitlement or Pro status locally, never downgrade to false;
           // instead push verification to the server.
-          if (_hasActiveRevenueCatEntitlement && !serverPro) {
+          if ((_hasActiveRevenueCatEntitlement || _isPro) && !serverPro) {
             final userId = authService.currentUser?.id ??
                 _customerInfo?.originalAppUserId ??
                 'default_user';
@@ -387,6 +401,7 @@ class SubscriptionService extends ChangeNotifier {
           if (serverPro != _isPro) {
             _isPro = serverPro;
             await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+            await _storage.write(key: _proLegacyKey, value: _isPro ? 'true' : 'false');
             authService.updateProStatus(_isPro);
             _syncNotifiers();
             notifyListeners();
@@ -404,6 +419,7 @@ class SubscriptionService extends ChangeNotifier {
   Future<void> setDebugPro(bool pro) async {
     _isPro = pro;
     await _storage.write(key: _proKey, value: pro ? 'true' : 'false');
+    await _storage.write(key: _proLegacyKey, value: pro ? 'true' : 'false');
     authService.updateProStatus(pro);
     _syncNotifiers();
     notifyListeners();
@@ -425,6 +441,7 @@ class SubscriptionService extends ChangeNotifier {
     if (!_hasActiveRevenueCatEntitlement) {
       _isPro = serverPro;
       await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+      await _storage.write(key: _proLegacyKey, value: _isPro ? 'true' : 'false');
       authService.updateProStatus(_isPro);
       _syncNotifiers();
       notifyListeners();
@@ -449,6 +466,7 @@ class SubscriptionService extends ChangeNotifier {
     _hasActiveRevenueCatEntitlement = false;
     _proExpiryDate = null;
     await _storage.delete(key: _proKey);
+    await _storage.delete(key: _proLegacyKey);
     await _storage.delete(key: _supporterKey);
     await _storage.delete(key: _everSupportedKey);
     await _storage.delete(key: _proExpiryKey);
@@ -473,6 +491,13 @@ class SubscriptionService extends ChangeNotifier {
         displayCloseButton: true,
       );
       if (result == PaywallResult.purchased || result == PaywallResult.restored) {
+        _hasActiveRevenueCatEntitlement = true;
+        _isPro = true;
+        await _storage.write(key: _proKey, value: 'true');
+        await _storage.write(key: _proLegacyKey, value: 'true');
+        authService.updateProStatus(true);
+        _syncNotifiers();
+        notifyListeners();
         await checkEntitlement();
       }
       return result;
@@ -497,6 +522,13 @@ class SubscriptionService extends ChangeNotifier {
         displayCloseButton: true,
       );
       if (result == PaywallResult.purchased || result == PaywallResult.restored) {
+        _hasActiveRevenueCatEntitlement = true;
+        _isPro = true;
+        await _storage.write(key: _proKey, value: 'true');
+        await _storage.write(key: _proLegacyKey, value: 'true');
+        authService.updateProStatus(true);
+        _syncNotifiers();
+        notifyListeners();
         await checkEntitlement();
       }
       return result;
@@ -624,6 +656,7 @@ class SubscriptionService extends ChangeNotifier {
           );
 
     await _storage.write(key: _proKey, value: 'true');
+    await _storage.write(key: _proLegacyKey, value: 'true');
     if (_proExpiryDate != null) {
       await _storage.write(key: _proExpiryKey, value: _proExpiryDate!.toIso8601String());
     } else {
@@ -645,6 +678,7 @@ class SubscriptionService extends ChangeNotifier {
       );
     } catch (_) {}
 
+    _syncNotifiers();
     notifyListeners();
     return true;
   }
@@ -667,12 +701,16 @@ class SubscriptionService extends ChangeNotifier {
           } catch (_) {}
         }
         TelemetryService.instance.trackEvent('purchases_restored_success');
+        _syncNotifiers();
+        notifyListeners();
         return Access(isPro, isSupporter);
       } catch (e) {
         debugPrint('[RevenueCat] Restore error: $e');
       }
     }
     await load();
+    _syncNotifiers();
+    notifyListeners();
     return Access(isPro, isSupporter);
   }
 }

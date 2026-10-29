@@ -8,6 +8,7 @@ import 'package:finance_tracker/features/transfers/data/transfer_repository.dart
 import 'package:finance_tracker/features/accounts/domain/account_draft.dart';
 import 'package:finance_tracker/features/accounts/domain/account_type.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key});
@@ -380,26 +381,73 @@ class _AccountFormState extends State<_AccountForm> {
                 },
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<AccountType>(
-                initialValue: _type,
-                decoration: const InputDecoration(labelText: 'Account type'),
+              Text(
+                'Account type',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              HorizontalOptionSelector<AccountType>(
+                height: 48,
+                selectedValue: _type,
+                onChanged: (type) => setState(() => _type = type),
                 items: AccountType.values
-                    .map((type) => DropdownMenuItem(value: type, child: Text(type.label)))
+                    .map((type) => HorizontalOptionItem<AccountType>(
+                          value: type,
+                          label: type.label,
+                          icon: switch (type) {
+                            AccountType.cash => HugeIcons.strokeRoundedCoins01,
+                            AccountType.bank => HugeIcons.strokeRoundedBank,
+                            AccountType.savings => HugeIcons.strokeRoundedPiggyBank,
+                            AccountType.credit => HugeIcons.strokeRoundedCreditCard,
+                            AccountType.investment => HugeIcons.strokeRoundedChartLineData01,
+                            AccountType.other => HugeIcons.strokeRoundedWallet01,
+                          },
+                        ))
                     .toList(),
-                onChanged: (value) => setState(() => _type = value ?? _type),
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: _currencyCode,
-                decoration: const InputDecoration(labelText: 'Currency'),
+              Text(
+                'Currency',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              HorizontalOptionSelector<String>(
+                height: 48,
+                selectedValue: _currencyCode,
+                onChanged: (curr) => setState(() => _currencyCode = curr),
                 items: const [
-                  DropdownMenuItem(value: 'NPR', child: Text('NPR · Nepalese rupee')),
-                  DropdownMenuItem(value: 'USD', child: Text('USD · US dollar')),
-                  DropdownMenuItem(value: 'EUR', child: Text('EUR · Euro')),
-                  DropdownMenuItem(value: 'INR', child: Text('INR · Indian rupee')),
-                  DropdownMenuItem(value: 'GBP', child: Text('GBP · Pound sterling')),
+                  HorizontalOptionItem(
+                    value: 'NPR',
+                    label: 'NPR',
+                    subtitle: 'Nepalese rupee',
+                  ),
+                  HorizontalOptionItem(
+                    value: 'USD',
+                    label: 'USD',
+                    subtitle: 'US dollar',
+                  ),
+                  HorizontalOptionItem(
+                    value: 'EUR',
+                    label: 'EUR',
+                    subtitle: 'Euro',
+                  ),
+                  HorizontalOptionItem(
+                    value: 'INR',
+                    label: 'INR',
+                    subtitle: 'Indian rupee',
+                  ),
+                  HorizontalOptionItem(
+                    value: 'GBP',
+                    label: 'GBP',
+                    subtitle: 'Pound sterling',
+                  ),
                 ],
-                onChanged: (value) => setState(() => _currencyCode = value ?? _currencyCode),
               ),
               const SizedBox(height: 14),
               TextFormField(

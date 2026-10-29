@@ -14,6 +14,7 @@ import 'package:finance_tracker/features/home/view/widgets/home_transaction_row.
 import 'package:finance_tracker/features/home/view/widgets/upcoming_event_row.dart';
 import 'package:finance_tracker/features/home/viewmodels/home_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
+import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -23,9 +24,10 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = getIt<HomeViewModel>();
     final workViewModel = getIt<WorkViewModel>();
+    final subService = getIt<SubscriptionService>();
 
     return ListenableBuilder(
-      listenable: Listenable.merge([viewModel, workViewModel]),
+      listenable: Listenable.merge([viewModel, workViewModel, subService]),
       builder: (context, _) {
         final colors = context.colors;
         final text = Theme.of(context).textTheme;
@@ -35,6 +37,13 @@ class HomeScreen extends StatelessWidget {
           title: tr.home,
           overline: AppDate.header(viewModel.now),
           actions: [
+            if (subService.isPro)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.only(right: 4),
+                  child: ProCrownBadge(isCompact: true),
+                ),
+              ),
             RoundIconButton(
               HugeIcons.strokeRoundedChartHistogram,
               onPressed: () => context.push(AppRoutes.analytics),

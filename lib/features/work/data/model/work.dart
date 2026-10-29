@@ -34,6 +34,7 @@ class ShiftEarnings {
     this.overtimeRateMinor = 0,
     this.regularEarningsMinor = 0,
     this.overtimeEarningsMinor = 0,
+    this.workedSeconds = 0,
   });
 
   final int workedMinutes;
@@ -44,6 +45,7 @@ class ShiftEarnings {
   final int overtimeRateMinor;
   final int regularEarningsMinor;
   final int overtimeEarningsMinor;
+  final int workedSeconds;
 
   double get hours => workedMinutes / 60;
 
@@ -66,6 +68,7 @@ class ShiftEarnings {
     final otPay = hasOt ? (overtimeRateMinor * otSec / 3600).round() : 0;
     return ShiftEarnings(
       workedMinutes: worked ~/ 60,
+      workedSeconds: worked,
       earningsMinor: regularPay + otPay,
       hourlyRateMinor: rateMinor,
       regularMinutes: regularSec ~/ 60,
@@ -81,16 +84,17 @@ class ShiftEarnings {
     if (shift.endAt == null || shift.status == ShiftStatus.inProgress.value) {
       return ShiftEarnings(
         workedMinutes: 0,
+        workedSeconds: 0,
         earningsMinor: 0,
         hourlyRateMinor: rate,
       );
     }
     final start = DateTime.fromMillisecondsSinceEpoch(shift.startAt);
     final end = DateTime.fromMillisecondsSinceEpoch(shift.endAt!);
-    final elapsedMinutes = end.difference(start).inMinutes - shift.breakMinutes;
-    final worked = elapsedMinutes < 0 ? 0 : elapsedMinutes;
+    final elapsedSeconds = end.difference(start).inSeconds - (shift.breakMinutes * 60);
+    final workedSeconds = elapsedSeconds < 0 ? 0 : elapsedSeconds;
     return compute(
-      workedSeconds: worked * 60,
+      workedSeconds: workedSeconds,
       rateMinor: rate,
       overtimeThresholdMinutes: shift.overtimeThresholdMinutes,
       overtimeRateMinor: shift.overtimeRateMinor,
@@ -102,6 +106,12 @@ extension ShiftX on Shift {
   int get durationMinutes {
     if (endAt == null || status == ShiftStatus.inProgress.value) return 0;
     final diff = ((endAt! - startAt) ~/ 60000) - breakMinutes;
+    return diff < 0 ? 0 : diff;
+  }
+
+  int get durationSeconds {
+    if (endAt == null || status == ShiftStatus.inProgress.value) return 0;
+    final diff = ((endAt! - startAt) ~/ 1000) - (breakMinutes * 60);
     return diff < 0 ? 0 : diff;
   }
 

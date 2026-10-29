@@ -13,6 +13,9 @@ import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/calendar/viewmodels/calendar_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
+import 'package:finance_tracker/features/work/data/model/work.dart';
+import 'package:finance_tracker/features/work/view/widgets/edit_shift_sheet.dart';
+import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -209,33 +212,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: AppSpace.sm),
-                ListTile(
-                  leading: const IconTile(HugeIcons.strokeRoundedClock01),
-                  title: Text(tr.scheduleShift),
-                  subtitle: Text(tr.addWorkShiftWithRate),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    context.push(AppRoutes.scheduleShift, extra: selectedDate);
-                  },
-                ),
-                ListTile(
-                  leading: const IconTile(HugeIcons.strokeRoundedArrowUpRight01),
-                  title: Text(tr.addExpense),
-                  subtitle: Text(tr.recordExpenseOnDate),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    context.push(AppRoutes.addTransaction);
-                  },
-                ),
-                ListTile(
-                  leading: const IconTile(HugeIcons.strokeRoundedArrowDownLeft01),
-                  title: Text(tr.addIncome),
-                  subtitle: Text(tr.recordIncomeOnDate),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    context.push(AppRoutes.addTransaction);
-                  },
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
+                  child: HorizontalOptionSelector<String>(
+                    height: 64,
+                    selectedValue: null,
+                    onChanged: (action) {
+                      Navigator.pop(ctx);
+                      switch (action) {
+                        case 'shift':
+                          context.push(AppRoutes.scheduleShift, extra: selectedDate);
+                          break;
+                        case 'expense':
+                        case 'income':
+                          context.push(AppRoutes.addTransaction);
+                          break;
+                      }
+                    },
+                    items: [
+                      HorizontalOptionItem(
+                        value: 'shift',
+                        label: tr.scheduleShift,
+                        subtitle: tr.addWorkShiftWithRate,
+                        icon: HugeIcons.strokeRoundedClock01,
+                      ),
+                      HorizontalOptionItem(
+                        value: 'expense',
+                        label: tr.addExpense,
+                        subtitle: tr.recordExpenseOnDate,
+                        icon: HugeIcons.strokeRoundedArrowUpRight01,
+                      ),
+                      HorizontalOptionItem(
+                        value: 'income',
+                        label: tr.addIncome,
+                        subtitle: tr.recordIncomeOnDate,
+                        icon: HugeIcons.strokeRoundedArrowDownLeft01,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1404,6 +1418,24 @@ class _TimelineEventBlock extends StatelessWidget {
                 Row(
                   children: [
                     if (item.type == CalendarItemType.shift) ...[
+                      if (item.status == ShiftStatus.scheduled.value) ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const AppIcon(HugeIcons.strokeRoundedEdit02, size: 16),
+                            label: Text(tr.editShift),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              final workVm = getIt<WorkViewModel>();
+                              final shift = workVm.shifts.where((s) => s.id == item.rawId).firstOrNull;
+                              final job = shift != null ? workVm.jobsById[shift.jobId] : null;
+                              if (shift != null) {
+                                showEditShiftDialog(context, shift, job, workVm);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: AppSpace.sm),
+                      ],
                       Expanded(
                         child: OutlinedButton.icon(
                           icon: const Icon(Icons.work_outline, size: 16),

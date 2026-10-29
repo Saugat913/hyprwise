@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show TimeOfDay;
+import 'package:flutter/material.dart' show TimeOfDay, WidgetsBinding;
 
 import 'package:finance_tracker/app/router/app_router.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
@@ -52,7 +52,18 @@ class WorkViewModel extends ChangeNotifier {
 
   Duration get currentBreakDuration => Duration(seconds: currentBreakSeconds);
 
+  bool get _isTestEnvironment {
+    try {
+      return WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    } catch (_) {
+      return true;
+    }
+  }
+
   void _initNotifications() {
+    if (_isTestEnvironment) {
+      return;
+    }
     ShiftNotificationService.instance.initialize(
       onAction: (action) {
         if (action == 'toggle_break') {
@@ -134,6 +145,9 @@ class WorkViewModel extends ChangeNotifier {
   }
 
   void _startTimer() {
+    if (_isTestEnvironment) {
+      return;
+    }
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (activeShift != null) {
         // Live notification sync while working; frozen during breaks

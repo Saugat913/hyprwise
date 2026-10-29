@@ -38,12 +38,10 @@ class SettingsScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(AppSpace.page, AppSpace.md, AppSpace.page, AppSpace.xxxl),
               children: [
-                // Hyprwise Pro & Account Section
-                const _SubscriptionBanner(),
-                const SizedBox(height: AppSpace.sm),
-                const _SupporterBanner(),
-                const SizedBox(height: AppSpace.md),
+                // Top Zone: User Profile & Upgrade/Pro
                 const _AccountAuthCard(),
+                const SizedBox(height: AppSpace.sm),
+                const _SubscriptionBanner(),
                 const SizedBox(height: AppSpace.xl),
 
                 // Appearance & Language Selection Cards
@@ -156,29 +154,15 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpace.xl),
 
-                // Legal & About section
-                Text(tr.aboutAndLegal, style: text.bodySmall),
+                // Bottom Zone: Support & Legal section
+                Text(tr.supportHyprwise, style: text.bodySmall),
                 const SizedBox(height: AppSpace.sm),
+                const _SupporterBanner(),
+                const SizedBox(height: AppSpace.md),
                 AppCard(
                   padding: EdgeInsets.zero,
                   child: Column(
                     children: [
-                      ListRow(
-                        title: tr.privacyPolicy,
-                        subtitle: tr.localFirstDataProtection,
-                        leading: const IconTile(HugeIcons.strokeRoundedShield02),
-                        trailing: const Chevron(),
-                        onTap: () => showAppPrivacyPolicyDialog(context),
-                      ),
-                      const RowDivider(),
-                      ListRow(
-                        title: tr.termsOfService,
-                        subtitle: tr.userAgreementSubscriptionRules,
-                        leading: const IconTile(HugeIcons.strokeRoundedNote01),
-                        trailing: const Chevron(),
-                        onTap: () => showAppTermsDialog(context),
-                      ),
-                      const RowDivider(),
                       ListRow(
                         title: tr.restorePurchases,
                         subtitle: tr.t(
@@ -202,6 +186,22 @@ class SettingsScreen extends StatelessWidget {
                             );
                           }
                         },
+                      ),
+                      const RowDivider(),
+                      ListRow(
+                        title: tr.privacyPolicy,
+                        subtitle: tr.localFirstDataProtection,
+                        leading: const IconTile(HugeIcons.strokeRoundedShield02),
+                        trailing: const Chevron(),
+                        onTap: () => showAppPrivacyPolicyDialog(context),
+                      ),
+                      const RowDivider(),
+                      ListRow(
+                        title: tr.termsOfService,
+                        subtitle: tr.userAgreementSubscriptionRules,
+                        leading: const IconTile(HugeIcons.strokeRoundedNote01),
+                        trailing: const Chevron(),
+                        onTap: () => showAppTermsDialog(context),
                       ),
                     ],
                   ),
@@ -579,7 +579,7 @@ class _AccountAuthCard extends StatelessWidget {
     final tr = context.strings;
 
     return ListenableBuilder(
-      listenable: authService,
+      listenable: Listenable.merge([authService, subService]),
       builder: (context, _) {
         final user = authService.currentUser;
         if (user != null) {
@@ -611,35 +611,43 @@ class _AccountAuthCard extends StatelessWidget {
                           ListenableBuilder(
                             listenable: subService,
                             builder: (context, _) {
-                              if (!subService.everSupported) return const SizedBox.shrink();
-                              return Padding(
-                                padding: const EdgeInsets.only(left: 6),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE11D48).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const AppIcon(
-                                        HugeIcons.strokeRoundedFavourite,
-                                        size: 11,
-                                        color: Color(0xFFE11D48),
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (subService.isPro) ...[
+                                    const SizedBox(width: 6),
+                                    const ProCrownBadge(isCompact: true),
+                                  ],
+                                  if (subService.everSupported) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE11D48).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(AppRadius.sm),
                                       ),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        tr.supporterBadge,
-                                        style: text.labelSmall?.copyWith(
-                                          color: const Color(0xFFE11D48),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 10,
-                                        ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const AppIcon(
+                                            HugeIcons.strokeRoundedFavourite,
+                                            size: 11,
+                                            color: Color(0xFFE11D48),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            tr.supporterBadge,
+                                            style: text.labelSmall?.copyWith(
+                                              color: const Color(0xFFE11D48),
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    ),
+                                  ],
+                                ],
                               );
                             },
                           ),
@@ -663,7 +671,21 @@ class _AccountAuthCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(tr.cloudAccount, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      tr.cloudAccount,
+                      style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (subService.isPro) ...[
+                    const SizedBox(width: 6),
+                    const ProCrownBadge(isCompact: true),
+                  ],
+                ],
+              ),
               const SizedBox(height: 2),
               Text(
                 tr.signInToSyncSubtitle,
