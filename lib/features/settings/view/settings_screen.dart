@@ -347,20 +347,14 @@ class _SubscriptionBanner extends StatelessWidget {
     return ListenableBuilder(
       listenable: subService,
       builder: (context, _) {
-        final isPro = subService.isPro;
-        return InkWell(
-          onTap: () async {
-            if (isPro) {
-              if (subService.isConfigured) {
-                try {
-                  await subService.presentCustomerCenter();
-                } catch (_) {
-                  if (context.mounted) context.push(AppRoutes.paywall);
-                }
-              } else {
-                if (context.mounted) context.push(AppRoutes.paywall);
-              }
-            } else {
+        final isProOrSupporter = subService.isPro || subService.isSupporter || subService.everSupported;
+        // When pro or supporter, hide the upgrade/active pro banner altogether
+        if (isProOrSupporter) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm),
+          child: InkWell(
+            onTap: () async {
               if (getIt<AuthService>().isGuest) {
                 final ok = await promptLoginToUpgrade(context);
                 if (!ok) return;
@@ -377,72 +371,66 @@ class _SubscriptionBanner extends StatelessWidget {
               } else {
                 if (context.mounted) context.push(AppRoutes.paywall);
               }
-            }
-          },
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: Container(
-            padding: const EdgeInsets.all(AppSpace.lg),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isPro
-                    ? [const Color(0xFF1E3A2F), const Color(0xFF14241D)]
-                    : [const Color(0xFF3D2808), const Color(0xFF221705)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            },
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpace.lg),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF3D2808), Color(0xFF221705)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+                ),
               ),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(
-                color: isPro
-                    ? const Color(0xFF22C55E).withValues(alpha: 0.4)
-                    : const Color(0xFFF59E0B).withValues(alpha: 0.5),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const AppIcon(
+                      HugeIcons.strokeRoundedCrown,
+                      size: 22,
+                      color: Color(0xFFF59E0B),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr.upgradeToPro,
+                          style: text.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          tr.proUpgradeSubtitle,
+                          style: text.bodySmall?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
+                ],
               ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: (isPro ? const Color(0xFF22C55E) : const Color(0xFFF59E0B)).withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: AppIcon(
-                    HugeIcons.strokeRoundedCrown,
-                    size: 22,
-                    color: isPro ? const Color(0xFF22C55E) : const Color(0xFFF59E0B),
-                  ),
-                ),
-                const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isPro ? tr.proActive : tr.upgradeToPro,
-                        style: text.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isPro
-                            ? tr.proUnlockedSubtitle
-                            : tr.proUpgradeSubtitle,
-                        style: text.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.75),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 14,
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
-              ],
             ),
           ),
         );
@@ -583,6 +571,7 @@ class _AccountAuthCard extends StatelessWidget {
       builder: (context, _) {
         final user = authService.currentUser;
         if (user != null) {
+          final initial = user.email.isNotEmpty ? user.email[0].toUpperCase() : 'U';
           return AppCard(
             padding: const EdgeInsets.all(AppSpace.md),
             child: Row(
@@ -590,7 +579,7 @@ class _AccountAuthCard extends StatelessWidget {
                 CircleAvatar(
                   backgroundColor: scheme.primaryContainer,
                   child: Text(
-                    user.displayName.isNotEmpty ? user.displayName[0].toUpperCase() : 'U',
+                    initial,
                     style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -599,61 +588,54 @@ class _AccountAuthCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              user.displayName,
-                              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          ListenableBuilder(
-                            listenable: subService,
-                            builder: (context, _) {
-                              return Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (subService.isPro) ...[
-                                    const SizedBox(width: 6),
-                                    const ProCrownBadge(isCompact: true),
-                                  ],
-                                  if (subService.everSupported) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE11D48).withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const AppIcon(
-                                            HugeIcons.strokeRoundedFavourite,
-                                            size: 11,
-                                            color: Color(0xFFE11D48),
-                                          ),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            tr.supporterBadge,
-                                            style: text.labelSmall?.copyWith(
-                                              color: const Color(0xFFE11D48),
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 10,
-                                            ),
-                                          ),
-                                        ],
+                      Text(
+                        user.email,
+                        style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (subService.isPro || subService.everSupported) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (subService.isPro)
+                              InkWell(
+                                onTap: () => subService.presentCustomerCenter(),
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                                child: const ProCrownBadge(isCompact: true),
+                              ),
+                            if (subService.everSupported)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE11D48).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const AppIcon(
+                                      HugeIcons.strokeRoundedFavourite,
+                                      size: 11,
+                                      color: Color(0xFFE11D48),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      tr.supporterBadge,
+                                      style: text.labelSmall?.copyWith(
+                                        color: const Color(0xFFE11D48),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 10,
                                       ),
                                     ),
                                   ],
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      Text(user.email, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -673,6 +655,16 @@ class _AccountAuthCard extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: scheme.surfaceContainerHighest,
+                    child: AppIcon(
+                      HugeIcons.strokeRoundedUser,
+                      size: 16,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
                   Flexible(
                     child: Text(
                       tr.cloudAccount,
@@ -680,17 +672,56 @@ class _AccountAuthCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (subService.isPro) ...[
-                    const SizedBox(width: 6),
-                    const ProCrownBadge(isCompact: true),
-                  ],
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 tr.signInToSyncSubtitle,
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
+              if (subService.isPro || subService.everSupported) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (subService.isPro)
+                      InkWell(
+                        onTap: () => subService.presentCustomerCenter(),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        child: const ProCrownBadge(isCompact: true),
+                      ),
+                    if (subService.everSupported)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE11D48).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const AppIcon(
+                              HugeIcons.strokeRoundedFavourite,
+                              size: 11,
+                              color: Color(0xFFE11D48),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              tr.supporterBadge,
+                              style: text.labelSmall?.copyWith(
+                                color: const Color(0xFFE11D48),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpace.md),
               Row(
                 children: [

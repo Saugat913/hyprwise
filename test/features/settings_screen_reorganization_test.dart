@@ -198,7 +198,7 @@ void main() {
   });
 
   group('R5: Settings Screen Reorganization (Tier 2 Boundary & Corner Cases)', () {
-    testWidgets('T2.1: Authenticated user profile displays name and email', (tester) async {
+    testWidgets('T2.1: Authenticated user profile displays email and hides display name', (tester) async {
       await storage.write(
         key: 'auth_user_profile',
         value: jsonEncode(const UserProfile(
@@ -212,8 +212,8 @@ void main() {
       await authService.load();
       await pumpSettings(tester);
 
-      expect(find.text('Alex Mercer'), findsOneWidget);
       expect(find.text('alex@example.com'), findsOneWidget);
+      expect(find.text('Alex Mercer'), findsNothing);
     });
 
     testWidgets('T2.2: Unauthenticated user displays cloud account prompt in profile card', (tester) async {
