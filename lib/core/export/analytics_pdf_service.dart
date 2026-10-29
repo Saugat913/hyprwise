@@ -11,7 +11,9 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/features/analytics/data/analytics_tab_data.dart';
 import 'package:finance_tracker/features/analytics/viewmodels/analytics_view_model.dart';
+import 'package:finance_tracker/features/debts/data/model/debt.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
