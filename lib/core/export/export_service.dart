@@ -175,6 +175,8 @@ abstract final class ExportService {
             final scheme = Theme.of(ctx).colorScheme;
             final tr = ctx.strings;
 
+            final isPro = getIt<SubscriptionService>().isPro;
+
             return SafeArea(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
@@ -216,7 +218,7 @@ abstract final class ExportService {
                                   value: fmt,
                                   label: fmt.label,
                                   subtitle: fmt.description,
-                                  trailing: (fmt == ExportFormat.report || fmt == ExportFormat.analyticsReport)
+                                  trailing: (!isPro && (fmt == ExportFormat.report || fmt == ExportFormat.analyticsReport))
                                       ? const ProCrownBadge(isCompact: true)
                                       : null,
                                 ),

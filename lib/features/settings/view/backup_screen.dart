@@ -4,11 +4,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
-import 'package:finance_tracker/core/backup/google_drive_backup_service.dart';
 import 'package:finance_tracker/core/export/export_service.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
@@ -33,25 +30,9 @@ class _BackupScreenState extends State<BackupScreen> {
   final AuthService _authService = getIt<AuthService>();
   final SubscriptionService _subService = getIt<SubscriptionService>();
 
-  bool _isDriveBackingUp = false;
-  bool _isDriveRestoring = false;
   bool _isCloudPushing = false;
   bool _isCloudPulling = false;
-  DriveBackupMetadata? _driveMetadata;
   int _selectedTab = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkSilentDriveStatus();
-  }
-
-  Future<void> _checkSilentDriveStatus() async {
-    final meta = await GoogleDriveBackupService.instance.checkExistingBackupSilently();
-    if (mounted && meta != null) {
-      setState(() => _driveMetadata = meta);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,12 +45,9 @@ class _BackupScreenState extends State<BackupScreen> {
       listenable: Listenable.merge([_viewModel, _authService, _subService]),
       builder: (context, _) {
         final lastLocalBackupMs = _viewModel.settings.lastBackupAt;
-        final lastBackupDate = _driveMetadata?.modifiedTime ??
-            (lastLocalBackupMs != null
-                ? DateTime.fromMillisecondsSinceEpoch(lastLocalBackupMs)
-                : null);
-        final driveEmail = _driveMetadata?.accountEmail ??
-            GoogleDriveBackupService.instance.connectedEmail;
+        final lastBackupDate = lastLocalBackupMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(lastLocalBackupMs)
+            : null;
         final hasBackup = lastBackupDate != null;
 
         return Scaffold(
@@ -208,72 +186,8 @@ class _BackupScreenState extends State<BackupScreen> {
 
                 if (_selectedTab == 0) ...[
                   // ==========================================================
-                  // TAB 0: CLOUD BACKUP (GOOGLE DRIVE & HYPRWISE CLOUD)
+                  // TAB 0: HYPRWISE CLOUD SYNC (PRO)
                   // ==========================================================
-                  AppCard(
-                    padding: const EdgeInsets.all(AppSpace.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const IconTile(
-                              HugeIcons.strokeRoundedGoogleDrive,
-                              size: 44,
-                            ),
-                            const SizedBox(width: AppSpace.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tr.googleDriveBackup,
-                                    style: text.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    driveEmail ?? tr.googleDriveBackupDesc,
-                                    style: text.bodySmall?.copyWith(
-                                      color: scheme.onSurfaceVariant,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpace.lg),
-                        AppButton(
-                          _isDriveBackingUp
-                              ? tr.t('Backing up...', ne: 'ब्याकअप हुँदैछ...', es: 'Guardando...', fr: 'Sauvegarde...', de: 'Sichere...', ja: '保存中...', zh: '正在备份...', it: 'Backup in corso...')
-                              : tr.t('Back Up to Google Drive', ne: 'गुगल ड्राइभमा ब्याकअप गर्नुहोस्', es: 'Respaldar en Google Drive', fr: 'Sauvegarder sur Google Drive', de: 'In Google Drive sichern', ja: 'Googleドライブにバックアップ', zh: '备份到 Google 云端硬盘', it: 'Esegui backup su Google Drive'),
-                          icon: HugeIcons.strokeRoundedCloudUpload,
-                          onPressed: (_isDriveBackingUp || _isDriveRestoring)
-                              ? null
-                              : () => _handleGoogleDriveBackup(context),
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        AppButton(
-                          _isDriveRestoring
-                              ? tr.t('Restoring...', ne: 'रिस्टोर हुँदैछ...', es: 'Restaurando...', fr: 'Restauration...', de: 'Lade...', ja: '復元中...', zh: '正在恢复...', it: 'Ripristino...')
-                              : tr.t('Restore from Google Drive', ne: 'गुगल ड्राइभबाट रिस्टोर गर्नुहोस्', es: 'Restaurar desde Google Drive', fr: 'Restaurer depuis Google Drive', de: 'Aus Google Drive wiederherstellen', ja: 'Googleドライブから復元', zh: '从 Google 云端硬盘恢复', it: 'Ripristina da Google Drive'),
-                          kind: AppButtonKind.secondary,
-                          icon: HugeIcons.strokeRoundedCloudDownload,
-                          onPressed: (_isDriveBackingUp || _isDriveRestoring)
-                              ? null
-                              : () => _handleGoogleDriveRestore(context),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: AppSpace.lg),
-
-                  // Hyprwise Cloud Sync Card (Pro)
                   AppCard(
                     padding: const EdgeInsets.all(AppSpace.lg),
                     child: Column(
@@ -325,31 +239,28 @@ class _BackupScreenState extends State<BackupScreen> {
                           ],
                         ),
                         const SizedBox(height: AppSpace.lg),
-                        Row(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Expanded(
-                              child: AppButton(
-                                _isCloudPushing
-                                    ? tr.t('Pushing...', ne: 'अपलोड हुँदैछ...', es: 'Subiendo...', fr: 'Envoi...', de: 'Sende...', ja: '送信中...', zh: '同步中...', it: 'Invio...')
-                                    : tr.pushDataToCloud,
-                                icon: HugeIcons.strokeRoundedUpload04,
-                                onPressed: (_isCloudPushing || _isCloudPulling)
-                                    ? null
-                                    : () => _handleCloudPush(context),
-                              ),
+                            AppButton(
+                              _isCloudPushing
+                                  ? tr.t('Pushing...', ne: 'अपलोड हुँदैछ...', hi: 'अपलोड हो रहा है...', es: 'Subiendo...', fr: 'Envoi...', de: 'Sende...', ja: '送信中...', zh: '同步中...', it: 'Invio...')
+                                  : tr.pushDataToCloud,
+                              icon: HugeIcons.strokeRoundedUpload04,
+                              onPressed: (_isCloudPushing || _isCloudPulling)
+                                  ? null
+                                  : () => _handleCloudPush(context),
                             ),
-                            const SizedBox(width: AppSpace.sm),
-                            Expanded(
-                              child: AppButton(
-                                _isCloudPulling
-                                    ? tr.t('Pulling...', ne: 'डाउनलोड हुँदैछ...', es: 'Descargando...', fr: 'Récupération...', de: 'Lade...', ja: '取得中...', zh: '拉取中...', it: 'Scaricamento...')
-                                    : tr.pullDataFromCloud,
-                                kind: AppButtonKind.secondary,
-                                icon: HugeIcons.strokeRoundedDownload04,
-                                onPressed: (_isCloudPushing || _isCloudPulling)
-                                    ? null
-                                    : () => _handleCloudPull(context),
-                              ),
+                            const SizedBox(height: AppSpace.sm),
+                            AppButton(
+                              _isCloudPulling
+                                  ? tr.t('Pulling...', ne: 'डाउनलोड हुँदैछ...', hi: 'डाउनलोड हो रहा है...', es: 'Descargando...', fr: 'Récupération...', de: 'Lade...', ja: '取得中...', zh: '拉取中...', it: 'Scaricamento...')
+                                  : tr.pullDataFromCloud,
+                              kind: AppButtonKind.secondary,
+                              icon: HugeIcons.strokeRoundedDownload04,
+                              onPressed: (_isCloudPushing || _isCloudPulling)
+                                  ? null
+                                  : () => _handleCloudPull(context),
                             ),
                           ],
                         ),
@@ -498,171 +409,6 @@ class _BackupScreenState extends State<BackupScreen> {
         );
       },
     );
-  }
-
-  Future<void> _handleGoogleDriveBackup(BuildContext context) async {
-    final tr = context.strings;
-    setState(() => _isDriveBackingUp = true);
-
-    try {
-      final result = await GoogleDriveBackupService.instance.backupToGoogleDrive();
-      if (!context.mounted) return;
-
-      if (result.success) {
-        await _checkSilentDriveStatus();
-        if (!context.mounted) return;
-        showToast(
-          context,
-          tr.t(
-            'Backed up to Google Drive (${result.accountEmail ?? result.fileName})',
-            ne: 'गुगल ड्राइभमा सफलतापूर्वक ब्याकअप गरियो (${result.accountEmail ?? result.fileName})',
-            es: 'Guardado en Google Drive (${result.accountEmail ?? result.fileName})',
-            fr: 'Sauvegardé sur Google Drive (${result.accountEmail ?? result.fileName})',
-            de: 'In Google Drive gesichert (${result.accountEmail ?? result.fileName})',
-            ja: 'Googleドライブにバックアップしました (${result.accountEmail ?? result.fileName})',
-            zh: '已成功备份至 Google 云端硬盘 (${result.accountEmail ?? result.fileName})',
-          ),
-        );
-        return;
-      }
-
-      // If direct Google Drive OAuth wasn't completed or Google Play Services is unavailable,
-      // offer an explicit fallback to save/share the backup file directly to the Google Drive app.
-      final useShareSheet = await showConfirmDialog(
-        context,
-        title: tr.googleDriveBackup,
-        message: tr.t(
-          'Direct Google Drive sign-in could not be completed (${result.errorMessage ?? "unavailable"}). Would you like to save the backup file directly to your Google Drive app instead?',
-          ne: 'सिधा गुगल ड्राइभ साइन-इन हुन सकेन। के तपाईं ब्याकअप फाइल सिधै गुगल ड्राइभ एपमा सेभ गर्न चाहनुहुन्छ?',
-          es: 'No se pudo iniciar sesión directamente en Google Drive. ¿Deseas guardar el archivo en la app de Google Drive?',
-          fr: 'Connexion directe à Google Drive indisponible. Voulez-vous enregistrer le fichier via l\'application Google Drive ?',
-          de: 'Direkte Google Drive-Anmeldung nicht möglich. Möchten Sie die Backup-Datei direkt an die Google Drive-App senden?',
-          ja: 'Googleドライブへの直接接続ができませんでした。代わりにGoogleドライブアプリへバックアップファイルを保存しますか？',
-          zh: '无法直接连接 Google 云端硬盘。是否直接将备份文件发送并保存到 Google 云端硬盘应用？',
-        ),
-        confirmLabel: tr.t('Save to Drive App', ne: 'ड्राइभ एपमा सेभ', es: 'Guardar en Drive', fr: 'Enregistrer sur Drive', de: 'An Drive senden', ja: 'ドライブへ保存', zh: '保存到云端硬盘'),
-        cancelLabel: tr.cancel,
-      );
-
-      if (useShareSheet && context.mounted) {
-        await _shareBackupFileToDrive(context);
-      }
-    } catch (e) {
-      if (context.mounted) {
-        showToast(context, 'Backup error: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isDriveBackingUp = false);
-      }
-    }
-  }
-
-  Future<void> _shareBackupFileToDrive(BuildContext context) async {
-    final tr = context.strings;
-    final dataRepo = getIt<DataRepository>();
-    final jsonContent = await dataRepo.exportJson();
-
-    final tempDir = await getTemporaryDirectory();
-    final dateStr = DateFormatter.numeric(DateTime.now()).replaceAll('/', '-');
-    const fileName = 'hyprwise_backup.json';
-    final file = File('${tempDir.path}/$fileName');
-    await file.writeAsString(jsonContent, flush: true);
-
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path, mimeType: 'application/json', name: fileName)],
-        subject: 'Hyprwise Finance Backup ($dateStr)',
-        text: 'Hyprwise backup file ($dateStr). Save to Google Drive.',
-      ),
-    );
-
-    await _viewModel.settingsRepo.setBackupEnabled(true);
-    await _viewModel.settingsRepo.setLastBackupAt(DateTime.now());
-
-    if (context.mounted) {
-      showToast(context, tr.chooseDriveToComplete);
-    }
-  }
-
-  Future<void> _handleGoogleDriveRestore(BuildContext context) async {
-    final tr = context.strings;
-    setState(() => _isDriveRestoring = true);
-
-    try {
-      final metadata = await GoogleDriveBackupService.instance.findBackupOnDrive();
-      if (!context.mounted) return;
-
-      if (metadata == null) {
-        final pickFromDevice = await showConfirmDialog(
-          context,
-          title: tr.t('No Drive Backup Found', ne: 'ड्राइभमा ब्याकअप भेटिएन', es: 'No se encontró copia en Drive', fr: 'Aucune sauvegarde trouvée', de: 'Kein Drive-Backup gefunden', ja: 'バックアップが見つかりません', zh: '未找到云端硬盘备份'),
-          message: tr.t(
-            'No automatic "hyprwise_backup.json" file was found in your Google Drive account. If you saved a backup file manually to Google Drive or your phone, you can select the .json file directly.',
-            ne: 'तपाईंको गुगल ड्राइभमा स्वचालित ब्याकअप फाइल भेटिएन। यदि तपाईंले म्यानुअल रूपमा सेभ गर्नुभएको छ भने फाइल पिकरबाट .json फाइल छान्न सक्नुहुन्छ।',
-            es: 'No se encontró "hyprwise_backup.json" en tu cuenta. Si guardaste el archivo manualmente, puedes seleccionarlo desde el selector de archivos.',
-            fr: 'Aucun fichier "hyprwise_backup.json" trouvé. Vous pouvez sélectionner un fichier .json manuellement.',
-            de: 'Keine "hyprwise_backup.json" gefunden. Sie können eine gespeicherte .json-Datei direkt über den Dateiwähler öffnen.',
-            ja: 'Googleドライブ上に自動バックアップが見つかりませんでした。手動で保存した .json ファイルを選択して復元できます。',
-            zh: '未在您的 Google 云端硬盘中找到自动备份文件。如果您之前手动保存过备份，可以直接选择 .json 文件进行恢复。',
-          ),
-          confirmLabel: tr.t('Choose .json File', ne: '.json फाइल छान्नुहोस्', es: 'Elegir archivo .json', fr: 'Choisir fichier .json', de: '.json Datei wählen', ja: 'ファイルを選択', zh: '选择 .json 文件'),
-          cancelLabel: tr.cancel,
-        );
-        if (pickFromDevice && context.mounted) {
-          await _pickAndRestoreBackup(context, _viewModel);
-        }
-        return;
-      }
-
-      final formattedDate = '${AppDate.header(metadata.modifiedTime)} • ${AppDate.timeOnly(metadata.modifiedTime)}';
-      final confirmed = await showConfirmDialog(
-        context,
-        title: tr.restoreFromBackupQuestion,
-        message: tr.t(
-          'Found "${metadata.fileName}" on Google Drive ($formattedDate). Restoring will replace your current local data.',
-          ne: 'गुगल ड्राइभमा "${metadata.fileName}" ($formattedDate) भेटियो। रिस्टोर गर्दा हालको स्थानीय डाटा प्रतिस्थापन हुनेछ।',
-          es: 'Se encontró "${metadata.fileName}" en Google Drive ($formattedDate). Esto reemplazará tus datos actuales.',
-          fr: 'Fichier "${metadata.fileName}" trouvé sur Google Drive ($formattedDate). Ceci remplacera vos données actuelles.',
-          de: '"${metadata.fileName}" auf Google Drive gefunden ($formattedDate). Ersetzt Ihre aktuellen lokalen Daten.',
-          ja: 'Googleドライブに「${metadata.fileName}」($formattedDate) が見つかりました。現在のデータを上書きして復元しますか？',
-          zh: '在 Google 云端硬盘中找到 "${metadata.fileName}" ($formattedDate)。恢复操作将替换当前本地数据。',
-        ),
-        confirmLabel: tr.restoreDataAction,
-        cancelLabel: tr.cancel,
-      );
-
-      if (!confirmed || !context.mounted) return;
-
-      final restored = await GoogleDriveBackupService.instance.restoreFromDriveFile(
-        metadata.fileId,
-      );
-      if (!context.mounted) return;
-
-      if (restored) {
-        setState(() => _driveMetadata = metadata);
-        showToast(
-          context,
-          tr.t(
-            'Data restored successfully from Google Drive!',
-            ne: 'गुगल ड्राइभबाट डाटा सफलतापूर्वक रिस्टोर भयो!',
-            es: '¡Datos restaurados con éxito desde Google Drive!',
-            fr: 'Données restaurées avec succès depuis Google Drive !',
-            de: 'Daten erfolgreich aus Google Drive wiederhergestellt!',
-            ja: 'Googleドライブからデータを復元しました！',
-            zh: '已成功从 Google 云端硬盘恢复数据！',
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        showToast(context, 'Restore error: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isDriveRestoring = false);
-      }
-    }
   }
 
   Future<void> _handleCloudPush(BuildContext context) async {

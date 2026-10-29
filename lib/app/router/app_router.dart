@@ -33,6 +33,7 @@ import 'package:finance_tracker/features/settings/view/manage_jobs_screen.dart';
 import 'package:finance_tracker/features/settings/view/settings_screen.dart';
 import 'package:finance_tracker/features/subscription/view/paywall_screen.dart';
 import 'package:finance_tracker/features/shell/view/app_shell.dart';
+import 'package:finance_tracker/features/transfers/presentation/transfers_screen.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';
 import 'package:finance_tracker/features/work/view/wizards/add_job_wizard.dart';
 import 'package:finance_tracker/features/work/view/wizards/live_shift_screen.dart';
@@ -166,6 +167,11 @@ final GoRouter appRouter = GoRouter(
             : TransactionType.expense;
         return AddTransactionWizard(initialType: initialType);
       },
+    ),
+    GoRoute(
+      parentNavigatorKey: rootNavigatorKey,
+      path: AppRoutes.transfers,
+      builder: (context, state) => const TransfersScreen(),
     ),
 
     // Accounts routes

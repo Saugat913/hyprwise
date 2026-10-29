@@ -12,6 +12,7 @@ class AppStrings {
   final String localeCode;
 
   bool get isNepali => localeCode == 'ne';
+  bool get isHindi => localeCode == 'hi';
   bool get isSpanish => localeCode == 'es';
   bool get isFrench => localeCode == 'fr';
   bool get isGerman => localeCode == 'de';
@@ -22,6 +23,7 @@ class AppStrings {
   String _t(
     String en, {
     String? ne,
+    String? hi,
     String? es,
     String? fr,
     String? de,
@@ -32,6 +34,8 @@ class AppStrings {
     switch (localeCode.toLowerCase()) {
       case 'ne':
         return localizeDigits(ne ?? en);
+      case 'hi':
+        return localizeDigits(hi ?? ne ?? en);
       case 'es':
         return es ?? en;
       case 'fr':
@@ -53,13 +57,14 @@ class AppStrings {
   String t(
     String en, {
     String? ne,
+    String? hi,
     String? es,
     String? fr,
     String? de,
     String? ja,
     String? zh,
     String? it,
-  }) => _t(en, ne: ne, es: es, fr: fr, de: de, ja: ja, zh: zh, it: it);
+  }) => _t(en, ne: ne, hi: hi, es: es, fr: fr, de: de, ja: ja, zh: zh, it: it);
 
   static AppStrings of(BuildContext context) {
     if (getIt.isRegistered<SettingsRepository>()) {
@@ -77,13 +82,14 @@ class AppStrings {
   }
 
   static String localizeDigitsForLocale(String input, String localeCode) {
-    if (localeCode.toLowerCase() != 'ne') return input;
-    const nepaliDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+    final loc = localeCode.toLowerCase();
+    if (loc != 'ne' && loc != 'hi') return input;
+    const devanagariDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
     final buffer = StringBuffer();
     for (var i = 0; i < input.length; i++) {
       final code = input.codeUnitAt(i);
       if (code >= 48 && code <= 57) {
-        buffer.write(nepaliDigits[code - 48]);
+        buffer.write(devanagariDigits[code - 48]);
       } else {
         buffer.writeCharCode(code);
       }
@@ -92,6 +98,79 @@ class AppStrings {
   }
 
   String localizeDigits(String input) => localizeDigitsForLocale(input, localeCode);
+
+  String formatTransactionNote(String note) {
+    if (note.startsWith('Borrowed from ')) {
+      final person = note.substring('Borrowed from '.length);
+      return borrowedFromPerson(person);
+    }
+    if (note.startsWith('Lent to ')) {
+      final person = note.substring('Lent to '.length);
+      return lentToPerson(person);
+    }
+    if (note.startsWith('Repayment from ')) {
+      final person = note.substring('Repayment from '.length);
+      return repaymentFromPerson(person);
+    }
+    if (note.startsWith('Repayment to ')) {
+      final person = note.substring('Repayment to '.length);
+      return repaymentToPerson(person);
+    }
+    return note;
+  }
+
+  String borrowedFromPerson(String person) => _t(
+        'Borrowed from $person',
+        ne: '$person बाट सापटी लिएको',
+        hi: '$person से उधार लिया',
+        es: 'Tomado prestado de $person',
+        fr: 'Emprunté à $person',
+        de: 'Von $person geliehen',
+        ja: '$person から借入',
+        zh: '向 $person 借入',
+        it: 'Preso in prestito da $person',
+      );
+
+  String lentToPerson(String person) => _t(
+        'Lent to $person',
+        ne: '$person लाई सापटी दिएको',
+        hi: '$person को उधार दिया',
+        es: 'Prestado a $person',
+        fr: 'Prêté à $person',
+        de: 'An $person geliehen',
+        ja: '$person に貸出',
+        zh: '借给 $person',
+        it: 'Prestato a $person',
+      );
+
+  String repaymentFromPerson(String person) => _t(
+        'Repayment from $person',
+        ne: '$person बाट फिर्ता भुक्तानी',
+        hi: '$person से पुनर्भुगतान',
+        es: 'Reembolso de $person',
+        fr: 'Remboursement de $person',
+        de: 'Rückzahlung von $person',
+        ja: '$person からの返済',
+        zh: '来自 $person 的还款',
+        it: 'Rimborso da $person',
+      );
+
+  String repaymentToPerson(String person) => _t(
+        'Repayment to $person',
+        ne: '$person लाई फिर्ता भुक्तानी',
+        hi: '$person को पुनर्भुगतान',
+        es: 'Reembolso a $person',
+        fr: 'Remboursement à $person',
+        de: 'Rückzahlung an $person',
+        ja: '$person への返済',
+        zh: '向 $person 还款',
+        it: 'Rimborso a $person',
+      );
+
+  String get privacyPolicyTitle => _t('Privacy Policy', ne: 'गोपनीयता नीति', hi: 'गोपनीयता नीति', es: 'Política de Privacidad', fr: 'Politique de Confidentialité', de: 'Datenschutzerklärung', ja: 'プライバシーポリシー', zh: '隐私政策', it: 'Informativa sulla Privacy');
+  String get termsOfServiceTitle => _t('Terms of Service', ne: 'सेवाका सर्तहरू', hi: 'सेवा की शर्तें', es: 'Términos del Servicio', fr: 'Conditions d\'Utilisation', de: 'Nutzungsbedingungen', ja: '利用規約', zh: '服务条款', it: 'Termini di Servizio');
+  String get editJob => _t('Edit Job', ne: 'काम सम्पादन', hi: 'काम संपादित करें', es: 'Editar trabajo', fr: 'Modifier l\'emploi', de: 'Job bearbeiten', ja: '仕事を編集', zh: '编辑工作', it: 'Modifica lavoro');
+
 
   // Common Navigation
   String get home => _t('Home', ne: 'गृहपृष्ठ', es: 'Inicio', fr: 'Accueil', de: 'Startseite', ja: 'ホーム', zh: '首页', it: 'Home');
@@ -1218,6 +1297,24 @@ class AppStrings {
   String alertBalanceNegativeMsg(String date) => _t('At the current pace you run out around $date', ne: 'हालको गतिमा $date तिर रकम अपुग हुन सक्छ', es: 'Al ritmo actual te quedarás sin fondos hacia el $date', fr: 'Au rythme actuel, vous serez à découvert vers le $date', de: 'Beim aktuellen Tempo reicht das Guthaben bis ca. $date', ja: '現在のペースでは $date 頃に資金が不足します', zh: '按目前的速度，预计在 $date 左右余额耗尽', it: 'Al ritmo attuale finirai i fondi intorno al $date');
   String alertBillDueTitle(String billName, String date) => _t('$billName due $date', ne: '$billName तिर्ने मिति $date', es: '$billName vence el $date', fr: '$billName dû le $date', de: '$billName fällig am $date', ja: '$billName の支払期日 $date', zh: '$billName 将于 $date 到期', it: '$billName in scadenza il $date');
   String alertBillLeavesBalanceMsg(String amount, String remaining) => _t('$amount leaves your account on $remaining', ne: '$amount तिरेपछि खातामा $remaining बाँकी रहनेछ', es: '$amount deja tu cuenta en $remaining', fr: '$amount laisse votre compte à $remaining', de: '$amount lässt $remaining auf Ihrem Konto', ja: '$amount の支払い後、残高は $remaining になります', zh: '支付 $amount 后账户剩余 $remaining', it: '$amount lascia il conto a $remaining');
+
+  // Transactions & Work Details
+  String get overtime => _t('Overtime', ne: 'ओभरटाइम', hi: 'ओवरटाइम', es: 'Horas extras', fr: 'Heures supplémentaires', de: 'Überstunden', ja: '残業', zh: '加班', it: 'Straordinario');
+  String get typeLabel => _t('Type', ne: 'प्रकार', hi: 'प्रकार', es: 'Tipo', fr: 'Type', de: 'Typ', ja: '種類', zh: '类型', it: 'Tipo');
+  String get amount => _t('Amount', ne: 'रकम', hi: 'राशि', es: 'Importe', fr: 'Montant', de: 'Betrag', ja: '金額', zh: '金额', it: 'Importo');
+  String get noteOptional => _t('Note (Optional)', ne: 'कैफियत (वैकल्पिक)', hi: 'नोट (वैकल्पिक)', es: 'Nota (Opcional)', fr: 'Note (Optionnel)', de: 'Notiz (Optional)', ja: 'メモ (任意)', zh: '备注 (可选)', it: 'Nota (Facoltativa)');
+  String get deleteTransactionTitle => _t('Delete Transaction?', ne: 'कारोबार मेटाउने?', hi: 'लेनदेन हटाएं?', es: '¿Eliminar transacción?', fr: 'Supprimer la transaction ?', de: 'Transaktion löschen?', ja: '取引を削除しますか？', zh: '删除交易？', it: 'Eliminare transazione?');
+  String get deleteTransactionSubtitle => _t(
+        'This transaction will be permanently removed from your account balance.',
+        ne: 'यो कारोबार तपाईंको खाता ब्यालेन्सबाट स्थायी रूपमा हटाइनेछ।',
+        hi: 'यह लेनदेन आपके खाते से स्थायी रूप से हटा दिया जाएगा।',
+        es: 'Esta transacción se eliminará de forma permanente de su saldo.',
+        fr: 'Cette transaction sera définitivement supprimée de votre solde.',
+        de: 'Diese Transaktion wird dauerhaft aus Ihrem Kontostand gelöscht.',
+        ja: 'この取引は口座残高から完全に削除されます。',
+        zh: '此交易记录将从您的账户余额中永久删除。',
+        it: 'Questa transazione verrà rimossa definitivamente dal saldo del tuo conto.',
+      );
 }
 
 extension AppStringsExtension on BuildContext {

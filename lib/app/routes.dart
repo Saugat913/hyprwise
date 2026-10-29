@@ -15,6 +15,7 @@ abstract final class AppRoutes {
   // Money
   static const money = '/money';
   static const addTransaction = '/money/add';
+  static const transfers = '/transfers';
 
   // Accounts
   static const accounts = '/accounts';

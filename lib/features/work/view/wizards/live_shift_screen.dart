@@ -88,6 +88,9 @@ class LiveShiftScreen extends StatelessWidget {
           }
         }
 
+        final hasOt = liveEarnings?.hasOvertime ?? false;
+        final currentHourlyRateMinor = hasOt ? liveEarnings!.overtimeRateMinor : rateMinor;
+
         return PopScope(
           canPop: context.canPop(),
           onPopInvokedWithResult: (didPop, _) {
@@ -100,20 +103,6 @@ class LiveShiftScreen extends StatelessWidget {
               title: Text(tr.liveShift),
               elevation: 0,
               backgroundColor: Colors.transparent,
-              actions: [
-                IconButton(
-                  icon: Icon(
-                    viewModel.isOnBreak ? Icons.play_arrow_rounded : Icons.coffee_rounded,
-                  ),
-                  tooltip: viewModel.isOnBreak ? tr.resumeShift : tr.takeBreak,
-                  onPressed: () => viewModel.toggleBreak(),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_calendar_outlined),
-                  tooltip: tr.editStartTime,
-                  onPressed: pickStartTime,
-                ),
-              ],
             ),
             body: SafeArea(
               child: Padding(
@@ -168,8 +157,9 @@ class LiveShiftScreen extends StatelessWidget {
                               ),
                               Expanded(
                                 child: _ShiftMetaColumn(
-                                  label: tr.hourlyRate,
-                                  value: '${MoneyFormatter.format(rateMinor, currencyCode)}/${tr.hourAbbr}',
+                                  label: hasOt ? '${tr.hourlyRate} (${tr.overtime})' : tr.hourlyRate,
+                                  value: '${MoneyFormatter.format(currentHourlyRateMinor, currencyCode)}/${tr.hourAbbr}',
+                                  valueColor: hasOt ? colors.brand : null,
                                 ),
                               ),
                               Expanded(
@@ -258,6 +248,59 @@ class LiveShiftScreen extends StatelessWidget {
                                     fontWeight: FontWeight.w700,
                                     fontFamily: 'RedditMono',
                                   ),
+                                ),
+                              ),
+                              if (hasOt) ...[
+                                const SizedBox(height: AppSpace.sm),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: colors.brand.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  ),
+                                  child: Text(
+                                    '${tr.overtime}: ${_formatTimer(Duration(minutes: liveEarnings!.overtimeMinutes))} @ ${MoneyFormatter.format(liveEarnings.overtimeRateMinor, currencyCode)}/${tr.hourAbbr}',
+                                    style: text.bodySmall?.copyWith(
+                                      fontFamily: 'RedditMono',
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.brand,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: AppSpace.md),
+                              // Live Shift Detailed Breakdown Card
+                              Container(
+                                padding: const EdgeInsets.all(AppSpace.md),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                ),
+                                child: Column(
+                                  children: [
+                                    _BreakdownRow(
+                                      label: tr.regularPayLabel,
+                                      value: MoneyFormatter.format(
+                                        liveEarnings?.regularEarningsMinor ?? liveEarnings?.earningsMinor ?? 0,
+                                        currencyCode,
+                                      ),
+                                      subValue: '${tr.formatNumber(liveEarnings?.regularMinutes ?? (elapsed.inMinutes))} ${tr.minuteAbbr}',
+                                    ),
+                                    if ((shift.overtimeThresholdMinutes != null && shift.overtimeThresholdMinutes! > 0) || hasOt) ...[
+                                      const SizedBox(height: AppSpace.xs),
+                                      _BreakdownRow(
+                                        label: tr.overtimePayLabel,
+                                        value: MoneyFormatter.format(liveEarnings?.overtimeEarningsMinor ?? 0, currencyCode),
+                                        subValue: '${tr.formatNumber(liveEarnings?.overtimeMinutes ?? 0)} ${tr.minuteAbbr}',
+                                        valueColor: hasOt ? colors.brand : null,
+                                      ),
+                                    ],
+                                    const SizedBox(height: AppSpace.xs),
+                                    _BreakdownRow(
+                                      label: tr.breakTime,
+                                      value: '${tr.formatNumber(viewModel.currentBreakMinutes)} ${tr.minuteAbbr}',
+                                    ),
+                                  ],
                                 ),
                               ),
                               if (viewModel.isOnBreak || viewModel.currentBreakSeconds > 0) ...[
@@ -351,11 +394,13 @@ class _ShiftMetaColumn extends StatelessWidget {
     required this.label,
     required this.value,
     this.alignEnd = false,
+    this.valueColor,
   });
 
   final String label;
   final String value;
   final bool alignEnd;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -373,9 +418,57 @@ class _ShiftMetaColumn extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           value,
-          style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+          style: text.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: valueColor ?? scheme.onSurface,
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+class _BreakdownRow extends StatelessWidget {
+  const _BreakdownRow({
+    required this.label,
+    required this.value,
+    this.subValue,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final String? subValue;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (subValue != null) ...[
+              Text(
+                '($subValue) ',
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant, fontSize: 11),
+              ),
+            ],
+            Text(
+              value,
+              style: text.bodySmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: valueColor ?? scheme.onSurface,
+              ),
+            ),
+          ],
         ),
       ],
     );

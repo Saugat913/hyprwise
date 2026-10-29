@@ -37,6 +37,14 @@ class AppLanguage {
       defaultCurrencyCode: 'NPR',
     ),
     AppLanguage(
+      code: 'hi',
+      name: 'Hindi',
+      nativeName: 'हिन्दी',
+      badge: 'हि',
+      associatedCurrencies: ['INR'],
+      defaultCurrencyCode: 'INR',
+    ),
+    AppLanguage(
       code: 'es',
       name: 'Spanish',
       nativeName: 'Español',

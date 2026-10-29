@@ -4,13 +4,14 @@ import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
 import 'package:finance_tracker/features/accounts/data/model/account_type.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
+import 'package:finance_tracker/features/debts/data/model/debt.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
 import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/shared/data/finance_snapshot.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 
-enum MoneyFilterTab { all, income, expenses }
+enum MoneyFilterTab { all, income, expenses, lending, borrowing }
 
 class MoneyViewModel extends ChangeNotifier {
   MoneyViewModel({
@@ -71,6 +72,12 @@ class MoneyViewModel extends ChangeNotifier {
     return financeStore.transactions.map((t) => t.category).toSet().toList();
   }
 
+  List<Debt> get debts => financeStore.debts;
+  List<Debt> get lentDebts =>
+      financeStore.debts.where((d) => d.type == DebtType.lent.value).toList();
+  List<Debt> get borrowedDebts =>
+      financeStore.debts.where((d) => d.type == DebtType.borrowed.value).toList();
+
   List<Transaction> get transactions {
     var list = financeStore.transactions;
 
@@ -78,6 +85,16 @@ class MoneyViewModel extends ChangeNotifier {
       list = list.where((t) => t.type == TransactionType.income.value).toList();
     } else if (_tab == MoneyFilterTab.expenses) {
       list = list.where((t) => t.type == TransactionType.expense.value).toList();
+    } else if (_tab == MoneyFilterTab.lending) {
+      list = list.where((t) =>
+        t.category.toLowerCase().contains('lend') ||
+        (t.note != null && t.note!.toLowerCase().contains('lent'))
+      ).toList();
+    } else if (_tab == MoneyFilterTab.borrowing) {
+      list = list.where((t) =>
+        t.category.toLowerCase().contains('borrow') ||
+        (t.note != null && t.note!.toLowerCase().contains('borrowed'))
+      ).toList();
     }
 
     if (_selectedCategory != null) {

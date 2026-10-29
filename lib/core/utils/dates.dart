@@ -157,6 +157,7 @@ abstract final class DateFormatter {
     if (days == 0) {
       switch (loc) {
         case 'ne':
+        case 'hi':
           return 'आज';
         case 'es':
           return 'Hoy';
@@ -178,6 +179,8 @@ abstract final class DateFormatter {
       switch (loc) {
         case 'ne':
           return 'भोलि';
+        case 'hi':
+          return 'कल';
         case 'es':
           return 'Mañana';
         case 'fr':
@@ -198,6 +201,8 @@ abstract final class DateFormatter {
       switch (loc) {
         case 'ne':
           return 'हिजो';
+        case 'hi':
+          return 'कल';
         case 'es':
           return 'Ayer';
         case 'fr':
@@ -218,6 +223,8 @@ abstract final class DateFormatter {
       switch (loc) {
         case 'ne':
           return '${_neDigits(days)} दिनमा';
+        case 'hi':
+          return '${_neDigits(days)} दिनों में';
         case 'es':
           return 'En $days días';
         case 'fr':
@@ -239,6 +246,8 @@ abstract final class DateFormatter {
       switch (loc) {
         case 'ne':
           return '${_neDigits(past)} दिन अगाडि';
+        case 'hi':
+          return '${_neDigits(past)} दिन पहले';
         case 'es':
           return 'Hace $past días';
         case 'fr':

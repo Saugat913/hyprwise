@@ -214,7 +214,7 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: Text(tr.editRate),
+                      label: Text(tr.editJob),
                       onPressed: () => _showEditJobSheet(context, job),
                     ),
                   ],

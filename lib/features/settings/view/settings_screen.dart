@@ -574,75 +574,75 @@ class _AccountAuthCard extends StatelessWidget {
           final initial = user.email.isNotEmpty ? user.email[0].toUpperCase() : 'U';
           return AppCard(
             padding: const EdgeInsets.all(AppSpace.md),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  backgroundColor: scheme.primaryContainer,
-                  child: Text(
-                    initial,
-                    style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: scheme.primaryContainer,
+                      child: Text(
+                        initial,
+                        style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.md),
+                    Expanded(
+                      child: Text(
                         user.email,
                         style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (subService.isPro || subService.everSupported) ...[
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            if (subService.isPro)
-                              InkWell(
-                                onTap: () => subService.presentCustomerCenter(),
-                                borderRadius: BorderRadius.circular(AppRadius.sm),
-                                child: const ProCrownBadge(isCompact: true),
-                              ),
-                            if (subService.everSupported)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE11D48).withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const AppIcon(
-                                      HugeIcons.strokeRoundedFavourite,
-                                      size: 11,
-                                      color: Color(0xFFE11D48),
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      tr.supporterBadge,
-                                      style: text.labelSmall?.copyWith(
-                                        color: const Color(0xFFE11D48),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
+                    ),
+                    TextButton(
+                      onPressed: () => authService.signOut(),
+                      child: Text(tr.signOut),
+                    ),
+                  ],
+                ),
+                if (subService.isPro || subService.everSupported) ...[
+                  const SizedBox(height: AppSpace.sm),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (subService.isPro)
+                        InkWell(
+                          onTap: () => subService.presentCustomerCenter(),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          child: const ProCrownBadge(isCompact: true),
                         ),
-                      ],
+                      if (subService.everSupported)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE11D48).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AppIcon(
+                                HugeIcons.strokeRoundedFavourite,
+                                size: 11,
+                                color: Color(0xFFE11D48),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                tr.supporterBadge,
+                                style: text.labelSmall?.copyWith(
+                                  color: const Color(0xFFE11D48),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
-                ),
-                TextButton(
-                  onPressed: () => authService.signOut(),
-                  child: Text(tr.signOut),
-                ),
+                ],
               ],
             ),
           );

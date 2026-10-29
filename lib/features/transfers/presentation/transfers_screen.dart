@@ -230,13 +230,7 @@ class TransfersScreen extends StatelessWidget {
     List<Account> accounts,
     TransferRepository repository,
   ) =>
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        showDragHandle: true,
-        builder: (_) => _TransferForm(accounts: accounts, repository: repository),
-      );
+      showTransferFormModal(context, accounts: accounts, repository: repository);
 
   static String _formatMoney(int minorUnits, String currencyCode) {
     final amount = minorUnits.abs();
@@ -249,17 +243,39 @@ class TransfersScreen extends StatelessWidget {
       '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }
 
-class _TransferForm extends StatefulWidget {
-  const _TransferForm({required this.accounts, required this.repository});
+Future<void> showTransferFormModal(
+  BuildContext context, {
+  List<Account>? accounts,
+  TransferRepository? repository,
+}) async {
+  final accRepo = getIt<AccountRepository>();
+  final txRepo = repository ?? getIt<TransferRepository>();
+  final activeAccounts = accounts ??
+      (await accRepo.watchAccounts().first)
+          .where((account) => !account.isArchived)
+          .toList();
+  if (context.mounted) {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => TransferForm(accounts: activeAccounts, repository: txRepo),
+    );
+  }
+}
+
+class TransferForm extends StatefulWidget {
+  const TransferForm({super.key, required this.accounts, required this.repository});
 
   final List<Account> accounts;
   final TransferRepository repository;
 
   @override
-  State<_TransferForm> createState() => _TransferFormState();
+  State<TransferForm> createState() => _TransferFormState();
 }
 
-class _TransferFormState extends State<_TransferForm> {
+class _TransferFormState extends State<TransferForm> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();

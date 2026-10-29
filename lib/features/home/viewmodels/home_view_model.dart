@@ -3,6 +3,7 @@ import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/features/accounts/data/model/account_type.dart';
 import 'package:finance_tracker/features/debts/data/model/debt.dart';
 import 'package:finance_tracker/features/plan/data/forecast_engine.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
@@ -121,6 +122,11 @@ class HomeViewModel extends ChangeNotifier {
     final acc = financeStore.savingsAccount;
     return acc != null ? snapshot.balanceOf(acc.id) : 0;
   }
+
+  List<Account> get accounts => financeStore.accounts;
+  List<Account> get savingsAccounts =>
+      snapshot.accounts.where((a) => a.type == AccountType.savings.value).toList();
+  int balanceOf(int accountId) => snapshot.balanceOf(accountId);
 
   List<Transaction> get recentTransactions =>
       snapshot.transactions.take(5).toList();

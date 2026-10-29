@@ -106,6 +106,8 @@ class _MoneyScreenState extends State<MoneyScreen> {
                     MoneyFilterTab.all: tr.allEvents,
                     MoneyFilterTab.income: tr.income,
                     MoneyFilterTab.expenses: tr.expenses,
+                    MoneyFilterTab.lending: tr.lent,
+                    MoneyFilterTab.borrowing: tr.borrowed,
                   },
                   value: viewModel.tab,
                   onChanged: viewModel.setTab,

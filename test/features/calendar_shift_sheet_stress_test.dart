@@ -523,6 +523,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('Weekly Grocery'), findsWidgets);
+      await tester.ensureVisible(find.text('Weekly Grocery').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Weekly Grocery').first);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));

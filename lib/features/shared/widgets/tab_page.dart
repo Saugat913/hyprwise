@@ -54,18 +54,30 @@ class TabPage extends StatelessWidget {
               const SizedBox(height: AppSpace.sm),
             ],
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (overline != null) Text(overline!, style: text.bodySmall),
-                      Text(title, style: text.headlineMedium),
+                      if (overline != null)
+                        Text(
+                          overline!,
+                          style: text.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      Text(
+                        title,
+                        style: text.headlineMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ),
-                for (final action in actions) ...[const SizedBox(width: AppSpace.sm), action],
+                for (final action in actions) ...[const SizedBox(width: AppSpace.xs), action],
               ],
             ),
             const SizedBox(height: AppSpace.xl),

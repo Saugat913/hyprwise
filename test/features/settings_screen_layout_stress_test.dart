@@ -404,10 +404,10 @@ void main() {
       expect(find.byType(ProCrownBadge), findsOneWidget);
 
       final tr = AppStrings.current();
-      expect(find.text(tr.proActive), findsOneWidget);
+      expect(find.text(tr.upgradeToPro), findsNothing);
     });
 
-    testWidgets('Dual-badge saturation (isPro + everSupported) triggers RenderFlex overflow on narrow viewport (<400px)', (tester) async {
+    testWidgets('Dual-badge saturation (isPro + everSupported) renders cleanly without overflow on narrow viewport (<400px)', (tester) async {
       await storage.write(
         key: 'auth_user_profile',
         value: jsonEncode(const UserProfile(
@@ -434,13 +434,9 @@ void main() {
       await pumpSettings(tester, size: const Size(360, 600));
       FlutterError.onError = originalOnError;
 
-      // Empirically documents the known RenderFlex overflow bug in _AccountAuthCard
-      // where dual badges (Pro + Supporter) in an unconstrained Row exceed available column width (107px)
-      expect(overflowError, isNotNull, reason: 'Expected dual-badge saturation to overflow row');
-      expect(overflowError, contains('overflowed by 79 pixels'));
-
-      // Clean up exception from test framework queue
-      tester.takeException();
+      // Badges (Pro + Supporter) wrap cleanly without RenderFlex overflow
+      expect(overflowError, isNull, reason: 'Dual badges should render cleanly without overflow');
+      expect(find.byType(ProCrownBadge), findsOneWidget);
     });
 
     testWidgets('Unauthenticated guest state buttons on narrow 320px screen do not overflow', (tester) async {
@@ -469,7 +465,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(tester.takeException(), isNull);
-      expect(find.text(tr.proActive), findsOneWidget);
+      expect(find.text(tr.upgradeToPro), findsNothing);
       expect(find.byType(ProCrownBadge), findsOneWidget);
     });
   });

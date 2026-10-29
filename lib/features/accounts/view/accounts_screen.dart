@@ -11,6 +11,7 @@ import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/accounts/data/model/account_type.dart';
 import 'package:finance_tracker/features/accounts/viewmodels/accounts_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
+import 'package:finance_tracker/features/transfers/presentation/transfers_screen.dart';
 
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key});
@@ -31,6 +32,28 @@ class AccountsScreen extends StatelessWidget {
         return Scaffold(
           appBar: AppTopBar(
             title: tr.accounts,
+            actions: [
+              if (accounts.length >= 2)
+                TopBarAction(
+                  HugeIcons.strokeRoundedExchange01,
+                  tooltip: tr.t(
+                    'Transfer',
+                    ne: 'रकम सार्नुहोस्',
+                    es: 'Transferir',
+                    fr: 'Transférer',
+                    de: 'Überweisen',
+                    ja: '振替',
+                    zh: '转账',
+                    it: 'Trasferisci',
+                  ),
+                  onPressed: () => showTransferFormModal(context),
+                ),
+              TopBarAction(
+                HugeIcons.strokeRoundedPlusSign,
+                tooltip: tr.addAccount,
+                onPressed: () => context.push(AppRoutes.addAccount),
+              ),
+            ],
           ),
           body: SafeArea(
             child: ListView(

@@ -187,13 +187,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
                             message: tr.unlimitedAiAssistantDesc,
                             featureHighlight: 'ai',
                           ),
-                    )
-                  else
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Center(
-                        child: ProCrownBadge(isCompact: true),
-                      ),
                     ),
                   TopBarAction(
                     HugeIcons.strokeRoundedRefresh,

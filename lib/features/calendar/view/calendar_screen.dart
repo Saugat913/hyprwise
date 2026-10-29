@@ -55,27 +55,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
           overline: AppDate.monthYear(viewModel.selectedDate),
           actions: [
             if (!isToday)
-              TextButton(
-                onPressed: viewModel.jumpToToday,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-                  visualDensity: VisualDensity.compact,
+              Container(
+                height: 38,
+                alignment: Alignment.center,
+                child: TextButton(
+                  onPressed: viewModel.jumpToToday,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: Text(tr.today, style: const TextStyle(fontWeight: FontWeight.w700)),
                 ),
-                child: Text(tr.today, style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
-            IconButton(
-              icon: const Icon(Icons.chevron_left_rounded),
-              tooltip: tr.previousWeek,
+            RoundIconButton(
+              HugeIcons.strokeRoundedArrowLeft01,
               onPressed: () => viewModel.navigateWeek(-1),
             ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right_rounded),
-              tooltip: tr.nextWeek,
+            RoundIconButton(
+              HugeIcons.strokeRoundedArrowRight01,
               onPressed: () => viewModel.navigateWeek(1),
             ),
-            TopBarAction(
+            RoundIconButton(
               HugeIcons.strokeRoundedPlusSign,
-              tooltip: tr.addEvent,
               onPressed: () => _showAddActionSheet(context, viewModel.selectedDate),
             ),
           ],
@@ -461,6 +462,7 @@ class _AppleCalendarDayTimeline extends StatefulWidget {
 }
 
 class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
+  final ScrollController _scrollController = ScrollController();
   Timer? _timer;
   DateTime _now = DateTime.now();
 
@@ -502,6 +504,7 @@ class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
   @override
   void dispose() {
     _timer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -704,6 +707,24 @@ class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
 
     final positioned = [...shiftEvents, ...txEvents];
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      CalendarItem? targetShift;
+      if (shifts.isNotEmpty) {
+        targetShift = shifts.firstWhere(
+          (s) => s.date.isAfter(_now),
+          orElse: () => shifts.first,
+        );
+      }
+      final targetTime = targetShift?.date ?? (widget.isToday ? _now : widget.items.firstOrNull?.date);
+      if (targetTime != null) {
+        final offset = math.max(0.0, timeToOffset(targetTime) - 30.0);
+        final maxScroll = _scrollController.position.maxScrollExtent;
+        final clamped = offset.clamp(0.0, maxScroll);
+        _scrollController.jumpTo(clamped);
+      }
+    });
+
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface,
@@ -716,10 +737,15 @@ class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
           final availableWidth = constraints.maxWidth;
           const double contentLeft = 52.0;
           final eventsWidth = (availableWidth - contentLeft - 4.0).clamp(100.0, 10000.0);
+          final viewportHeight = math.min(totalHeight, 520.0);
 
           return SizedBox(
-            height: totalHeight,
-            child: Stack(
+            height: viewportHeight,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: SizedBox(
+                height: totalHeight,
+                child: Stack(
               clipBehavior: Clip.none,
               children: [
                 // 1. Grid of hour lines and labels positioned dynamically
@@ -800,10 +826,12 @@ class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
                   ),
               ],
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    },
+  ),
+);
   }
 
   String _formatHourLabel(int hour) {

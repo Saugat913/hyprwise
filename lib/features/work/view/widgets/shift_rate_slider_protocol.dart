@@ -445,10 +445,10 @@ class _ShiftRateSliderProtocolState extends State<ShiftRateSliderProtocol> {
                       ],
                     ),
                     Slider(
-                      value: _overtimeThreshold.clamp(2.0, 12.0),
-                      min: 2.0,
+                      value: _overtimeThreshold.clamp(0.5, 12.0),
+                      min: 0.5,
                       max: 12.0,
-                      divisions: 20, // 0.5h step
+                      divisions: 23, // 0.5h step
                       onChanged: (val) {
                         setState(() => _overtimeThreshold = val);
                         _notify();

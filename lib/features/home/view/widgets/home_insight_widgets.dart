@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -5,7 +6,6 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/money.dart';
-import 'package:finance_tracker/features/assistant/view/widgets/chat_widgets.dart' show WeekBars;
 import 'package:finance_tracker/features/home/viewmodels/home_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
@@ -42,17 +42,16 @@ class HomeInsights extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(child: Text(tr.incomeVsSpend, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
-                    _Dot(colors.brand, tr.income),
+                    _Dot(colors.income, tr.income),
                     const SizedBox(width: AppSpace.md),
-                    _Dot(colors.expense.withValues(alpha: 0.75), tr.expense),
+                    _Dot(colors.expense, tr.expense),
                   ],
                 ),
                 const SizedBox(height: AppSpace.md),
-                SizedBox(height: 84, child: WeekBars(income: weekIn, expense: weekOut)),
-                const SizedBox(height: AppSpace.sm),
-                Text(
-                  '${MoneyFormatter.format(weekIn.fold(0, (a, b) => a + b), cur)}  ·  ${MoneyFormatter.format(weekOut.fold(0, (a, b) => a + b), cur)}',
-                  style: muted,
+                _HorizontalIncomeVsExpenseBar(
+                  incomeMinor: weekIn.fold(0, (a, b) => a + b),
+                  expenseMinor: weekOut.fold(0, (a, b) => a + b),
+                  currency: cur,
                 ),
               ],
             ),
@@ -221,4 +220,111 @@ class _Ring extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _HorizontalIncomeVsExpenseBar extends StatelessWidget {
+  const _HorizontalIncomeVsExpenseBar({
+    required this.incomeMinor,
+    required this.expenseMinor,
+    required this.currency,
+  });
+
+  final int incomeMinor;
+  final int expenseMinor;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final text = Theme.of(context).textTheme;
+    final tr = context.strings;
+    final maxVal = math.max(incomeMinor, expenseMinor);
+    final inRatio = maxVal > 0 ? (incomeMinor / maxVal).clamp(0.0, 1.0) : 0.0;
+    final outRatio = maxVal > 0 ? (expenseMinor / maxVal).clamp(0.0, 1.0) : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Income Row
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: colors.income, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            Text(tr.income, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Text(
+              '+${MoneyFormatter.format(incomeMinor, currency)}',
+              style: text.labelMedium?.copyWith(
+                color: colors.income,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'RedditMono',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: Container(
+            height: 10,
+            color: colors.fill,
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: inRatio > 0 ? inRatio : 0.001,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colors.income,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpace.md),
+        // Expense Row
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: colors.expense, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            Text(tr.expense, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Text(
+              '-${MoneyFormatter.format(expenseMinor, currency)}',
+              style: text.labelMedium?.copyWith(
+                color: colors.expense,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'RedditMono',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          child: Container(
+            height: 10,
+            color: colors.fill,
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: outRatio > 0 ? outRatio : 0.001,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colors.expense,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

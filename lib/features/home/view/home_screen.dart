@@ -9,12 +9,14 @@ import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/features/alerts/viewmodels/alerts_view_model.dart';
 import 'package:finance_tracker/features/home/view/widgets/home_insight_widgets.dart';
 import 'package:finance_tracker/features/home/view/widgets/home_transaction_row.dart';
 import 'package:finance_tracker/features/home/view/widgets/upcoming_event_row.dart';
 import 'package:finance_tracker/features/home/viewmodels/home_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
+import 'package:finance_tracker/features/transfers/presentation/transfers_screen.dart';
 import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -37,24 +39,29 @@ class HomeScreen extends StatelessWidget {
           title: tr.home,
           overline: AppDate.header(viewModel.now),
           actions: [
-            if (subService.isPro)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.only(right: 4),
-                  child: ProCrownBadge(isCompact: true),
-                ),
-              ),
-            RoundIconButton(
-              HugeIcons.strokeRoundedChartHistogram,
-              onPressed: () => context.push(AppRoutes.analytics),
-            ),
-            RoundIconButton(
-              HugeIcons.strokeRoundedNotification01,
-              onPressed: () => context.push(AppRoutes.notifications),
-            ),
-            RoundIconButton(
-              HugeIcons.strokeRoundedSlidersHorizontal,
-              onPressed: () => context.push(AppRoutes.settings),
+            Builder(
+              builder: (context) {
+                final alertsVm = getIt<AlertsViewModel>();
+                return ListenableBuilder(
+                  listenable: alertsVm,
+                  builder: (context, _) {
+                    final unreadCount = alertsVm.alerts.length;
+                    return Badge(
+                      isLabelVisible: unreadCount > 0,
+                      label: Text(
+                        tr.formatNumber(unreadCount),
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                      backgroundColor: colors.expense,
+                      offset: const Offset(-2, 2),
+                      child: RoundIconButton(
+                        HugeIcons.strokeRoundedNotification01,
+                        onPressed: () => context.push(AppRoutes.notifications),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ],
           children: [
@@ -131,74 +138,74 @@ class HomeScreen extends StatelessWidget {
                         );
                       },
                     ),
-                    // 2-Account breakdown (Everyday & Savings)
+                    // Accounts breakdown (Everyday & All Savings) + Transfer
                     const SizedBox(height: AppSpace.md),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => context.push(AppRoutes.accounts),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
+                        Text(
+                          tr.accounts,
+                          style: text.labelSmall?.copyWith(color: colors.onHeroSecondary, fontSize: 11),
+                        ),
+                        if (viewModel.accounts.length >= 2)
+                          InkWell(
+                            onTap: () => showTransferFormModal(context),
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: colors.onHero.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                border: Border.all(color: colors.onHeroSecondary.withValues(alpha: 0.2)),
+                                color: colors.onHero.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(AppRadius.pill),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Row(
-                                    children: [
-                                      AppIcon(HugeIcons.strokeRoundedBank, size: 12, color: colors.onHeroSecondary),
-                                      const SizedBox(width: 4),
-                                      Text(tr.everyday, style: text.labelSmall?.copyWith(color: colors.onHeroSecondary, fontSize: 11)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
+                                  AppIcon(HugeIcons.strokeRoundedExchange01, size: 12, color: colors.onHero),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    MoneyFormatter.format(viewModel.everydayBalanceMinor, viewModel.baseCurrency),
-                                    style: text.labelLarge?.copyWith(color: colors.onHero, fontWeight: FontWeight.w700),
+                                    tr.t('Transfer', ne: 'सार्नुहोस्', es: 'Transferir', fr: 'Transférer', de: 'Überweisen', ja: '振替', zh: '转账', it: 'Trasferisci'),
+                                    style: text.labelSmall?.copyWith(color: colors.onHero, fontWeight: FontWeight.w600, fontSize: 10),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: AppSpace.sm),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => context.push(AppRoutes.plan),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-                              decoration: BoxDecoration(
-                                color: colors.onHero.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                border: Border.all(color: colors.onHeroSecondary.withValues(alpha: 0.2)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      AppIcon(HugeIcons.strokeRoundedSafe, size: 12, color: colors.onHeroSecondary),
-                                      const SizedBox(width: 4),
-                                      Text(tr.savings, style: text.labelSmall?.copyWith(color: colors.onHeroSecondary, fontSize: 11)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    MoneyFormatter.format(viewModel.savingsBalanceMinor, viewModel.baseCurrency),
-                                    style: text.labelLarge?.copyWith(color: colors.onHero, fontWeight: FontWeight.w700),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
+                    ),
+                    const SizedBox(height: AppSpace.xs),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _HeroAccountCard(
+                            title: tr.everyday,
+                            icon: HugeIcons.strokeRoundedBank,
+                            balanceMinor: viewModel.everydayBalanceMinor,
+                            currency: viewModel.baseCurrency,
+                            onTap: () => context.push(AppRoutes.accounts),
+                          ),
+                          for (final sAcc in viewModel.savingsAccounts) ...[
+                            const SizedBox(width: AppSpace.sm),
+                            _HeroAccountCard(
+                              title: sAcc.name,
+                              icon: HugeIcons.strokeRoundedSafe,
+                              balanceMinor: viewModel.balanceOf(sAcc.id),
+                              currency: sAcc.currencyCode,
+                              onTap: () => context.push(AppRoutes.plan),
+                            ),
+                          ],
+                          if (viewModel.savingsAccounts.isEmpty) ...[
+                            const SizedBox(width: AppSpace.sm),
+                            _HeroAccountCard(
+                              title: tr.savings,
+                              icon: HugeIcons.strokeRoundedSafe,
+                              balanceMinor: viewModel.savingsBalanceMinor,
+                              currency: viewModel.baseCurrency,
+                              onTap: () => context.push(AppRoutes.plan),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                     if (viewModel.sparklinePoints.isNotEmpty) ...[
                       const SizedBox(height: AppSpace.md),
@@ -434,32 +441,99 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
 
-            // Quick actions
+            // Quick Actions 2x2 Grid Section
             const SizedBox(height: AppSpace.xl),
-            Row(
+            SectionHeader(
+              tr.t(
+                'Quick Actions',
+                ne: 'द्रुत कार्यहरू',
+                hi: 'त्वरित क्रियाएँ',
+                es: 'Acciones Rápidas',
+                fr: 'Actions Rapides',
+                de: 'Schnellaktionen',
+                ja: 'クイック操作',
+                zh: '快捷操作',
+                it: 'Azioni rapide',
+              ),
+            ),
+            const SizedBox(height: AppSpace.sm),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: AppSpace.sm,
+              crossAxisSpacing: AppSpace.sm,
+              childAspectRatio: 2.1,
               children: [
-                Expanded(
-                  child: workViewModel.isClockedIn
-                      ? AppButton(
-                          tr.activeShift,
-                          icon: HugeIcons.strokeRoundedClock01,
-                          kind: AppButtonKind.success,
-                          onPressed: () => context.push(AppRoutes.liveShift),
-                        )
-                      : AppButton(
-                          tr.startShift,
-                          icon: HugeIcons.strokeRoundedPlay,
-                          kind: AppButtonKind.secondary,
-                          onPressed: () => context.push(AppRoutes.startShift),
+                _QuickActionTile(
+                  title: workViewModel.isClockedIn ? tr.activeShift : tr.startShift,
+                  subtitle: workViewModel.isClockedIn
+                      ? tr.running
+                      : tr.t(
+                          'Track hours',
+                          ne: 'घण्टा ट्र्याक गर्नुहोस्',
+                          hi: 'घंटे ट्रैक करें',
+                          es: 'Controlar horas',
+                          fr: 'Suivre les heures',
+                          de: 'Stunden erfassen',
+                          ja: '時間を記録',
+                          zh: '工时追踪',
+                          it: 'Traccia ore',
                         ),
+                  icon: workViewModel.isClockedIn ? HugeIcons.strokeRoundedClock01 : HugeIcons.strokeRoundedPlay,
+                  iconColor: workViewModel.isClockedIn ? colors.income : colors.brand,
+                  onTap: () => context.push(workViewModel.isClockedIn ? AppRoutes.liveShift : AppRoutes.startShift),
                 ),
-                const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: AppButton(
-                    tr.hyprAi,
-                    icon: HugeIcons.strokeRoundedChatBot,
-                    onPressed: () => context.push(AppRoutes.assistant),
+                _QuickActionTile(
+                  title: tr.hyprAi,
+                  subtitle: tr.t(
+                    'Financial AI',
+                    ne: 'वित्तीय एआई',
+                    hi: 'वित्तीय एआई',
+                    es: 'IA Financiera',
+                    fr: 'IA Financière',
+                    de: 'Finanz-KI',
+                    ja: 'AIアシスタント',
+                    zh: 'AI 财务顾问',
+                    it: 'IA Finanziaria',
                   ),
+                  icon: HugeIcons.strokeRoundedChatBot,
+                  iconColor: const Color(0xFF8B5CF6),
+                  onTap: () => context.push(AppRoutes.assistant),
+                ),
+                _QuickActionTile(
+                  title: tr.analytics,
+                  subtitle: tr.t(
+                    'Charts & Reports',
+                    ne: 'चार्ट र रिपोर्टहरू',
+                    hi: 'चार्ट और रिपोर्ट',
+                    es: 'Gráficos e Informes',
+                    fr: 'Graphiques & Rapports',
+                    de: 'Berichte & Charts',
+                    ja: 'チャートとレポート',
+                    zh: '图表与报告',
+                    it: 'Grafici e Report',
+                  ),
+                  icon: HugeIcons.strokeRoundedChartHistogram,
+                  iconColor: const Color(0xFF3B82F6),
+                  onTap: () => context.push(AppRoutes.analytics),
+                ),
+                _QuickActionTile(
+                  title: tr.settings,
+                  subtitle: tr.t(
+                    'Preferences',
+                    ne: 'प्राथमिकताहरू',
+                    hi: 'प्राथमिकताएं',
+                    es: 'Preferencias',
+                    fr: 'Préférences',
+                    de: 'Einstellungen',
+                    ja: '設定と環境',
+                    zh: '偏好设置',
+                    it: 'Preferenze',
+                  ),
+                  icon: HugeIcons.strokeRoundedSlidersHorizontal,
+                  iconColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                  onTap: () => context.push(AppRoutes.settings),
                 ),
               ],
             ),
@@ -686,6 +760,143 @@ class _ActiveShiftBanner extends StatelessWidget {
               compact: true,
               kind: AppButtonKind.outline,
               onPressed: () => context.push(AppRoutes.liveShift),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroAccountCard extends StatelessWidget {
+  const _HeroAccountCard({
+    required this.title,
+    required this.icon,
+    required this.balanceMinor,
+    required this.currency,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconGlyph icon;
+  final int balanceMinor;
+  final String currency;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final text = Theme.of(context).textTheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+        decoration: BoxDecoration(
+          color: colors.onHero.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: colors.onHeroSecondary.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                AppIcon(icon, size: 12, color: colors.onHeroSecondary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: text.labelSmall?.copyWith(color: colors.onHeroSecondary, fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              MoneyFormatter.format(balanceMinor, currency),
+              style: text.labelLarge?.copyWith(color: colors.onHero, fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconGlyph icon;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              alignment: Alignment.center,
+              child: AppIcon(icon, size: 20, color: iconColor),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    subtitle,
+                    style: text.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
