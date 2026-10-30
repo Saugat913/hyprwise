@@ -170,14 +170,6 @@ class _MoneyScreenState extends State<MoneyScreen> {
                     ),
                   ),
 
-                if (txs.isNotEmpty) ...[
-                  _SummaryStrip(
-                    income: txs.where((t) => t.type == 'income').fold(0, (a, t) => a + t.amountMinor),
-                    expense: txs.where((t) => t.type == 'expense').fold(0, (a, t) => a + t.amountMinor),
-                    currency: viewModel.baseCurrency,
-                  ),
-                  const SizedBox(height: AppSpace.md),
-                ],
 
                 if (txs.isEmpty)
                   SizedBox(
@@ -260,57 +252,6 @@ class _MoneyScreenState extends State<MoneyScreen> {
       groups.putIfAbsent(date, () => []).add(t);
     }
     return groups.entries.map((e) => _DayGroup(date: e.key, transactions: e.value)).toList();
-  }
-}
-
-class _SummaryStrip extends StatelessWidget {
-  const _SummaryStrip({required this.income, required this.expense, required this.currency});
-
-  final int income;
-  final int expense;
-  final String currency;
-
-  @override
-  Widget build(BuildContext context) {
-    final tr = context.strings;
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final colors = context.colors;
-    final net = income - expense;
-    Widget cell(String label, String value, Color color) => Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
-              const SizedBox(height: 2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  value,
-                  style: text.titleSmall?.copyWith(
-                    fontFamily: 'RedditMono',
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-    return AppCard(
-      child: Row(
-        children: [
-          cell(tr.income, MoneyFormatter.format(income, currency), colors.income),
-          cell(tr.expense, MoneyFormatter.format(expense, currency), colors.expense),
-          cell(
-            tr.t('Net', ne: 'खुद', es: 'Neto', fr: 'Net', de: 'Netto', ja: '差額', zh: '净额', it: 'Netto'),
-            '${net >= 0 ? '+' : '−'}${MoneyFormatter.format(net.abs(), currency)}',
-            net >= 0 ? colors.income : colors.expense,
-          ),
-        ],
-      ),
-    );
   }
 }
 

@@ -10,8 +10,23 @@ import 'package:finance_tracker/features/alerts/data/model/alerts.dart';
 import 'package:finance_tracker/features/alerts/viewmodels/alerts_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        getIt<AlertsViewModel>().markAllAsRead();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -19,11 +19,48 @@ class AlertsViewModel extends ChangeNotifier {
     financeStore.addListener(_onChanged);
     settingsRepo.addListener(_onChanged);
     _initRules();
+    _loadReadAlerts();
   }
 
   final FinanceStore financeStore;
   final SettingsRepository settingsRepo;
   final ReminderRuleRepository reminderRuleRepo;
+
+  static const keyReadAlerts = 'read_alert_keys';
+  Set<String> _readAlertKeys = <String>{};
+
+  Future<void> _loadReadAlerts() async {
+    try {
+      final saved = await settingsRepo.getString(keyReadAlerts);
+      if (saved != null && saved.isNotEmpty) {
+        _readAlertKeys = saved.split('|||').toSet();
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// Number of unread alerts currently surfaced
+  int get unreadCount {
+    final activeAlerts = alerts;
+    if (activeAlerts.isEmpty) return 0;
+    return activeAlerts.where((a) => !_readAlertKeys.contains('${a.title}__${a.message}')).length;
+  }
+
+  /// Whether a specific alert has already been read
+  bool isRead(FinanceAlert alert) => _readAlertKeys.contains('${alert.title}__${alert.message}');
+
+  /// Marks all current alerts as read and persists the state
+  Future<void> markAllAsRead() async {
+    final activeAlerts = alerts;
+    if (activeAlerts.isEmpty && _readAlertKeys.isEmpty) return;
+    for (final a in activeAlerts) {
+      _readAlertKeys.add('${a.title}__${a.message}');
+    }
+    notifyListeners();
+    try {
+      await settingsRepo.setString(keyReadAlerts, _readAlertKeys.join('|||'));
+    } catch (_) {}
+  }
 
   StreamSubscription<List<ReminderRule>>? _rulesSub;
   List<ReminderRule> _rules = const [];

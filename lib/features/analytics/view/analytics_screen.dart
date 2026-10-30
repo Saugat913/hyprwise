@@ -90,58 +90,42 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               Padding(
                 padding: const EdgeInsets.only(right: AppSpace.page),
                 child: Center(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                      onTap:
-                          () => AnalyticsPdfService.showPdfExportSheet(
-                            context,
-                            viewModel,
-                          ),
-                      child: Container(
-                        height: 32,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpace.md,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colors.brand.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          border: Border.all(
-                            color: colors.brand.withValues(alpha: 0.35),
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AppIcon(
-                              HugeIcons.strokeRoundedFileExport,
-                              size: 15,
-                              color: colors.brand,
-                            ),
-                            const SizedBox(width: AppSpace.xs + 1),
-                            Text(
-                              tr.t(
-                                'Export',
-                                ne: 'निर्यात',
-                                es: 'Exportar',
-                                fr: 'Exporter',
-                                de: 'Export',
-                                ja: 'エクスポート',
-                                zh: '导出',
-                                it: 'Esporta',
-                              ),
-                              style: text.labelSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: colors.brand,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: scheme.onSurface,
+                      foregroundColor: scheme.surface,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                      minimumSize: const Size(0, 32),
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: AppIcon(
+                      HugeIcons.strokeRoundedFileExport,
+                      size: 14,
+                      color: scheme.surface,
+                    ),
+                    label: Text(
+                      tr.t(
+                        'Export',
+                        ne: 'निर्यात',
+                        es: 'Exportar',
+                        fr: 'Exporter',
+                        de: 'Export',
+                        ja: 'エクスポート',
+                        zh: '导出',
+                        it: 'Esporta',
+                      ),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: scheme.surface,
+                        fontSize: 12,
                       ),
                     ),
+                    onPressed:
+                        () => AnalyticsPdfService.showPdfExportSheet(
+                          context,
+                          viewModel,
+                        ),
                   ),
                 ),
               ),

@@ -45,19 +45,27 @@ class HomeScreen extends StatelessWidget {
                 return ListenableBuilder(
                   listenable: alertsVm,
                   builder: (context, _) {
-                    final unreadCount = alertsVm.alerts.length;
+                    final unreadCount = alertsVm.unreadCount;
+                    final iconButton = RoundIconButton(
+                      HugeIcons.strokeRoundedNotification01,
+                      onPressed: () {
+                        alertsVm.markAllAsRead();
+                        context.push(AppRoutes.notifications);
+                      },
+                    );
+
+                    if (unreadCount <= 0) {
+                      return iconButton;
+                    }
+
                     return Badge(
-                      isLabelVisible: unreadCount > 0,
                       label: Text(
                         tr.formatNumber(unreadCount),
                         style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                       backgroundColor: colors.expense,
                       offset: const Offset(-2, 2),
-                      child: RoundIconButton(
-                        HugeIcons.strokeRoundedNotification01,
-                        onPressed: () => context.push(AppRoutes.notifications),
-                      ),
+                      child: iconButton,
                     );
                   },
                 );

@@ -160,6 +160,22 @@ class SettingsRepository extends ChangeNotifier {
     );
   }
 
+  Future<String?> getString(String key) async {
+    final row = await (_db.select(_db.appPreferences)
+          ..where((p) => p.key.equals(key)))
+        .getSingleOrNull();
+    return row?.value;
+  }
+
+  Future<void> setString(String key, String value) async {
+    await _db.into(_db.appPreferences).insertOnConflictUpdate(
+          AppPreferencesCompanion.insert(
+            key: key,
+            value: value,
+          ),
+        );
+  }
+
   /// Applies [next] immediately, then persists [entries]; a null value
   /// deletes the key.
   Future<void> _apply(AppSettings next, Map<String, String?> entries) async {
