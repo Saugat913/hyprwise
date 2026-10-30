@@ -103,7 +103,11 @@ abstract final class ExportService {
       }
     } catch (_) {}
 
-    return await getApplicationDocumentsDirectory();
+    try {
+      return await getApplicationDocumentsDirectory();
+    } catch (_) {
+      return Directory.systemTemp;
+    }
   }
 
   /// Generates the exported file content and writes it to disk or shares it

@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/export/export_service.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
@@ -16,10 +17,15 @@ import 'package:finance_tracker/features/analytics/viewmodels/analytics_view_mod
 import 'package:finance_tracker/features/debts/data/model/debt.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
+import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 
 abstract final class AnalyticsPdfService {
   /// Generates the branded PDF document for the active analytics state
-  static Future<File> generatePdf(AnalyticsViewModel vm) async {
+  static Future<File> generatePdf(
+    AnalyticsViewModel vm, {
+    bool? isProOverride,
+    Directory? outputDirectory,
+  }) async {
     final pdf = pw.Document();
 
     final (start, end) = vm.dateRange;
@@ -43,6 +49,10 @@ abstract final class AnalyticsPdfService {
     final netDebtMinor = lendData.totalMinor - borrowData.totalMinor;
     final transactions = vm.filteredTransactions;
 
+    // Determine Pro status (for watermark removal)
+    final subService = getIt.isRegistered<SubscriptionService>() ? getIt<SubscriptionService>() : null;
+    final isPro = isProOverride ?? (subService?.isPro ?? false);
+
     // Load brand icon if available
     pw.ImageProvider? brandLogo;
     try {
@@ -50,68 +60,50 @@ abstract final class AnalyticsPdfService {
       brandLogo = pw.MemoryImage(logoBytes.buffer.asUint8List());
     } catch (_) {}
 
-    // Colors matching Hyprwise branding
-    final primaryColor = PdfColor.fromHex('#FF6500'); // Hyprwise Brand Orange
-    final darkColor = PdfColor.fromHex('#1F2726'); // Hyprwise Ink
-    final secondaryTextColor = PdfColor.fromHex('#64748B');
-    final surfaceColor = PdfColor.fromHex('#F8FAFC');
-    final borderColor = PdfColor.fromHex('#E2E8F0');
-    final accentGreen = PdfColor.fromHex('#16A34A');
-    final accentOrange = PdfColor.fromHex('#EA580C');
+    // Colors: Hyprwise Brand Orange used exclusively for the top header branding.
+    // The rest of the document uses a clean black-and-white / monochrome palette.
+    final brandPrimary = PdfColor.fromHex('#FF6500'); // Hyprwise Brand Orange
+    final darkColor = PdfColor.fromHex('#111827'); // Primary deep black/charcoal
+    final secondaryTextColor = PdfColor.fromHex('#4B5563'); // Muted secondary text
+    final surfaceColor = PdfColor.fromHex('#F9FAFB'); // Light grey surface background
+    final borderColor = PdfColor.fromHex('#E5E7EB'); // Subtle neutral border
+    final barFillColor = PdfColor.fromHex('#1F2937'); // Solid dark fill for category bars
+    final barTrackColor = PdfColor.fromHex('#E5E7EB'); // Neutral track for category bars
+    final watermarkColor = PdfColor.fromHex('#E5E7EB'); // Subtle watermark grey for free tier
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        header: (context) {
-          return pw.Container(
-            padding: const pw.EdgeInsets.only(bottom: 12),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Row(
-                  children: [
-                    if (brandLogo != null) ...[
-                      pw.Container(
-                        width: 24,
-                        height: 24,
-                        margin: const pw.EdgeInsets.only(right: 8),
-                        child: pw.Image(brandLogo),
-                      ),
-                    ],
-                    pw.Text(
-                      'HYPRWISE',
-                      style: pw.TextStyle(
-                        color: primaryColor,
-                        fontSize: 14,
-                        fontWeight: pw.FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
+        pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          buildBackground: (context) {
+            if (isPro) {
+              return pw.SizedBox();
+            }
+            // Hyprwise watermark across the page for the free tier
+            return pw.FullPage(
+              ignoreMargins: true,
+              child: pw.Center(
+                child: pw.Transform.rotate(
+                  angle: -0.45,
+                  child: pw.Text(
+                    'HYPRWISE',
+                    style: pw.TextStyle(
+                      color: watermarkColor,
+                      fontSize: 76,
+                      fontWeight: pw.FontWeight.bold,
+                      letterSpacing: 14,
                     ),
-                    pw.Text(
-                      ' · Comprehensive Analytics Report',
-                      style: pw.TextStyle(
-                        color: secondaryTextColor,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                pw.Text(
-                  nowFormatted,
-                  style: pw.TextStyle(color: secondaryTextColor, fontSize: 9),
-                ),
-              ],
-            ),
-          );
-        },
+              ),
+            );
+          },
+        ),
         footer: (context) {
           return pw.Container(
-            margin: const pw.EdgeInsets.only(top: 16),
-            padding: const pw.EdgeInsets.only(top: 8),
+            margin: const pw.EdgeInsets.only(top: 14),
+            padding: const pw.EdgeInsets.only(top: 6),
             decoration: const pw.BoxDecoration(
               border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
             ),
@@ -131,56 +123,108 @@ abstract final class AnalyticsPdfService {
           );
         },
         build: (context) => [
-          pw.SizedBox(height: 12),
-
-          // Title & Period Banner
+          // Top Document Branding Header (Rendered once on Page 1)
           pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Row(
+                children: [
+                  if (brandLogo != null) ...[
+                    pw.Container(
+                      width: 26,
+                      height: 26,
+                      margin: const pw.EdgeInsets.only(right: 8),
+                      child: pw.Image(brandLogo),
+                    ),
+                  ],
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'HYPRWISE',
+                        style: pw.TextStyle(
+                          color: brandPrimary,
+                          fontSize: 15,
+                          fontWeight: pw.FontWeight.bold,
+                          letterSpacing: 1.8,
+                        ),
+                      ),
+                      pw.Text(
+                        'Personal Finance & Shift Management',
+                        style: pw.TextStyle(color: secondaryTextColor, fontSize: 8),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: pw.BoxDecoration(
+                      borderRadius: pw.BorderRadius.circular(4),
+                      border: pw.Border.all(color: borderColor, width: 0.8),
+                    ),
+                    child: pw.Text(
+                      'ANALYTICS REPORT',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: darkColor,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    nowFormatted,
+                    style: pw.TextStyle(color: secondaryTextColor, fontSize: 7.5),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 6),
+          pw.Divider(color: brandPrimary, thickness: 1.2),
+          pw.SizedBox(height: 10),
+
+          // Period & Currency Info
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    'Comprehensive Analytics Report',
+                    'Comprehensive Analytics Summary',
                     style: pw.TextStyle(
-                      fontSize: 20,
+                      fontSize: 16,
                       fontWeight: pw.FontWeight.bold,
                       color: darkColor,
                     ),
                   ),
-                  pw.SizedBox(height: 4),
+                  pw.SizedBox(height: 3),
                   pw.Text(
-                    'Period: $startDateStr to $endDateStr (${vm.dateFilter.label}) · Base Currency: $currency',
-                    style: pw.TextStyle(fontSize: 10, color: secondaryTextColor),
+                    'Period: $startDateStr - $endDateStr (${vm.dateFilter.label})',
+                    style: pw.TextStyle(fontSize: 9.5, color: secondaryTextColor),
                   ),
                 ],
               ),
-              pw.Container(
-                padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: pw.BoxDecoration(
-                  color: PdfColor.fromHex('#FFF7ED'),
-                  borderRadius: pw.BorderRadius.circular(6),
-                  border: pw.Border.all(color: PdfColor.fromHex('#FDBA74'), width: 0.8),
-                ),
-                child: pw.Text(
-                  'EXECUTIVE REPORT',
-                  style: pw.TextStyle(
-                    fontSize: 9,
-                    fontWeight: pw.FontWeight.bold,
-                    color: primaryColor,
-                  ),
-                ),
+              pw.Text(
+                'Base Currency: $currency',
+                style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: darkColor),
               ),
             ],
           ),
-
           pw.SizedBox(height: 14),
 
-          // Section 1: Executive Overview KPIs
+          // Section 1: Executive Overview KPIs (Black & White)
           pw.Text(
             '1. EXECUTIVE OVERVIEW',
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+            style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
           pw.Row(
@@ -189,7 +233,7 @@ abstract final class AnalyticsPdfService {
                 child: _buildMetricCard(
                   title: 'Total Income',
                   value: '$currency ${(incomeTotal / 100).toStringAsFixed(2)}',
-                  valueColor: accentGreen,
+                  valueColor: darkColor,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
@@ -201,7 +245,7 @@ abstract final class AnalyticsPdfService {
                 child: _buildMetricCard(
                   title: 'Total Expenses',
                   value: '$currency ${(expenseTotal / 100).toStringAsFixed(2)}',
-                  valueColor: accentOrange,
+                  valueColor: darkColor,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
@@ -213,7 +257,7 @@ abstract final class AnalyticsPdfService {
                 child: _buildMetricCard(
                   title: 'Net Savings',
                   value: '$currency ${(netSavingsMinor / 100).toStringAsFixed(2)}',
-                  valueColor: netSavingsMinor >= 0 ? accentGreen : accentOrange,
+                  valueColor: darkColor,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
@@ -229,7 +273,7 @@ abstract final class AnalyticsPdfService {
                 child: _buildMetricCard(
                   title: 'Savings Rate',
                   value: '${savingsRate.toStringAsFixed(1)}%',
-                  valueColor: savingsRate >= 20 ? accentGreen : darkColor,
+                  valueColor: darkColor,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
@@ -267,10 +311,10 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Section 2: Income Analysis
+          // Section 2: Income Analysis (Black & White)
           pw.Text(
             '2. INCOME ANALYSIS',
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+            style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
           pw.Container(
@@ -286,13 +330,13 @@ abstract final class AnalyticsPdfService {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('Income Categories (${incomeData.categories.length})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: darkColor)),
+                    pw.Text('Income Categories (${incomeData.categories.length})', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: darkColor)),
                     pw.Text('Total: $currency ${(incomeTotal / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 9, color: secondaryTextColor, fontWeight: pw.FontWeight.bold)),
                   ],
                 ),
                 pw.SizedBox(height: 8),
                 if (incomeData.categories.isEmpty)
-                  pw.Text('No income records for this period.', style: pw.TextStyle(fontSize: 9, color: secondaryTextColor))
+                  pw.Text('No income records for this period.', style: pw.TextStyle(fontSize: 8.5, color: secondaryTextColor))
                 else
                   for (final cat in incomeData.categories.take(6)) ...[
                     _buildCategoryChartBar(
@@ -300,7 +344,8 @@ abstract final class AnalyticsPdfService {
                       amountMinor: cat.amountMinor,
                       totalMinor: incomeTotal > 0 ? incomeTotal : 1,
                       currency: currency,
-                      barColor: accentGreen,
+                      barColor: barFillColor,
+                      trackColor: barTrackColor,
                       textColor: darkColor,
                       secondaryTextColor: secondaryTextColor,
                     ),
@@ -328,10 +373,10 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Section 3: Expense Analysis
+          // Section 3: Expense Analysis (Black & White)
           pw.Text(
             '3. EXPENSE ANALYSIS',
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+            style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
           pw.Container(
@@ -347,13 +392,13 @@ abstract final class AnalyticsPdfService {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('Expense Categories (${expenseData.categories.length})', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: darkColor)),
+                    pw.Text('Expense Categories (${expenseData.categories.length})', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: darkColor)),
                     pw.Text('Total: $currency ${(expenseTotal / 100).toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 9, color: secondaryTextColor, fontWeight: pw.FontWeight.bold)),
                   ],
                 ),
                 pw.SizedBox(height: 8),
                 if (expenseData.categories.isEmpty)
-                  pw.Text('No expense records for this period.', style: pw.TextStyle(fontSize: 9, color: secondaryTextColor))
+                  pw.Text('No expense records for this period.', style: pw.TextStyle(fontSize: 8.5, color: secondaryTextColor))
                 else
                   for (final cat in expenseData.categories.take(6)) ...[
                     _buildCategoryChartBar(
@@ -361,7 +406,8 @@ abstract final class AnalyticsPdfService {
                       amountMinor: cat.amountMinor,
                       totalMinor: expenseTotal > 0 ? expenseTotal : 1,
                       currency: currency,
-                      barColor: accentOrange,
+                      barColor: barFillColor,
+                      trackColor: barTrackColor,
                       textColor: darkColor,
                       secondaryTextColor: secondaryTextColor,
                     ),
@@ -389,10 +435,10 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Section 4: Lending & Borrowing Analysis
+          // Section 4: Lending & Borrowing Analysis (Black & White)
           pw.Text(
             '4. LENDING & BORROWING (DEBTS)',
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+            style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
           pw.Row(
@@ -402,7 +448,7 @@ abstract final class AnalyticsPdfService {
                   title: 'Total Lent (Money You Lent)',
                   value: '$currency ${(lendData.totalMinor / 100).toStringAsFixed(2)}',
                   subtitle: 'Outstanding: $currency ${(lendData.outstandingMinor / 100).toStringAsFixed(2)} · Settled: $currency ${(lendData.settledMinor / 100).toStringAsFixed(2)}',
-                  valueColor: accentGreen,
+                  valueColor: darkColor,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
@@ -415,7 +461,7 @@ abstract final class AnalyticsPdfService {
                   title: 'Total Borrowed (Money You Owe)',
                   value: '$currency ${(borrowData.totalMinor / 100).toStringAsFixed(2)}',
                   subtitle: 'Outstanding: $currency ${(borrowData.outstandingMinor / 100).toStringAsFixed(2)} · Settled: $currency ${(borrowData.settledMinor / 100).toStringAsFixed(2)}',
-                  valueColor: accentOrange,
+                  valueColor: darkColor,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
@@ -445,10 +491,10 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Section 5: Shifts & Work Wage Analysis
+          // Section 5: Shifts & Work Wage Analysis (Black & White)
           pw.Text(
             '5. SHIFTS & WORK ANALYSIS',
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+            style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
           pw.Row(
@@ -482,7 +528,7 @@ abstract final class AnalyticsPdfService {
                 child: _buildMetricCard(
                   title: 'Total Shift Earnings',
                   value: '$currency ${(workData.earningsMinor / 100).toStringAsFixed(2)}',
-                  valueColor: primaryColor,
+                  valueColor: darkColor,
                   surfaceColor: surfaceColor,
                   borderColor: borderColor,
                   textColor: darkColor,
@@ -510,14 +556,14 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Section 6: Itemized Transaction Register
+          // Section 6: Itemized Transaction Register (Black & White)
           pw.Text(
             '6. ITEMIZED TRANSACTION REGISTER (${transactions.length} records)',
-            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryColor, letterSpacing: 0.5),
+            style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
           if (transactions.isEmpty)
-            pw.Text('No transactions recorded in this period.', style: pw.TextStyle(color: secondaryTextColor, fontSize: 9))
+            pw.Text('No transactions recorded in this period.', style: pw.TextStyle(color: secondaryTextColor, fontSize: 8.5))
           else
             pw.TableHelper.fromTextArray(
               border: pw.TableBorder.all(color: borderColor, width: 0.5),
@@ -533,7 +579,7 @@ abstract final class AnalyticsPdfService {
                     DateFormatter.numeric(DateTime.fromMillisecondsSinceEpoch(t.occurredAt)),
                     t.type.toUpperCase(),
                     t.category,
-                    t.note != null && t.note!.isNotEmpty ? t.note! : '—',
+                    t.note != null && t.note!.isNotEmpty ? t.note! : '-',
                     '$currency ${(t.amountMinor / 100).toStringAsFixed(2)}',
                   ],
               ],
@@ -543,7 +589,7 @@ abstract final class AnalyticsPdfService {
     );
 
     // Save PDF to Public Downloads directory
-    final targetDir = await ExportService.getPublicDownloadsDirectory();
+    final targetDir = outputDirectory ?? await ExportService.getPublicDownloadsDirectory();
     final dateStr = DateFormatter.numeric(DateTime.now(), locale: 'en').replaceAll('/', '-');
     final fileName = 'hyprwise_analytics_report_$dateStr.pdf';
     final file = File('${targetDir.path}/$fileName');
@@ -604,6 +650,7 @@ abstract final class AnalyticsPdfService {
     required int totalMinor,
     required String currency,
     required PdfColor barColor,
+    required PdfColor trackColor,
     required PdfColor textColor,
     required PdfColor secondaryTextColor,
   }) {
@@ -633,7 +680,7 @@ abstract final class AnalyticsPdfService {
             pw.Container(
               height: 7,
               decoration: pw.BoxDecoration(
-                color: PdfColor.fromHex('#F1F5F9'),
+                color: trackColor,
                 borderRadius: pw.BorderRadius.circular(3),
               ),
             ),
