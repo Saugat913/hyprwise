@@ -42,6 +42,7 @@ class DataRepository {
     final rates = await _db.select(_db.exchangeRates).get();
     final shiftBreaks = await _db.select(_db.shiftBreaks).get();
     final reminderRules = await _db.select(_db.reminderRules).get();
+    final preferences = await _db.select(_db.appPreferences).get();
 
     final payload = {
       'version': 1,
@@ -58,6 +59,12 @@ class DataRepository {
       'exchangeRates': rates.map((e) => e.toJson()).toList(),
       'shiftBreaks': shiftBreaks.map((e) => e.toJson()).toList(),
       'reminderRules': reminderRules.map((e) => e.toJson()).toList(),
+      // Preferences are part of a Pro cloud snapshot.  Without them a new
+      // device can restore the ledger but still asks the customer to repeat
+      // language/currency onboarding.
+      'preferences': preferences
+          .map((e) => {'key': e.key, 'value': e.value})
+          .toList(),
     };
 
     TelemetryService.instance.trackEvent('data_exported', {
@@ -239,6 +246,22 @@ class DataRepository {
           await _db.into(_db.exchangeRates).insert(
             ExchangeRate.fromJson(item as Map<String, dynamic>),
           );
+        }
+      }
+
+      // Older exports did not include preferences, so keep the current device
+      // preferences when that field is absent.
+      if (data['preferences'] is List) {
+        await _db.delete(_db.appPreferences).go();
+        for (final item in data['preferences']) {
+          final preference = item as Map<String, dynamic>;
+          final key = preference['key'] as String?;
+          final value = preference['value'] as String?;
+          if (key != null && value != null) {
+            await _db.into(_db.appPreferences).insert(
+              AppPreferencesCompanion.insert(key: key, value: value),
+            );
+          }
         }
       }
     });

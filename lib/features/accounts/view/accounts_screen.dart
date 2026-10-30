@@ -33,21 +33,20 @@ class AccountsScreen extends StatelessWidget {
           appBar: AppTopBar(
             title: tr.accounts,
             actions: [
-              if (accounts.length >= 2)
-                TopBarAction(
-                  HugeIcons.strokeRoundedExchange01,
-                  tooltip: tr.t(
-                    'Transfer',
-                    ne: 'रकम सार्नुहोस्',
-                    es: 'Transferir',
-                    fr: 'Transférer',
-                    de: 'Überweisen',
-                    ja: '振替',
-                    zh: '转账',
-                    it: 'Trasferisci',
-                  ),
-                  onPressed: () => showTransferFormModal(context),
+              TopBarAction(
+                HugeIcons.strokeRoundedExchange01,
+                tooltip: tr.t(
+                  'Transfer',
+                  ne: 'रकम सार्नुहोस्',
+                  es: 'Transferir',
+                  fr: 'Transférer',
+                  de: 'Überweisen',
+                  ja: '振替',
+                  zh: '转账',
+                  it: 'Trasferisci',
                 ),
+                onPressed: () => showTransferFormModal(context, accounts: accounts),
+              ),
               TopBarAction(
                 HugeIcons.strokeRoundedPlusSign,
                 tooltip: tr.addAccount,

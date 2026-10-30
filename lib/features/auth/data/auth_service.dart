@@ -11,21 +11,25 @@ import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
 import 'package:finance_tracker/features/assistant/viewmodels/assistant_view_model.dart';
 import 'package:finance_tracker/features/auth/data/model/user_profile.dart';
 import 'package:finance_tracker/features/settings/data/repository/data_repository.dart';
+import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 class AuthService extends ChangeNotifier {
   AuthService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
   UserProfile? _currentUser;
   bool _isLoading = false;
+  bool _isCloudSyncing = false;
 
   UserProfile? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
-  bool get isGuest => _currentUser == null || _currentUser?.provider == AuthProvider.guest;
+  bool get isGuest =>
+      _currentUser == null || _currentUser?.provider == AuthProvider.guest;
   bool get isLoading => _isLoading;
+  bool get isCloudSyncing => _isCloudSyncing;
 
   static const _userKey = 'auth_user_profile';
   static const _tokenKey = 'auth_api_token';
@@ -35,7 +39,10 @@ class AuthService extends ChangeNotifier {
 
   /// Deterministic canonical fallback user ID from normalized email
   /// so the same email address always maps to the same user ID even before server sync.
-  static String deterministicUserIdFromEmail(String email, {String prefix = 'usr_g_'}) {
+  static String deterministicUserIdFromEmail(
+    String email, {
+    String prefix = 'usr_g_',
+  }) {
     final norm = email.trim().toLowerCase();
     int h1 = 0x811c9dc5;
     int h2 = 0x01000193;
@@ -45,7 +52,8 @@ class AuthService extends ChangeNotifier {
       h2 ^= (code * 31) & 0xFF;
       h2 = (h2 * 0x85ebca6b) & 0xFFFFFFFF;
     }
-    final hex = '${h1.toRadixString(16).padLeft(8, '0')}${h2.toRadixString(16).padLeft(8, '0')}';
+    final hex =
+        '${h1.toRadixString(16).padLeft(8, '0')}${h2.toRadixString(16).padLeft(8, '0')}';
     return '$prefix$hex';
   }
 
@@ -59,7 +67,8 @@ class AuthService extends ChangeNotifier {
     if (serverUser != null) {
       final used = serverUser['dailyAiQueriesUsed'] as int?;
       final left = serverUser['dailyAiQueriesLeft'] as int?;
-      if (getIt.isRegistered<AssistantViewModel>() && (used != null || left != null)) {
+      if (getIt.isRegistered<AssistantViewModel>() &&
+          (used != null || left != null)) {
         getIt<AssistantViewModel>().updateQuotaFromServer(
           used: used ?? (left != null ? (5 - left).clamp(0, 5) : 0),
           left: left,
@@ -85,8 +94,14 @@ class AuthService extends ChangeNotifier {
           email: _currentUser!.email,
         );
         TelemetryService.instance.setUserId(_currentUser!.id);
-        TelemetryService.instance.setUserProperty(name: 'is_pro', value: _currentUser!.isPro.toString());
-        TelemetryService.instance.setUserProperty(name: 'auth_provider', value: _currentUser!.provider.name);
+        TelemetryService.instance.setUserProperty(
+          name: 'is_pro',
+          value: _currentUser!.isPro.toString(),
+        );
+        TelemetryService.instance.setUserProperty(
+          name: 'auth_provider',
+          value: _currentUser!.provider.name,
+        );
         notifyListeners();
       }
     } catch (e) {
@@ -94,11 +109,15 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<UserProfile> signInWithGoogle({String? email, String? displayName}) async {
+  Future<UserProfile> signInWithGoogle({
+    String? email,
+    String? displayName,
+  }) async {
     _isLoading = true;
     notifyListeners();
     try {
-      String userEmail = (email ?? 'user.finance@gmail.com').trim().toLowerCase();
+      String userEmail =
+          (email ?? 'user.finance@gmail.com').trim().toLowerCase();
       String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
       String userName = displayName ?? 'Google User';
       String? photoUrl;
@@ -122,7 +141,8 @@ class AuthService extends ChangeNotifier {
               idToken: gAuth.idToken,
             );
 
-            final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+            final userCredential = await FirebaseAuth.instance
+                .signInWithCredential(credential);
             final fbUser = userCredential.user;
             if (fbUser != null) {
               userId = fbUser.uid;
@@ -176,6 +196,8 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
+      await _restoreProCloudAfterSignIn();
+
       if (getIt.isRegistered<AssistantViewModel>()) {
         unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
       }
@@ -183,8 +205,14 @@ class AuthService extends ChangeNotifier {
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
       TelemetryService.instance.logLogin(loginMethod: 'google');
-      TelemetryService.instance.setUserProperty(name: 'auth_provider', value: 'google');
-      TelemetryService.instance.setUserProperty(name: 'is_pro', value: isPro.toString());
+      TelemetryService.instance.setUserProperty(
+        name: 'auth_provider',
+        value: 'google',
+      );
+      TelemetryService.instance.setUserProperty(
+        name: 'is_pro',
+        value: isPro.toString(),
+      );
 
       return user;
     } finally {
@@ -197,7 +225,8 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      String userEmail = (email ?? 'user.finance@icloud.com').trim().toLowerCase();
+      String userEmail =
+          (email ?? 'user.finance@icloud.com').trim().toLowerCase();
       String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_');
       String userName = fullName ?? 'Apple User';
       String? idToken;
@@ -205,7 +234,9 @@ class AuthService extends ChangeNotifier {
       if (_hasFirebase) {
         try {
           final appleProvider = AppleAuthProvider();
-          final userCredential = await FirebaseAuth.instance.signInWithProvider(appleProvider);
+          final userCredential = await FirebaseAuth.instance.signInWithProvider(
+            appleProvider,
+          );
           final fbUser = userCredential.user;
           if (fbUser != null) {
             userId = fbUser.uid;
@@ -255,6 +286,8 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
+      await _restoreProCloudAfterSignIn();
+
       if (getIt.isRegistered<AssistantViewModel>()) {
         unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
       }
@@ -262,8 +295,14 @@ class AuthService extends ChangeNotifier {
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
       TelemetryService.instance.logLogin(loginMethod: 'apple');
-      TelemetryService.instance.setUserProperty(name: 'auth_provider', value: 'apple');
-      TelemetryService.instance.setUserProperty(name: 'is_pro', value: isPro.toString());
+      TelemetryService.instance.setUserProperty(
+        name: 'auth_provider',
+        value: 'apple',
+      );
+      TelemetryService.instance.setUserProperty(
+        name: 'is_pro',
+        value: isPro.toString(),
+      );
 
       return user;
     } finally {
@@ -311,13 +350,17 @@ class AuthService extends ChangeNotifier {
             userCredential = await currentFbUser.linkWithCredential(credential);
           } on FirebaseAuthException catch (e) {
             if (e.code == 'credential-already-in-use') {
-              userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+              userCredential = await FirebaseAuth.instance.signInWithCredential(
+                credential,
+              );
             } else {
               rethrow;
             }
           }
         } else {
-          userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+          userCredential = await FirebaseAuth.instance.signInWithCredential(
+            credential,
+          );
         }
 
         final fbUser = userCredential.user;
@@ -369,6 +412,8 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
+      await _restoreProCloudAfterSignIn();
+
       // Backup local Drift SQLite database to cloud
       await syncLocalDataToCloud();
 
@@ -379,8 +424,14 @@ class AuthService extends ChangeNotifier {
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
       TelemetryService.instance.logLogin(loginMethod: 'google_linked');
-      TelemetryService.instance.setUserProperty(name: 'auth_provider', value: 'google');
-      TelemetryService.instance.setUserProperty(name: 'is_pro', value: isPro.toString());
+      TelemetryService.instance.setUserProperty(
+        name: 'auth_provider',
+        value: 'google',
+      );
+      TelemetryService.instance.setUserProperty(
+        name: 'is_pro',
+        value: isPro.toString(),
+      );
 
       return user;
     } finally {
@@ -405,16 +456,22 @@ class AuthService extends ChangeNotifier {
         UserCredential userCredential;
         if (currentFbUser != null && currentFbUser.isAnonymous) {
           try {
-            userCredential = await currentFbUser.linkWithProvider(appleProvider);
+            userCredential = await currentFbUser.linkWithProvider(
+              appleProvider,
+            );
           } on FirebaseAuthException catch (e) {
             if (e.code == 'credential-already-in-use') {
-              userCredential = await FirebaseAuth.instance.signInWithProvider(appleProvider);
+              userCredential = await FirebaseAuth.instance.signInWithProvider(
+                appleProvider,
+              );
             } else {
               rethrow;
             }
           }
         } else {
-          userCredential = await FirebaseAuth.instance.signInWithProvider(appleProvider);
+          userCredential = await FirebaseAuth.instance.signInWithProvider(
+            appleProvider,
+          );
         }
 
         final fbUser = userCredential.user;
@@ -463,6 +520,8 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
+      await _restoreProCloudAfterSignIn();
+
       // Backup local Drift SQLite database to cloud
       await syncLocalDataToCloud();
 
@@ -473,8 +532,14 @@ class AuthService extends ChangeNotifier {
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
       TelemetryService.instance.logLogin(loginMethod: 'apple_linked');
-      TelemetryService.instance.setUserProperty(name: 'auth_provider', value: 'apple');
-      TelemetryService.instance.setUserProperty(name: 'is_pro', value: isPro.toString());
+      TelemetryService.instance.setUserProperty(
+        name: 'auth_provider',
+        value: 'apple',
+      );
+      TelemetryService.instance.setUserProperty(
+        name: 'is_pro',
+        value: isPro.toString(),
+      );
 
       return user;
     } finally {
@@ -483,8 +548,78 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Timer? _autoSyncDebounce;
+
+  /// Pulls the latest cloud backup from Hyprwise Cloud and restores into Drift SQLite
+  Future<bool> pullCloudDataToLocal() async {
+    _isCloudSyncing = true;
+    notifyListeners();
+    try {
+      final result = await ApiClient.instance.pullSync();
+      if (result == null || result['empty'] == true || result['data'] == null) {
+        return false;
+      }
+      final dataPayload = result['data'];
+      final jsonString =
+          dataPayload is String ? dataPayload : jsonEncode(dataPayload);
+      final dataRepo = getIt<DataRepository>();
+      await dataRepo.importJson(jsonString);
+      if (getIt.isRegistered<SettingsRepository>()) {
+        // DataRepository writes directly to Drift; refresh the cached settings
+        // so routing and the app theme/language see the restored preferences.
+        await getIt<SettingsRepository>().load();
+      }
+      debugPrint('[Auth] Automatically pulled and synced cloud data.');
+      return true;
+    } catch (e) {
+      debugPrint('[Auth] Auto sync pull notice: $e');
+      return false;
+    } finally {
+      _isCloudSyncing = false;
+      notifyListeners();
+    }
+  }
+
+  /// Restores a Pro customer's encrypted snapshot after identity is known.
+  /// A successful restore brings back `onboarded`, language, currency and
+  /// notification preferences; a new account without a snapshot still sees
+  /// onboarding normally.
+  Future<void> _restoreProCloudAfterSignIn() async {
+    final subscription =
+        getIt.isRegistered<SubscriptionService>()
+            ? getIt<SubscriptionService>()
+            : null;
+    final hasProAccess =
+        _currentUser?.isPro == true || (subscription?.isPro ?? false);
+    if (!hasProAccess) return;
+
+    await pullCloudDataToLocal();
+  }
+
+  /// Called when local data changes to automatically back up to cloud if user is Pro
+  void triggerProAutoSync() {
+    final isPro =
+        _currentUser?.isPro == true ||
+        (getIt.isRegistered<SubscriptionService>() &&
+            getIt<SubscriptionService>().isPro);
+    if (!isPro || !isAuthenticated) return;
+
+    _autoSyncDebounce?.cancel();
+    _autoSyncDebounce = Timer(const Duration(seconds: 4), () {
+      unawaited(syncLocalDataToCloud());
+    });
+  }
+
   /// Exports local Drift SQLite database and synchronizes with Hyprwise Cloud
   Future<void> syncLocalDataToCloud() async {
+    final subscription =
+        getIt.isRegistered<SubscriptionService>()
+            ? getIt<SubscriptionService>()
+            : null;
+    final hasProAccess =
+        _currentUser?.isPro == true || (subscription?.isPro ?? false);
+    if (!isAuthenticated || !hasProAccess) return;
+
     try {
       final dataRepo = getIt<DataRepository>();
       final jsonString = await dataRepo.exportJson();
@@ -506,7 +641,8 @@ class AuthService extends ChangeNotifier {
 
       if (userId.isEmpty && _hasFirebase) {
         try {
-          final userCredential = await FirebaseAuth.instance.signInAnonymously();
+          final userCredential =
+              await FirebaseAuth.instance.signInAnonymously();
           if (userCredential.user != null) {
             userId = userCredential.user!.uid;
           }
@@ -549,7 +685,10 @@ class AuthService extends ChangeNotifier {
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
       TelemetryService.instance.logLogin(loginMethod: 'guest');
-      TelemetryService.instance.setUserProperty(name: 'auth_provider', value: 'guest');
+      TelemetryService.instance.setUserProperty(
+        name: 'auth_provider',
+        value: 'guest',
+      );
       TelemetryService.instance.setUserProperty(name: 'is_pro', value: 'false');
 
       return user;
@@ -589,7 +728,10 @@ class AuthService extends ChangeNotifier {
     if (_currentUser != null) {
       _currentUser = _currentUser!.copyWith(isPro: isPro);
       _storage.write(key: _userKey, value: jsonEncode(_currentUser!.toJson()));
-      TelemetryService.instance.setUserProperty(name: 'is_pro', value: isPro.toString());
+      TelemetryService.instance.setUserProperty(
+        name: 'is_pro',
+        value: isPro.toString(),
+      );
       notifyListeners();
     }
   }

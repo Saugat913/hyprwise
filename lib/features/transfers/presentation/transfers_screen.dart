@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
-import 'package:finance_tracker/features/accounts/data/account_repository.dart';
+import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
+import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/transfers/data/transfer_repository.dart';
 import 'package:finance_tracker/features/transfers/domain/transfer_draft.dart';
 
@@ -250,10 +251,19 @@ Future<void> showTransferFormModal(
 }) async {
   final accRepo = getIt<AccountRepository>();
   final txRepo = repository ?? getIt<TransferRepository>();
-  final activeAccounts = accounts ??
-      (await accRepo.watchAccounts().first)
+  final activeAccounts = (accounts != null && accounts.isNotEmpty)
+      ? accounts.where((account) => !account.isArchived).toList()
+      : (await accRepo.getAll())
           .where((account) => !account.isArchived)
           .toList();
+
+  if (!_hasCompatibleAccountPair(activeAccounts)) {
+    if (context.mounted) {
+      showToast(context, 'You need at least two accounts to transfer money.');
+    }
+    return;
+  }
+
   if (context.mounted) {
     await showModalBottomSheet<void>(
       context: context,
@@ -279,10 +289,24 @@ class _TransferFormState extends State<TransferForm> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  late int _sourceId = _sourceOptions.first.id;
-  late int _destinationId = _destinations.first.id;
+  late int _sourceId;
+  late int _destinationId;
   DateTime _date = DateTime.now();
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final sources = _sourceOptions;
+    if (sources.isNotEmpty) {
+      _sourceId = sources.first.id;
+      final destinations = _destinationsFor(_sourceId);
+      _destinationId = destinations.isNotEmpty ? destinations.first.id : 0;
+    } else {
+      _sourceId = widget.accounts.isNotEmpty ? widget.accounts.first.id : 0;
+      _destinationId = 0;
+    }
+  }
 
   @override
   void dispose() {
@@ -291,23 +315,25 @@ class _TransferFormState extends State<TransferForm> {
     super.dispose();
   }
 
-  List<Account> get _sourceOptions => widget.accounts
-      .where((source) => widget.accounts.any(
-            (other) =>
-                other.id != source.id &&
-                other.currencyCode == source.currencyCode,
-          ))
-      .toList();
+  List<Account> get _sourceOptions =>
+      widget.accounts.where((account) => !account.isArchived).toList();
 
-  List<Account> get _destinations => widget.accounts
-      .where((account) =>
-          account.id != _sourceId &&
-          account.currencyCode ==
-              widget.accounts.firstWhere((account) => account.id == _sourceId).currencyCode)
-      .toList();
+  List<Account> _destinationsFor(int sourceId) {
+    return widget.accounts
+        .where((account) => !account.isArchived && account.id != sourceId)
+        .toList();
+  }
+
+  List<Account> get _destinations => _destinationsFor(_sourceId);
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_sourceId == 0 || _destinationId == 0 || _sourceId == _destinationId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select two different accounts.')),
+      );
+      return;
+    }
     final amountText = _amountController.text.trim();
     final amount = double.parse(amountText);
     setState(() => _saving = true);
@@ -321,7 +347,10 @@ class _TransferFormState extends State<TransferForm> {
           note: _noteController.text,
         ),
       );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        showToast(context, 'Transfer completed');
+        Navigator.of(context).pop();
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -337,7 +366,7 @@ class _TransferFormState extends State<TransferForm> {
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final destinations = _destinations;
-    if (!destinations.any((account) => account.id == _destinationId)) {
+    if (destinations.isNotEmpty && !destinations.any((account) => account.id == _destinationId)) {
       _destinationId = destinations.first.id;
     }
 
@@ -581,12 +610,6 @@ class _TransferFormState extends State<TransferForm> {
 
 
 bool _hasCompatibleAccountPair(List<Account> accounts) {
-  final activeAccounts = accounts.where((account) => !account.isArchived);
-  return activeAccounts.any(
-    (source) => activeAccounts.any(
-      (destination) =>
-          destination.id != source.id &&
-          destination.currencyCode == source.currencyCode,
-    ),
-  );
+  final activeAccounts = accounts.where((account) => !account.isArchived).toList();
+  return activeAccounts.length >= 2;
 }

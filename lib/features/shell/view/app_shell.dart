@@ -3,14 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
+import 'package:finance_tracker/features/calendar/viewmodels/calendar_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/shell/view/add_menu_sheet.dart';
 
 /// Bottom navigation: Home, Calendar, Analytics, Work, Plan.
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
@@ -23,13 +25,28 @@ class AppShell extends StatelessWidget {
   ];
 
   @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  @override
+  void didUpdateWidget(covariant AppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.shell.currentIndex == 1 && oldWidget.shell.currentIndex != 1) {
+      if (getIt.isRegistered<CalendarViewModel>()) {
+        getIt<CalendarViewModel>().triggerScrollToNextShift();
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      body: shell,
+      body: widget.shell,
       floatingActionButton: _DockedAddButton(
         onTap: () {
           HapticFeedback.lightImpact();
@@ -54,25 +71,30 @@ class AppShell extends StatelessWidget {
               Expanded(
                 child: _NavItem(
                   label: context.strings.home,
-                  icon: _tabs[0].$2,
-                  selected: shell.currentIndex == 0,
+                  icon: AppShell._tabs[0].$2,
+                  selected: widget.shell.currentIndex == 0,
                   onTap:
-                      () => shell.goBranch(
+                      () => widget.shell.goBranch(
                         0,
-                        initialLocation: shell.currentIndex == 0,
+                        initialLocation: widget.shell.currentIndex == 0,
                       ),
                 ),
               ),
               Expanded(
                 child: _NavItem(
                   label: context.strings.calendar,
-                  icon: _tabs[1].$2,
-                  selected: shell.currentIndex == 1,
-                  onTap:
-                      () => shell.goBranch(
-                        1,
-                        initialLocation: shell.currentIndex == 1,
-                      ),
+                  icon: AppShell._tabs[1].$2,
+                  selected: widget.shell.currentIndex == 1,
+                  onTap: () {
+                    final isCurrent = widget.shell.currentIndex == 1;
+                    widget.shell.goBranch(
+                      1,
+                      initialLocation: isCurrent,
+                    );
+                    if (getIt.isRegistered<CalendarViewModel>()) {
+                      getIt<CalendarViewModel>().triggerScrollToNextShift();
+                    }
+                  },
                 ),
               ),
 
@@ -83,24 +105,24 @@ class AppShell extends StatelessWidget {
               Expanded(
                 child: _NavItem(
                   label: context.strings.work,
-                  icon: _tabs[2].$2,
-                  selected: shell.currentIndex == 2,
+                  icon: AppShell._tabs[2].$2,
+                  selected: widget.shell.currentIndex == 2,
                   onTap:
-                      () => shell.goBranch(
+                      () => widget.shell.goBranch(
                         2,
-                        initialLocation: shell.currentIndex == 2,
+                        initialLocation: widget.shell.currentIndex == 2,
                       ),
                 ),
               ),
               Expanded(
                 child: _NavItem(
                   label: context.strings.plan,
-                  icon: _tabs[3].$2,
-                  selected: shell.currentIndex == 3,
+                  icon: AppShell._tabs[3].$2,
+                  selected: widget.shell.currentIndex == 3,
                   onTap:
-                      () => shell.goBranch(
+                      () => widget.shell.goBranch(
                         3,
-                        initialLocation: shell.currentIndex == 3,
+                        initialLocation: widget.shell.currentIndex == 3,
                       ),
                 ),
               ),

@@ -539,6 +539,7 @@ class _BackupScreenState extends State<BackupScreen> {
       final jsonString = dataPayload is String ? dataPayload : jsonEncode(dataPayload);
       final dataRepo = getIt<DataRepository>();
       await dataRepo.importJson(jsonString);
+      await _viewModel.settingsRepo.load();
 
       if (context.mounted) {
         final v = result['version'] ?? 1;

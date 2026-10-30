@@ -15,6 +15,18 @@ class AccountRepository {
         (a) => OrderingTerm.asc(a.name),
       ])).watch();
 
+  Stream<List<Account>> watchAccounts({bool includeArchived = false}) {
+    final query = _db.select(_db.accounts)
+      ..orderBy([
+        (a) => OrderingTerm.asc(a.isArchived),
+        (a) => OrderingTerm.asc(a.name),
+      ]);
+    if (!includeArchived) {
+      query.where((a) => a.isArchived.equals(false));
+    }
+    return query.watch();
+  }
+
   Future<List<Account>> getAll() =>
       (_db.select(_db.accounts)..orderBy([
         (a) => OrderingTerm.asc(a.isArchived),
@@ -114,24 +126,8 @@ class AccountRepository {
       }
     }
 
-    // Consolidate any extraneous legacy accounts into the 2 fixed accounts
-    for (final acc in existing) {
-      if (acc.id != everyday.id && acc.id != savings.id) {
-        final targetId = acc.type == AccountType.savings.value ? savings.id : everyday.id;
-        await (_db.update(_db.transactions)..where((t) => t.accountId.equals(acc.id)))
-            .write(TransactionsCompanion(accountId: Value(targetId)));
-        await (_db.update(_db.transfers)..where((t) => t.sourceAccountId.equals(acc.id)))
-            .write(TransfersCompanion(sourceAccountId: Value(targetId)));
-        await (_db.update(_db.transfers)..where((t) => t.destinationAccountId.equals(acc.id)))
-            .write(TransfersCompanion(destinationAccountId: Value(targetId)));
-        await (_db.update(_db.goals)..where((g) => g.accountId.equals(acc.id)))
-            .write(GoalsCompanion(accountId: Value(savings.id)));
-        await (_db.delete(_db.accounts)..where((a) => a.id.equals(acc.id))).go();
-      }
-    }
-
-    // Ensure all goals point to savings account
-    await (_db.update(_db.goals)..where((g) => g.accountId.isNull() | g.accountId.isNotValue(savings!.id)))
+    // Ensure all unlinked goals point to savings account
+    await (_db.update(_db.goals)..where((g) => g.accountId.isNull()))
         .write(GoalsCompanion(accountId: Value(savings.id)));
 
     return (everyday: everyday, savings: savings);

@@ -70,6 +70,12 @@ class CalendarViewModel extends ChangeNotifier {
   int _weekOffset = 0;
   int get weekOffset => _weekOffset;
 
+  final ValueNotifier<int> scrollToShiftNotifier = ValueNotifier<int>(0);
+
+  void triggerScrollToNextShift() {
+    scrollToShiftNotifier.value++;
+  }
+
   void _onStoreChanged() {
     notifyListeners();
   }
@@ -81,11 +87,13 @@ class CalendarViewModel extends ChangeNotifier {
     final currentMonday = today.subtract(Duration(days: today.weekday - 1));
     final selectedMonday = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
     _weekOffset = (selectedMonday.difference(currentMonday).inDays / 7).round();
+    triggerScrollToNextShift();
     notifyListeners();
   }
 
   void setFilter(CalendarFilter filter) {
     _filter = filter;
+    triggerScrollToNextShift();
     notifyListeners();
   }
 
@@ -95,6 +103,7 @@ class CalendarViewModel extends ChangeNotifier {
     final currentMonday = today.subtract(Duration(days: today.weekday - 1));
     final newMonday = currentMonday.add(Duration(days: _weekOffset * 7));
     _selectedDate = newMonday;
+    triggerScrollToNextShift();
     notifyListeners();
   }
 
@@ -102,6 +111,7 @@ class CalendarViewModel extends ChangeNotifier {
     _weekOffset = 0;
     _selectedDate = AppDate.dateOnly(DateTime.now());
     if (resetFilter) _filter = CalendarFilter.shifts;
+    triggerScrollToNextShift();
     notifyListeners();
   }
 

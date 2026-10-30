@@ -111,11 +111,25 @@ class SettingsScreen extends StatelessWidget {
                 const SizedBox(height: AppSpace.sm),
                 AppCard(
                   padding: EdgeInsets.zero,
-                  child: ListRow(
-                    title: tr.alerts,
-                    leading: const IconTile(HugeIcons.strokeRoundedNotification01),
-                    trailing: _Value(viewModel.settings.shiftReminders ? tr.onState : tr.offState),
-                    onTap: () => context.push(AppRoutes.alerts),
+                  child: Column(
+                    children: [
+                      ListRow(
+                        title: tr.alerts,
+                        leading: const IconTile(HugeIcons.strokeRoundedNotification01),
+                        trailing: const Chevron(),
+                        onTap: () => context.push(AppRoutes.alerts),
+                      ),
+                      const RowDivider(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+                        child: SwitchRow(
+                          title: tr.shiftRemindersTitle,
+                          subtitle: tr.oneHourBefore,
+                          value: viewModel.settings.shiftReminders,
+                          onChanged: (value) => viewModel.settingsRepo.setShiftReminders(value),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: AppSpace.xl),
@@ -570,8 +584,11 @@ class _AccountAuthCard extends StatelessWidget {
       listenable: Listenable.merge([authService, subService]),
       builder: (context, _) {
         final user = authService.currentUser;
-        if (user != null) {
-          final initial = user.email.isNotEmpty ? user.email[0].toUpperCase() : 'U';
+        if (user != null && !authService.isGuest) {
+          final displayName = user.displayName.trim().isNotEmpty
+              ? user.displayName.trim()
+              : (user.email.contains('@') ? user.email.split('@').first : (user.email.isNotEmpty ? user.email : 'User'));
+          final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
           return AppCard(
             padding: const EdgeInsets.all(AppSpace.md),
             child: Column(
@@ -579,19 +596,80 @@ class _AccountAuthCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: scheme.primaryContainer,
-                      child: Text(
-                        initial,
-                        style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.bold),
-                      ),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: scheme.primaryContainer,
+                          backgroundImage: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
+                              ? NetworkImage(user.photoUrl!)
+                              : null,
+                          child: (user.photoUrl == null || user.photoUrl!.isEmpty)
+                              ? Text(
+                                  initial,
+                                  style: TextStyle(
+                                    color: scheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        if (subService.isPro || subService.everSupported)
+                          Positioned(
+                            bottom: -2,
+                            right: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: scheme.surface,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(2.5),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: subService.everSupported
+                                        ? [const Color(0xFFE11D48), const Color(0xFFF43F5E)]
+                                        : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  subService.everSupported
+                                      ? Icons.favorite_rounded
+                                      : Icons.star_rounded,
+                                  size: 9,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(width: AppSpace.md),
                     Expanded(
-                      child: Text(
-                        user.email,
-                        style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayName,
+                            style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (user.email.isNotEmpty) ...[
+                            const SizedBox(height: 1),
+                            Text(
+                              user.email,
+                              style: text.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: 11.5,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     TextButton(
@@ -619,6 +697,10 @@ class _AccountAuthCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: const Color(0xFFE11D48).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(AppRadius.sm),
+                            border: Border.all(
+                              color: const Color(0xFFE11D48).withValues(alpha: 0.3),
+                              width: 0.8,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -655,14 +737,49 @@ class _AccountAuthCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    child: AppIcon(
-                      HugeIcons.strokeRoundedUser,
-                      size: 16,
-                      color: scheme.onSurfaceVariant,
-                    ),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                        child: AppIcon(
+                          HugeIcons.strokeRoundedUser,
+                          size: 18,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (subService.isPro || subService.everSupported)
+                        Positioned(
+                          bottom: -2,
+                          right: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: scheme.surface,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(2.5),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: subService.everSupported
+                                      ? [const Color(0xFFE11D48), const Color(0xFFF43F5E)]
+                                      : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                subService.everSupported
+                                    ? Icons.favorite_rounded
+                                    : Icons.star_rounded,
+                                size: 9,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(width: AppSpace.sm),
                   Flexible(
@@ -905,15 +1022,15 @@ class _LanguageSelector extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final lang = AppLanguage.supported[index];
                       final isSelected = currentLocale == lang.code;
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? scheme.primary.withValues(alpha: 0.08)
-                              : Colors.transparent,
+                      return Material(
+                        color: isSelected
+                            ? scheme.primary.withValues(alpha: 0.08)
+                            : Colors.transparent,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: isSelected
-                              ? Border.all(color: scheme.primary.withValues(alpha: 0.35))
-                              : null,
+                          side: isSelected
+                              ? BorderSide(color: scheme.primary.withValues(alpha: 0.35))
+                              : BorderSide.none,
                         ),
                         child: ListTile(
                           shape: RoundedRectangleBorder(
@@ -1019,4 +1136,3 @@ class _LanguageSelector extends StatelessWidget {
     );
   }
 }
-

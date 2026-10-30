@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -164,6 +165,72 @@ class ShiftNotificationService {
     return true;
   }
 
+  /// Explicitly requests exact alarms permission on Android 13/14+ if not yet granted.
+  Future<bool> requestExactAlarmsPermission() async {
+    if (!_initialized) await initialize();
+    if (!_isAvailable) return false;
+    try {
+      final android = _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (android != null) {
+        final granted = await android.requestExactAlarmsPermission();
+        return granted ?? false;
+      }
+    } catch (e) {
+      debugPrint('Failed to request exact alarms permission: $e');
+    }
+    return true;
+  }
+
+  /// Safely schedules zoned notification using exact mode, asking for permission
+  /// and falling back to inexact mode if exact alarms are not permitted.
+  Future<void> _safeZonedSchedule({
+    required int id,
+    required String? title,
+    required String? body,
+    required tz.TZDateTime scheduledDate,
+    required NotificationDetails notificationDetails,
+    DateTimeComponents? matchDateTimeComponents,
+    String? payload,
+  }) async {
+    try {
+      await _notifications.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: matchDateTimeComponents,
+        payload: payload,
+      );
+    } catch (e) {
+      final isExactAlarmError = e is PlatformException &&
+          (e.code == 'exact_alarms_not_permitted' ||
+              (e.message?.contains('exact_alarms') ?? false));
+
+      if (isExactAlarmError) {
+        await requestExactAlarmsPermission();
+        try {
+          await _notifications.zonedSchedule(
+            id: id,
+            title: title,
+            body: body,
+            scheduledDate: scheduledDate,
+            notificationDetails: notificationDetails,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            matchDateTimeComponents: matchDateTimeComponents,
+            payload: payload,
+          );
+          return;
+        } catch (e2) {
+          debugPrint('Inexact fallback error for reminder $id: $e2');
+        }
+      }
+      debugPrint('Error scheduling reminder $id: $e');
+    }
+  }
+
   /// Live persistent notification displayed during an active shift
   Future<void> showActiveShiftNotification({
     required String jobName,
@@ -290,21 +357,16 @@ class ShiftNotificationService {
       color: const Color(0xFFFF6500),
     );
 
-    try {
-      await _notifications.zonedSchedule(
-        id: notificationId,
-        title: isNe ? '⏰ आगामी सिफ्ट: $jobName' : '⏰ Upcoming Shift: $jobName',
-        body: isNe
-            ? '$minutesBefore मिनेटमा सुरु हुँदैछ (${DateFormat('h:mm a').format(startAt)})'
-            : 'Starts in $minutesBefore mins at ${DateFormat('h:mm a').format(startAt)}',
-        scheduledDate: scheduledTz,
-        notificationDetails: NotificationDetails(android: androidDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: '/work',
-      );
-    } catch (e) {
-      debugPrint('Error scheduling shift reminder: $e');
-    }
+    await _safeZonedSchedule(
+      id: notificationId,
+      title: isNe ? '⏰ आगामी सिफ्ट: $jobName' : '⏰ Upcoming Shift: $jobName',
+      body: isNe
+          ? '$minutesBefore मिनेटमा सुरु हुँदैछ (${DateFormat('h:mm a').format(startAt)})'
+          : 'Starts in $minutesBefore mins at ${DateFormat('h:mm a').format(startAt)}',
+      scheduledDate: scheduledTz,
+      notificationDetails: NotificationDetails(android: androidDetails),
+      payload: '/work',
+    );
   }
 
   /// Schedules a reminder for a recurring bill
@@ -335,21 +397,16 @@ class ShiftNotificationService {
       color: const Color(0xFFEA580C),
     );
 
-    try {
-      await _notifications.zonedSchedule(
-        id: notificationId,
-        title: isNe ? '📋 बिल तिर्ने दिन आज: $title' : '📋 Bill Due Today: $title',
-        body: isNe
-            ? '$currencyCode ${(amountMinor / 100.0).toStringAsFixed(2)} आज तिर्नुपर्नेछ'
-            : '$currencyCode ${(amountMinor / 100.0).toStringAsFixed(2)} is due today',
-        scheduledDate: scheduledTz,
-        notificationDetails: NotificationDetails(android: androidDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: '/money',
-      );
-    } catch (e) {
-      debugPrint('Error scheduling bill reminder: $e');
-    }
+    await _safeZonedSchedule(
+      id: notificationId,
+      title: isNe ? '📋 बिल तिर्ने दिन आज: $title' : '📋 Bill Due Today: $title',
+      body: isNe
+          ? '$currencyCode ${(amountMinor / 100.0).toStringAsFixed(2)} आज तिर्नुपर्नेछ'
+          : '$currencyCode ${(amountMinor / 100.0).toStringAsFixed(2)} is due today',
+      scheduledDate: scheduledTz,
+      notificationDetails: NotificationDetails(android: androidDetails),
+      payload: '/money',
+    );
   }
 
   /// Schedules a reminder for an active loan or debt settlement
@@ -393,19 +450,14 @@ class ShiftNotificationService {
             ? '$partyName लाई आज $amountStr भुक्तानी गर्नुपर्नेछ'
             : 'Repayment of $amountStr to $partyName is due today');
 
-    try {
-      await _notifications.zonedSchedule(
-        id: notificationId,
-        title: title,
-        body: body,
-        scheduledDate: scheduledTz,
-        notificationDetails: NotificationDetails(android: androidDetails),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: '/debts',
-      );
-    } catch (e) {
-      debugPrint('Error scheduling debt reminder: $e');
-    }
+    await _safeZonedSchedule(
+      id: notificationId,
+      title: title,
+      body: body,
+      scheduledDate: scheduledTz,
+      notificationDetails: NotificationDetails(android: androidDetails),
+      payload: '/debts',
+    );
   }
 
   /// Cancels any scheduled or active notification by ID
@@ -440,19 +492,14 @@ class ShiftNotificationService {
   }) async {
     if (!_initialized) await initialize();
     if (!_isAvailable || !at.isAfter(DateTime.now())) return;
-    try {
-      await _notifications.zonedSchedule(
-        id: longShiftAlertId,
-        title: title,
-        body: body,
-        scheduledDate: tz.TZDateTime.from(at, tz.local),
-        notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500))),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: '/work/shift/live',
-      );
-    } catch (e) {
-      debugPrint('Error scheduling long shift alert: $e');
-    }
+    await _safeZonedSchedule(
+      id: longShiftAlertId,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(at, tz.local),
+      notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500))),
+      payload: '/work/shift/live',
+    );
   }
 
   Future<void> cancelLongShiftAlert() => cancelNotification(longShiftAlertId);
@@ -470,20 +517,15 @@ class ShiftNotificationService {
       debugPrint('Error clearing reminder notifications: $e');
     }
     for (final r in plan) {
-      try {
-        await _notifications.zonedSchedule(
-          id: r.id,
-          title: r.title,
-          body: r.body,
-          scheduledDate: tz.TZDateTime.from(r.at, tz.local),
-          notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500))),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          matchDateTimeComponents: r.weekly ? DateTimeComponents.dayOfWeekAndTime : null,
-          payload: r.payload,
-        );
-      } catch (e) {
-        debugPrint('Error scheduling reminder ${r.id}: $e');
-      }
+      await _safeZonedSchedule(
+        id: r.id,
+        title: r.title,
+        body: r.body,
+        scheduledDate: tz.TZDateTime.from(r.at, tz.local),
+        notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500))),
+        matchDateTimeComponents: r.weekly ? DateTimeComponents.dayOfWeekAndTime : null,
+        payload: r.payload,
+      );
     }
   }
 }

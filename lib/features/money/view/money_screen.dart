@@ -95,6 +95,10 @@ class _MoneyScreenState extends State<MoneyScreen> {
                       borderRadius: BorderRadius.circular(AppRadius.pill),
                       borderSide: BorderSide(color: scheme.outlineVariant),
                     ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      borderSide: BorderSide(color: scheme.primary, width: 1.5),
+                    ),
                   ),
                   onChanged: viewModel.setSearchQuery,
                 ),

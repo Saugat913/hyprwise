@@ -55,16 +55,17 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
           ),
         ],
       ),
-      body: jobs.isEmpty
-          ? _buildEmptyState(theme, tr)
-          : ListView.builder(
-              padding: const EdgeInsets.all(AppSpace.lg),
-              itemCount: jobs.length,
-              itemBuilder: (context, index) {
-                final job = jobs[index];
-                return _buildJobCard(job, theme, tr);
-              },
-            ),
+      body:
+          jobs.isEmpty
+              ? _buildEmptyState(theme, tr)
+              : ListView.builder(
+                padding: const EdgeInsets.all(AppSpace.lg),
+                itemCount: jobs.length,
+                itemBuilder: (context, index) {
+                  final job = jobs[index];
+                  return _buildJobCard(job, theme, tr);
+                },
+              ),
     );
   }
 
@@ -83,19 +84,26 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
             const SizedBox(height: AppSpace.md),
             Text(
               tr.noJobsAddedYet,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: AppSpace.xs),
             Text(
               tr.t(
                 'Add your workplace or clients to track shifts, hourly earnings, and overtime.',
-                ne: 'सिफ्ट, प्रति घण्टा आम्दानी र ओभरटाइम ट्र्याक गर्न आफ्नो कार्यस्थल वा ग्राहक थप्नुहोस्।',
-                es: 'Añade tu lugar de trabajo para controlar turnos, ganancias y horas extra.',
-                fr: 'Ajoutez votre lieu de travail pour suivre quarts, revenus et heures sup.',
-                de: 'Fügen Sie Ihren Arbeitsplatz hinzu, um Schichten und Überstunden zu erfassen.',
+                ne:
+                    'सिफ्ट, प्रति घण्टा आम्दानी र ओभरटाइम ट्र्याक गर्न आफ्नो कार्यस्थल वा ग्राहक थप्नुहोस्।',
+                es:
+                    'Añade tu lugar de trabajo para controlar turnos, ganancias y horas extra.',
+                fr:
+                    'Ajoutez votre lieu de travail pour suivre quarts, revenus et heures sup.',
+                de:
+                    'Fügen Sie Ihren Arbeitsplatz hinzu, um Schichten und Überstunden zu erfassen.',
                 ja: 'シフト、時給、残業代を追跡するために勤務先を追加してください。',
                 zh: '添加您的工作单位以准确计算排班、时薪与加班收益。',
-                it: 'Aggiungi il tuo posto di lavoro per tracciare turni, guadagni e straordinari.',
+                it:
+                    'Aggiungi il tuo posto di lavoro per tracciare turni, guadagni e straordinari.',
               ),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
@@ -159,7 +167,9 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                     children: [
                       Text(
                         job.name,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       if (job.employer != null && job.employer!.isNotEmpty) ...[
                         const SizedBox(height: 2),
@@ -209,7 +219,10 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                   children: [
                     TextButton.icon(
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
@@ -231,12 +244,18 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
     final tr = context.strings;
     final nameController = TextEditingController(text: job.name);
     final rateController = TextEditingController(
-      text: (job.hourlyRateMinor / 100).toStringAsFixed(job.hourlyRateMinor % 100 == 0 ? 0 : 2),
+      text: (job.hourlyRateMinor / 100).toStringAsFixed(
+        job.hourlyRateMinor % 100 == 0 ? 0 : 2,
+      ),
     );
     final employerController = TextEditingController(text: job.employer ?? '');
-    final breakController = TextEditingController(text: job.defaultBreakMinutes.toString());
+    final breakController = TextEditingController(
+      text: job.defaultBreakMinutes.toString(),
+    );
     final alertHoursController = TextEditingController(
-      text: (job.longShiftAlertMinutes / 60).toStringAsFixed(job.longShiftAlertMinutes % 60 == 0 ? 0 : 1),
+      text: (job.longShiftAlertMinutes / 60).toStringAsFixed(
+        job.longShiftAlertMinutes % 60 == 0 ? 0 : 1,
+      ),
     );
 
     showModalBottomSheet<void>(
@@ -266,7 +285,9 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                 children: [
                   Text(
                     tr.editJobName(job.name),
-                    style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: text.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -278,13 +299,18 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
               Text(
                 tr.t(
                   'Past shifts will preserve their original rate. New shifts will use this updated rate.',
-                  ne: 'विगतका सिफ्टहरूले आफ्नो मूल दर कायम राख्नेछन्। नयाँ सिफ्टहरूले यो अद्यावधिक दर प्रयोग गर्नेछन्।',
-                  es: 'Los turnos anteriores conservarán su tarifa original. Los nuevos turnos usarán esta.',
-                  fr: 'Les quarts passés conservent leur taux. Les nouveaux utiliseront ce nouveau taux.',
-                  de: 'Vergangene Schichten behalten ihren Stundensatz. Neue nutzen die Aktualisierung.',
+                  ne:
+                      'विगतका सिफ्टहरूले आफ्नो मूल दर कायम राख्नेछन्। नयाँ सिफ्टहरूले यो अद्यावधिक दर प्रयोग गर्नेछन्।',
+                  es:
+                      'Los turnos anteriores conservarán su tarifa original. Los nuevos turnos usarán esta.',
+                  fr:
+                      'Les quarts passés conservent leur taux. Les nouveaux utiliseront ce nouveau taux.',
+                  de:
+                      'Vergangene Schichten behalten ihren Stundensatz. Neue nutzen die Aktualisierung.',
                   ja: '過去のシフトは当時の時給を保持します。今後のシフトに新しい時給が適用されます。',
                   zh: '过去的班次将保留原有时薪记录，新班次将采用更新后的时薪。',
-                  it: 'I turni passati manterranno la tariffa originale. I nuovi utilizzeranno questa.',
+                  it:
+                      'I turni passati manterranno la tariffa originale. I nuovi utilizzeranno questa.',
                 ),
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
@@ -293,16 +319,22 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                 controller: nameController,
                 decoration: InputDecoration(
                   labelText: tr.jobNameLabel,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpace.md),
               TextField(
                 controller: rateController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
                   labelText: tr.hourlyRateWithCurrency(job.currencyCode),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                  ),
                   prefixText: '${job.currencyCode} ',
                 ),
               ),
@@ -311,7 +343,9 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                 controller: employerController,
                 decoration: InputDecoration(
                   labelText: tr.employerVenueOptional,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpace.md),
@@ -324,7 +358,9 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                       decoration: InputDecoration(
                         labelText: tr.defaultBreakDurationLabel,
                         suffixText: tr.minuteAbbr,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.xs),
+                        ),
                       ),
                     ),
                   ),
@@ -332,11 +368,15 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                   Expanded(
                     child: TextField(
                       controller: alertHoursController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: tr.longShiftNotificationLabel,
                         suffixText: tr.hourAbbr,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.xs)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.xs),
+                        ),
                       ),
                     ),
                   ),
@@ -348,17 +388,25 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                 onPressed: () async {
                   final newRate = double.tryParse(rateController.text.trim());
                   final newName = nameController.text.trim();
-                  final newBreak = int.tryParse(breakController.text.trim()) ?? job.defaultBreakMinutes;
-                  final newAlertHours = double.tryParse(alertHoursController.text.trim());
-                  final newAlertMin = newAlertHours != null
-                      ? (newAlertHours * 60).round()
-                      : job.longShiftAlertMinutes;
+                  final newBreak =
+                      int.tryParse(breakController.text.trim()) ??
+                      job.defaultBreakMinutes;
+                  final newAlertHours = double.tryParse(
+                    alertHoursController.text.trim(),
+                  );
+                  final newAlertMin =
+                      newAlertHours != null
+                          ? (newAlertHours * 60).round()
+                          : job.longShiftAlertMinutes;
                   if (newRate != null && newRate > 0 && newName.isNotEmpty) {
                     await _viewModel.updateJob(
                       job.id,
                       name: newName,
                       hourlyRateMinor: (newRate * 100).round(),
-                      employer: employerController.text.trim().isEmpty ? null : employerController.text.trim(),
+                      employer:
+                          employerController.text.trim().isEmpty
+                              ? null
+                              : employerController.text.trim(),
                       defaultBreakMinutes: newBreak,
                       longShiftAlertMinutes: newAlertMin,
                     );

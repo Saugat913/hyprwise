@@ -98,34 +98,45 @@ class _AddAccountWizardState extends State<AddAccountWizard> {
           primaryLabel: tr.next,
           onPrimary: _onNext,
           onClose: () => context.pop(),
-          child: HorizontalOptionSelector<AccountType>(
-            height: 64,
-            selectedValue: _selectedType,
-            onChanged: (type) => setState(() => _selectedType = type),
-            items: [
-              HorizontalOptionItem(
-                value: AccountType.cash,
-                label: tr.cash,
-                subtitle: tr.moneyInYourPocket,
-                icon: HugeIcons.strokeRoundedCoins01,
-              ),
-              HorizontalOptionItem(
-                value: AccountType.bank,
-                label: tr.everydayAccount,
+          child: GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: AppSpace.sm,
+            crossAxisSpacing: AppSpace.sm,
+            childAspectRatio: 1.15,
+            children: [
+              _AccountTypeGridCard(
+                type: AccountType.bank,
+                title: tr.everydayAccount,
                 subtitle: tr.everydaySpending,
                 icon: HugeIcons.strokeRoundedBank,
+                isSelected: _selectedType == AccountType.bank,
+                onTap: () => setState(() => _selectedType = AccountType.bank),
               ),
-              HorizontalOptionItem(
-                value: AccountType.wallet,
-                label: tr.digitalWallet,
-                subtitle: tr.appsAndCards,
-                icon: HugeIcons.strokeRoundedWallet01,
-              ),
-              HorizontalOptionItem(
-                value: AccountType.savings,
-                label: tr.savingsAccount,
+              _AccountTypeGridCard(
+                type: AccountType.savings,
+                title: tr.savingsAccount,
                 subtitle: tr.moneySetAside,
                 icon: HugeIcons.strokeRoundedPiggyBank,
+                isSelected: _selectedType == AccountType.savings,
+                onTap: () => setState(() => _selectedType = AccountType.savings),
+              ),
+              _AccountTypeGridCard(
+                type: AccountType.cash,
+                title: tr.cash,
+                subtitle: tr.moneyInYourPocket,
+                icon: HugeIcons.strokeRoundedCoins01,
+                isSelected: _selectedType == AccountType.cash,
+                onTap: () => setState(() => _selectedType = AccountType.cash),
+              ),
+              _AccountTypeGridCard(
+                type: AccountType.wallet,
+                title: tr.digitalWallet,
+                subtitle: tr.appsAndCards,
+                icon: HugeIcons.strokeRoundedWallet01,
+                isSelected: _selectedType == AccountType.wallet,
+                onTap: () => setState(() => _selectedType = AccountType.wallet),
               ),
             ],
           ),
@@ -167,5 +178,112 @@ class _AddAccountWizardState extends State<AddAccountWizard> {
           ),
         ),
     };
+  }
+}
+
+class _AccountTypeGridCard extends StatelessWidget {
+  const _AccountTypeGridCard({
+    required this.type,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final AccountType type;
+  final String title;
+  final String subtitle;
+  final dynamic icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final text = theme.textTheme;
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '$title, $subtitle',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.all(AppSpace.md),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? scheme.primary.withValues(alpha: 0.08)
+                  : scheme.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: isSelected ? scheme.primary : scheme.outlineVariant,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? scheme.primary.withValues(alpha: 0.15)
+                            : scheme.surfaceContainerHighest,
+                        shape: BoxShape.circle,
+                      ),
+                      child: AppIcon(
+                        icon,
+                        size: 20,
+                        color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 20,
+                        color: scheme.primary,
+                      ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? scheme.primary : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

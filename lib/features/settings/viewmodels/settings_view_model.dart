@@ -105,7 +105,12 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   Future<String> exportData() => dataRepo.exportJson();
-  Future<void> importData(String jsonString) => dataRepo.importJson(jsonString);
+  Future<void> importData(String jsonString) async {
+    await dataRepo.importJson(jsonString);
+    // Imports can contain the Pro customer's language, currency, theme and
+    // alert preferences. Refresh the cached settings immediately.
+    await settingsRepo.load();
+  }
   Future<void> eraseAllData() => dataRepo.eraseAll();
 
   @override

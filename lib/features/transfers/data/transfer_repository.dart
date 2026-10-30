@@ -46,8 +46,37 @@ class TransferRepository {
     if (source.isArchived || destination.isArchived) {
       throw ArgumentError('Transfers require active accounts.');
     }
-    if (source.currencyCode != destination.currencyCode) {
-      throw ArgumentError('Transfers must use accounts with the same currency.');
+
+    final sameCurrency = source.currencyCode == destination.currencyCode;
+    int destAmount = draft.amountMinor;
+    int? rateScaled;
+
+    if (!sameCurrency) {
+      final directRate = await (_database.select(_database.exchangeRates)
+            ..where((r) =>
+                r.baseCode.equals(source.currencyCode) &
+                r.quoteCode.equals(destination.currencyCode))
+            ..orderBy([(r) => OrderingTerm.desc(r.asOf)])
+            ..limit(1))
+          .getSingleOrNull();
+
+      if (directRate != null && directRate.rateScaled > 0) {
+        rateScaled = directRate.rateScaled;
+        destAmount = (draft.amountMinor * (rateScaled / 1000000.0)).round();
+      } else {
+        final inverseRate = await (_database.select(_database.exchangeRates)
+              ..where((r) =>
+                  r.baseCode.equals(destination.currencyCode) &
+                  r.quoteCode.equals(source.currencyCode))
+              ..orderBy([(r) => OrderingTerm.desc(r.asOf)])
+              ..limit(1))
+            .getSingleOrNull();
+        if (inverseRate != null && inverseRate.rateScaled > 0) {
+          final rate = 1000000.0 / inverseRate.rateScaled;
+          rateScaled = (rate * 1000000.0).round();
+          destAmount = (draft.amountMinor * rate).round();
+        }
+      }
     }
 
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -56,6 +85,8 @@ class TransferRepository {
         sourceAccountId: draft.sourceAccountId,
         destinationAccountId: draft.destinationAccountId,
         amountMinor: draft.amountMinor,
+        destinationAmountMinor: Value(destAmount),
+        exchangeRateScaled: Value(rateScaled),
         note: Value(_normalizeNote(draft.note)),
         occurredAt: draft.occurredAt.millisecondsSinceEpoch,
         createdAt: now,

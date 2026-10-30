@@ -13,6 +13,8 @@ import 'package:finance_tracker/features/work/data/model/work.dart';
 
 enum GoalFilter { all, inProgress, completed }
 
+enum PlanTrajectoryPolarity { positive, negative, neutral }
+
 class PlanForecastPoint {
   const PlanForecastPoint({
     required this.label,
@@ -106,6 +108,22 @@ class PlanViewModel extends ChangeNotifier {
 
   int get threeMonthNetChangeMinor =>
       projectedBalanceIn3Months - currentTotalBalanceMinor;
+
+  double? get threeMonthGrowthRatePercent {
+    final current = currentTotalBalanceMinor;
+    if (current == 0) return null;
+    return (threeMonthNetChangeMinor / current.abs()) * 100.0;
+  }
+
+  PlanTrajectoryPolarity get trajectoryPolarity {
+    if (monthlyNetDeltaMinor > 0) return PlanTrajectoryPolarity.positive;
+    if (monthlyNetDeltaMinor < 0) return PlanTrajectoryPolarity.negative;
+    return PlanTrajectoryPolarity.neutral;
+  }
+
+  bool get isPositiveTrajectory => monthlyNetDeltaMinor > 0;
+  bool get isNegativeTrajectory => monthlyNetDeltaMinor < 0;
+  bool get isNeutralTrajectory => monthlyNetDeltaMinor == 0;
 
   List<PlanForecastPoint> get trajectoryPoints {
     final snap = financeStore.snapshot;

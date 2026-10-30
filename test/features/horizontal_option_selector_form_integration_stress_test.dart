@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
-import 'package:finance_tracker/features/accounts/data/model/account_type.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
 import 'package:finance_tracker/features/accounts/view/wizards/add_account_wizard.dart';
 import 'package:finance_tracker/features/accounts/viewmodels/accounts_view_model.dart';
@@ -88,7 +87,7 @@ void main() {
   });
 
   group('Horizontal Option Selectors Form Interaction Stress Tests', () {
-    testWidgets('FI-1: AddAccountWizard uses HorizontalOptionSelector<AccountType> and transitions correctly', (tester) async {
+    testWidgets('FI-1: AddAccountWizard uses structured GridView for AccountType and transitions correctly', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -102,8 +101,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Check that HorizontalOptionSelector<AccountType> is rendered
-      expect(find.byType(HorizontalOptionSelector<AccountType>), findsOneWidget);
+      // Check that structured GridView is rendered for account selection
+      expect(find.byType(GridView), findsOneWidget);
 
       // Verify that Cash, Everyday Bank, Digital Wallet, Savings Account are rendered
       expect(find.text('Cash'), findsOneWidget);

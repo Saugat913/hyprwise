@@ -57,22 +57,20 @@ Future<void> showAppLanguageSheet(BuildContext context) async {
                   itemBuilder: (context, index) {
                     final lang = AppLanguage.supported[index];
                     final isSelected = currentLocale == lang.code;
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? scheme.primary.withValues(alpha: 0.08)
-                            : Colors.transparent,
+                    return Material(
+                      color: isSelected
+                          ? scheme.primary.withValues(alpha: 0.08)
+                          : Colors.transparent,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: isSelected
-                            ? Border.all(color: scheme.primary.withValues(alpha: 0.35))
-                            : null,
+                        side: isSelected
+                            ? BorderSide(color: scheme.primary.withValues(alpha: 0.35))
+                            : BorderSide.none,
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: ListTile(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
                           leading: Container(
                             width: 36,
                             height: 36,
@@ -109,9 +107,8 @@ Future<void> showAppLanguageSheet(BuildContext context) async {
                             if (ctx.mounted) Navigator.pop(ctx);
                           },
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
                 ),
               ),
             ],

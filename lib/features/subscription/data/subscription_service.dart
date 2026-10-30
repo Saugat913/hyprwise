@@ -70,7 +70,7 @@ class SubscriptionService extends ChangeNotifier {
   final ValueNotifier<bool> isSupporterNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<bool> everSupportedNotifier = ValueNotifier<bool>(false);
 
-  bool get isPro => _isPro || _isSupporter || (authService.currentUser?.isPro ?? false);
+  bool get isPro => _isPro || _isSupporter || _everSupported || (authService.currentUser?.isPro ?? false);
   bool get isSupporter => _isSupporter;
   bool get everSupported => _everSupported;
   DateTime? get proExpiryDate => _proExpiryDate;
@@ -188,7 +188,8 @@ class SubscriptionService extends ChangeNotifier {
       if (rawExpiry != null) {
         _proExpiryDate = DateTime.tryParse(rawExpiry);
       }
-      if (_isPro) {
+      if (_isPro || _isSupporter || _everSupported) {
+        _isPro = true;
         authService.updateProStatus(true);
       }
       _syncNotifiers();
@@ -320,6 +321,7 @@ class SubscriptionService extends ChangeNotifier {
     if (hasSupporter || tippedEver) {
       _everSupported = true;
       _storage.write(key: _everSupportedKey, value: 'true');
+      _isPro = true;
     }
 
     if (proEntitlement?.expirationDate != null) {

@@ -655,6 +655,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                   ),
                                 ),
                                 border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
                                   vertical: 10,
@@ -846,7 +851,18 @@ class _InteractiveActionCardState extends State<_InteractiveActionCard> {
               decoration: InputDecoration(
                 labelText: tr.merchantOrNoteLabel,
                 isDense: true,
-                border: const OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: BorderSide(color: scheme.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: BorderSide(color: scheme.outlineVariant),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderSide: BorderSide(color: scheme.primary, width: 1.5),
+                ),
               ),
               onChanged: (_) => setState(() {}),
             ),

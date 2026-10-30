@@ -26,13 +26,18 @@ abstract final class AppTheme {
       colorScheme: scheme,
       fontFamily: sans,
       textTheme: text,
-      scaffoldBackgroundColor: scheme.brightness == Brightness.light
-          ? const Color(0xFFF6F6F6)
-          : const Color(0xFF0F0F11),
+      scaffoldBackgroundColor:
+          scheme.brightness == Brightness.light
+              ? const Color(0xFFF6F6F6)
+              : const Color(0xFF0F0F11),
       extensions: [colors],
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
-      dividerTheme: DividerThemeData(color: scheme.outlineVariant, space: 1, thickness: 1),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        space: 1,
+        thickness: 1,
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -41,14 +46,16 @@ abstract final class AppTheme {
         titleTextStyle: text.titleLarge,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: scheme.brightness == Brightness.dark
-              ? Brightness.light
-              : Brightness.dark,
+          statusBarIconBrightness:
+              scheme.brightness == Brightness.dark
+                  ? Brightness.light
+                  : Brightness.dark,
           statusBarBrightness: scheme.brightness,
           systemNavigationBarColor: scheme.surface,
-          systemNavigationBarIconBrightness: scheme.brightness == Brightness.dark
-              ? Brightness.light
-              : Brightness.dark,
+          systemNavigationBarIconBrightness:
+              scheme.brightness == Brightness.dark
+                  ? Brightness.light
+                  : Brightness.dark,
           systemNavigationBarDividerColor: Colors.transparent,
         ),
       ),
@@ -69,7 +76,9 @@ abstract final class AppTheme {
           disabledBackgroundColor: colors.fill,
           disabledForegroundColor: scheme.onSurfaceVariant,
           textStyle: text.labelLarge,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -78,7 +87,9 @@ abstract final class AppTheme {
           foregroundColor: scheme.onSurface,
           side: hairline,
           textStyle: text.labelLarge,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -91,50 +102,72 @@ abstract final class AppTheme {
         filled: false,
         contentPadding: const EdgeInsets.symmetric(vertical: AppSpace.md),
         hintStyle: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-        border: UnderlineInputBorder(borderSide: BorderSide(color: scheme.outlineVariant)),
-        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: scheme.outlineVariant)),
-        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: scheme.onSurface, width: 1.5)),
+        // Inputs without their own decoration use one quiet bottom rule.
+        // Purpose-designed outlined fields keep their explicit decoration.
+        border: UnderlineInputBorder(
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: scheme.primary, width: 1.5),
+        ),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStatePropertyAll(scheme.surface),
         trackColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? scheme.primary : colors.fill,
+          (s) =>
+              s.contains(WidgetState.selected) ? scheme.primary : colors.fill,
         ),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surface,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
         titleTextStyle: text.titleLarge,
-        contentTextStyle: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        contentTextStyle: text.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: scheme.surface,
         elevation: 0,
         showDragHandle: true,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: colors.hero,
         contentTextStyle: text.bodyMedium?.copyWith(color: colors.onHero),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
       ),
       chipTheme: ChipThemeData(shape: shape),
     );
   }
 
   static TextTheme _textTheme(ColorScheme s) {
-    TextStyle sans_(double size, FontWeight w, {double? height, Color? color}) => TextStyle(
-          fontFamily: sans,
-          fontSize: size,
-          fontWeight: w,
-          height: height,
-          color: color ?? s.onSurface,
-        );
+    TextStyle sans_(
+      double size,
+      FontWeight w, {
+      double? height,
+      Color? color,
+    }) => TextStyle(
+      fontFamily: sans,
+      fontSize: size,
+      fontWeight: w,
+      height: height,
+      color: color ?? s.onSurface,
+    );
     // Captions stay in Google Sans (as in the design); Reddit Mono is applied
     // explicitly via [AppTheme.figures] for timers and tabular numbers only.
     return TextTheme(
@@ -147,7 +180,12 @@ abstract final class AppTheme {
       titleSmall: sans_(14, FontWeight.w600),
       bodyLarge: sans_(16, FontWeight.w400, height: 1.4),
       bodyMedium: sans_(14, FontWeight.w400, height: 1.4),
-      bodySmall: sans_(12.5, FontWeight.w400, height: 1.35, color: s.onSurfaceVariant),
+      bodySmall: sans_(
+        12.5,
+        FontWeight.w400,
+        height: 1.35,
+        color: s.onSurfaceVariant,
+      ),
       labelLarge: sans_(15, FontWeight.w600),
       labelMedium: sans_(12.5, FontWeight.w500, color: s.onSurfaceVariant),
       labelSmall: sans_(11.5, FontWeight.w500, color: s.onSurfaceVariant),
@@ -155,6 +193,6 @@ abstract final class AppTheme {
   }
 
   /// Reddit Mono for timers and tabular figures.
-  static TextStyle figures(TextStyle? base) =>
-      (base ?? const TextStyle()).copyWith(fontFamily: mono, letterSpacing: -0.2);
+  static TextStyle figures(TextStyle? base) => (base ?? const TextStyle())
+      .copyWith(fontFamily: mono, letterSpacing: -0.2);
 }

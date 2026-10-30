@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get_it/get_it.dart';
 
 import 'package:finance_tracker/core/database/app_database.dart';
@@ -24,6 +26,7 @@ import 'package:finance_tracker/features/shared/data/category_repository.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
+import 'package:finance_tracker/features/transfers/data/transfer_repository.dart';
 import 'package:finance_tracker/features/work/data/repository/job_repository.dart';
 import 'package:finance_tracker/features/work/data/repository/shift_repository.dart';
 import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
@@ -50,6 +53,7 @@ Future<void> configureDependencies() async {
   final debtRepo = DebtRepository(db);
   final categoryRepo = CategoryRepository(db);
   final reminderRuleRepo = ReminderRuleRepository(db);
+  final transferRepo = TransferRepository(db);
 
   await settingsRepo.load();
   await categoryRepo.load();
@@ -73,6 +77,7 @@ Future<void> configureDependencies() async {
     ..registerSingleton<DebtRepository>(debtRepo)
     ..registerSingleton<CategoryRepository>(categoryRepo)
     ..registerSingleton<ReminderRuleRepository>(reminderRuleRepo)
+    ..registerSingleton<TransferRepository>(transferRepo)
     ..registerSingleton<AuthService>(authService)
     ..registerSingleton<SubscriptionService>(subscriptionService);
 
@@ -91,6 +96,11 @@ Future<void> configureDependencies() async {
   financeStore.start();
   getIt.registerSingleton<FinanceStore>(financeStore);
 
+  // Pro cloud sync is automatic. Both finance changes and preferences are
+  // observed; AuthService debounces writes and ignores free/guest sessions.
+  financeStore.addListener(authService.triggerProAutoSync);
+  settingsRepo.addListener(authService.triggerProAutoSync);
+
   await accountRepo.ensureFixedTwoAccounts(settingsRepo.settings.baseCurrency);
 
   final existingRates = await ratesRepo.watchAll().first;
@@ -101,6 +111,14 @@ Future<void> configureDependencies() async {
     await ratesRepo.add(baseCode: 'EUR', quoteCode: 'NPR', rate: 148.0);
     await ratesRepo.add(baseCode: 'GBP', quoteCode: 'NPR', rate: 175.0);
     await ratesRepo.add(baseCode: 'AUD', quoteCode: 'USD', rate: 0.66);
+  }
+
+  // A persisted Google/Apple session bypasses the login screen on app launch.
+  // Restore its snapshot after local defaults are ready, so the import cannot
+  // race account/rate initialization.
+  if (authService.isAuthenticated &&
+      (authService.currentUser?.isPro == true || subscriptionService.isPro)) {
+    unawaited(authService.pullCloudDataToLocal());
   }
 
   // 4. ViewModels

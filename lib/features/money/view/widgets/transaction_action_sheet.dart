@@ -31,16 +31,25 @@ Future<void> showTransactionActionSheet(
       final colors = ctx.colors;
       final tr = ctx.strings;
       final isIncome = transaction.type == TransactionType.income.value;
-      final locCat = TransactionCategories.localizedCategoryName(transaction.category);
+      final locCat = TransactionCategories.localizedCategoryName(
+        transaction.category,
+      );
       final rawNote = transaction.note ?? '';
-      final title = rawNote.isNotEmpty ? tr.formatTransactionNote(rawNote) : locCat;
+      final title =
+          rawNote.isNotEmpty ? tr.formatTransactionNote(rawNote) : locCat;
       final date = DateTime.fromMillisecondsSinceEpoch(transaction.occurredAt);
       final store = getIt<FinanceStore>();
-      final account = store.accounts.where((a) => a.id == transaction.accountId).firstOrNull;
+      final account =
+          store.accounts
+              .where((a) => a.id == transaction.accountId)
+              .firstOrNull;
 
       return SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.page, vertical: AppSpace.lg),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.page,
+            vertical: AppSpace.lg,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -56,21 +65,27 @@ Future<void> showTransactionActionSheet(
                       children: [
                         Text(
                           title,
-                          style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                          style: text.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '$locCat${account != null ? ' · ${account.name}' : ''}',
-                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                          style: text.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: AppSpace.sm),
                   MoneyText(
-                    isIncome ? transaction.amountMinor : -transaction.amountMinor,
+                    isIncome
+                        ? transaction.amountMinor
+                        : -transaction.amountMinor,
                     currency,
                     signed: true,
                     style: text.titleMedium?.copyWith(
@@ -93,7 +108,8 @@ Future<void> showTransactionActionSheet(
                   children: [
                     _MetaRow(
                       label: tr.date,
-                      value: '${AppDate.header(date)}, ${AppDate.timeOnly(date)}',
+                      value:
+                          '${AppDate.header(date)}, ${AppDate.timeOnly(date)}',
                     ),
                     const SizedBox(height: AppSpace.sm),
                     _MetaRow(
@@ -117,8 +133,12 @@ Future<void> showTransactionActionSheet(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: colors.expense,
-                        side: BorderSide(color: colors.expense.withValues(alpha: 0.4)),
-                        padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+                        side: BorderSide(
+                          color: colors.expense.withValues(alpha: 0.4),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpace.md,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
@@ -134,7 +154,9 @@ Future<void> showTransactionActionSheet(
                           destructive: true,
                         );
                         if (confirm == true) {
-                          await getIt<TransactionRepository>().delete(transaction.id);
+                          await getIt<TransactionRepository>().delete(
+                            transaction.id,
+                          );
                           if (ctx.mounted) Navigator.pop(ctx);
                           onDeleted?.call();
                         }
@@ -145,7 +167,9 @@ Future<void> showTransactionActionSheet(
                   Expanded(
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpace.md,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
@@ -182,7 +206,10 @@ class _MetaRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
         Flexible(
           child: Text(
             value,
@@ -199,18 +226,25 @@ class _MetaRow extends StatelessWidget {
   }
 }
 
-Future<void> _showEditTransactionSheet(BuildContext context, Transaction transaction) async {
+Future<void> _showEditTransactionSheet(
+  BuildContext context,
+  Transaction transaction,
+) async {
   final tr = context.strings;
   final text = Theme.of(context).textTheme;
   final scheme = Theme.of(context).colorScheme;
   final repo = getIt<TransactionRepository>();
 
   final amountController = TextEditingController(
-    text: (transaction.amountMinor / 100).toStringAsFixed(transaction.amountMinor % 100 == 0 ? 0 : 2),
+    text: (transaction.amountMinor / 100).toStringAsFixed(
+      transaction.amountMinor % 100 == 0 ? 0 : 2,
+    ),
   );
   final noteController = TextEditingController(text: transaction.note ?? '');
   var selectedCategory = transaction.category;
-  DateTime selectedDate = DateTime.fromMillisecondsSinceEpoch(transaction.occurredAt);
+  DateTime selectedDate = DateTime.fromMillisecondsSinceEpoch(
+    transaction.occurredAt,
+  );
 
   await showModalBottomSheet<void>(
     context: context,
@@ -237,15 +271,21 @@ Future<void> _showEditTransactionSheet(BuildContext context, Transaction transac
                   children: [
                     Text(
                       tr.edit,
-                      style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: AppSpace.md),
                     TextField(
                       controller: amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: tr.amount,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpace.md),
@@ -253,7 +293,9 @@ Future<void> _showEditTransactionSheet(BuildContext context, Transaction transac
                       controller: noteController,
                       decoration: InputDecoration(
                         labelText: tr.noteOptional,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpace.md),
@@ -262,7 +304,10 @@ Future<void> _showEditTransactionSheet(BuildContext context, Transaction transac
                         borderRadius: BorderRadius.circular(AppRadius.md),
                         side: BorderSide(color: scheme.outlineVariant),
                       ),
-                      leading: const Icon(Icons.calendar_today_outlined, size: 20),
+                      leading: const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 20,
+                      ),
                       title: Text(AppDate.header(selectedDate)),
                       subtitle: Text(AppDate.timeOnly(selectedDate)),
                       onTap: () async {
@@ -270,7 +315,9 @@ Future<void> _showEditTransactionSheet(BuildContext context, Transaction transac
                           context: ctx,
                           initialDate: selectedDate,
                           firstDate: DateTime(2020),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
                         );
                         if (pickedDate != null && ctx.mounted) {
                           final pickedTime = await showTimePicker(
@@ -295,17 +342,24 @@ Future<void> _showEditTransactionSheet(BuildContext context, Transaction transac
                     AppButton(
                       tr.saveChanges,
                       onPressed: () async {
-                        final amount = double.tryParse(amountController.text.trim()) ?? 0;
+                        final amount =
+                            double.tryParse(amountController.text.trim()) ?? 0;
                         if (amount <= 0) return;
                         final minor = (amount * 100).round();
                         await repo.update(
                           transaction.id,
                           accountId: transaction.accountId,
-                          type: isIncome ? TransactionType.income : TransactionType.expense,
+                          type:
+                              isIncome
+                                  ? TransactionType.income
+                                  : TransactionType.expense,
                           amountMinor: minor,
                           category: selectedCategory,
                           occurredAt: selectedDate,
-                          note: noteController.text.trim().isEmpty ? null : noteController.text.trim(),
+                          note:
+                              noteController.text.trim().isEmpty
+                                  ? null
+                                  : noteController.text.trim(),
                         );
                         if (ctx.mounted) Navigator.pop(ctx);
                       },

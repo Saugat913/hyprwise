@@ -465,12 +465,38 @@ class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
   final ScrollController _scrollController = ScrollController();
   Timer? _timer;
   DateTime _now = DateTime.now();
+  double _lastTargetOffset = 0.0;
+  DateTime? _lastScrolledDate;
 
   @override
   void initState() {
     super.initState();
     if (widget.isToday) {
       _startTimer();
+    }
+    if (getIt.isRegistered<CalendarViewModel>()) {
+      getIt<CalendarViewModel>().scrollToShiftNotifier.addListener(_onScrollTriggered);
+    }
+  }
+
+  void _onScrollTriggered() {
+    _scrollToOffset(_lastTargetOffset, animated: true);
+  }
+
+  void _scrollToOffset(double target, {bool animated = true}) {
+    if (!mounted || !_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final clamped = target.clamp(0.0, maxScroll);
+    if ((_scrollController.offset - clamped).abs() > 4.0) {
+      if (animated) {
+        _scrollController.animateTo(
+          clamped,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _scrollController.jumpTo(clamped);
+      }
     }
   }
 
@@ -503,6 +529,9 @@ class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
 
   @override
   void dispose() {
+    if (getIt.isRegistered<CalendarViewModel>()) {
+      getIt<CalendarViewModel>().scrollToShiftNotifier.removeListener(_onScrollTriggered);
+    }
     _timer?.cancel();
     _scrollController.dispose();
     super.dispose();
@@ -707,23 +736,29 @@ class _AppleCalendarDayTimelineState extends State<_AppleCalendarDayTimeline> {
 
     final positioned = [...shiftEvents, ...txEvents];
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      CalendarItem? targetShift;
-      if (shifts.isNotEmpty) {
-        targetShift = shifts.firstWhere(
-          (s) => s.date.isAfter(_now),
-          orElse: () => shifts.first,
-        );
-      }
-      final targetTime = targetShift?.date ?? (widget.isToday ? _now : widget.items.firstOrNull?.date);
-      if (targetTime != null) {
-        final offset = math.max(0.0, timeToOffset(targetTime) - 30.0);
-        final maxScroll = _scrollController.position.maxScrollExtent;
-        final clamped = offset.clamp(0.0, maxScroll);
-        _scrollController.jumpTo(clamped);
-      }
-    });
+    CalendarItem? targetShift;
+    if (shifts.isNotEmpty) {
+      targetShift = shifts.firstWhere(
+        (s) => s.date.isAfter(_now),
+        orElse: () => shifts.first,
+      );
+    }
+    final targetTime = targetShift?.date ?? (widget.isToday ? _now : widget.items.firstOrNull?.date);
+    if (targetTime != null) {
+      _lastTargetOffset = math.max(0.0, timeToOffset(targetTime) - 30.0);
+    }
+
+    final isDateChanged = _lastScrolledDate == null ||
+        _lastScrolledDate!.year != widget.selectedDate.year ||
+        _lastScrolledDate!.month != widget.selectedDate.month ||
+        _lastScrolledDate!.day != widget.selectedDate.day;
+
+    if (isDateChanged) {
+      _lastScrolledDate = widget.selectedDate;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToOffset(_lastTargetOffset, animated: false);
+      });
+    }
 
     return Container(
       decoration: BoxDecoration(

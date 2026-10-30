@@ -15,10 +15,7 @@ import 'package:finance_tracker/features/subscription/data/subscription_service.
 import 'package:finance_tracker/core/network/api_client.dart';
 
 class AddDebtWizard extends StatefulWidget {
-  const AddDebtWizard({
-    super.key,
-    this.initialType = DebtType.lent,
-  });
+  const AddDebtWizard({super.key, this.initialType = DebtType.lent});
 
   final DebtType initialType;
 
@@ -80,7 +77,16 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
     final tr = context.strings;
     final partyName = _partyController.text.trim();
     if (partyName.isEmpty) {
-      final msg = tr.t('Please enter a party name', ne: 'कृपया पार्टीको नाम प्रविष्ट गर्नुहोस्', es: 'Por favor ingrese un nombre', fr: 'Veuillez saisir un nom', de: 'Bitte Namen eingeben', ja: '相手の名前を入力してください', zh: '请输入对方姓名', it: 'Inserisci un nome');
+      final msg = tr.t(
+        'Please enter a party name',
+        ne: 'कृपया पार्टीको नाम प्रविष्ट गर्नुहोस्',
+        es: 'Por favor ingrese un nombre',
+        fr: 'Veuillez saisir un nom',
+        de: 'Bitte Namen eingeben',
+        ja: '相手の名前を入力してください',
+        zh: '请输入对方姓名',
+        it: 'Inserisci un nome',
+      );
       setState(() => _partyError = msg);
       showErrorToast(context, msg);
       return;
@@ -105,18 +111,27 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
       if (_type == DebtType.lent && _linkCashFlow) {
         final everydayAcc = viewModel.financeStore.everydayAccount;
         if (everydayAcc != null) {
-          final currentBalance = viewModel.financeStore.snapshot.balanceOf(everydayAcc.id);
+          final currentBalance = viewModel.financeStore.snapshot.balanceOf(
+            everydayAcc.id,
+          );
           if (currentBalance < amountMinor) {
             final accCurrency = everydayAcc.currencyCode;
             final msg = tr.t(
               'Insufficient balance: Only ${MoneyFormatter.format(currentBalance, accCurrency)} available in Everyday account.',
-              ne: 'अपर्याप्त ब्यालेन्स: सापटी दिन खातामा मात्र ${MoneyFormatter.format(currentBalance, accCurrency)} उपलब्ध छ।',
-              es: 'Saldo insuficiente: Solo ${MoneyFormatter.format(currentBalance, accCurrency)} disponible.',
-              fr: 'Solde insuffisant : Seulement ${MoneyFormatter.format(currentBalance, accCurrency)} disponible.',
-              de: 'Unzureichender Saldo: Nur ${MoneyFormatter.format(currentBalance, accCurrency)} verfügbar.',
-              ja: '残高不足: 日常口座には${MoneyFormatter.format(currentBalance, accCurrency)}しかありません。',
-              zh: '余额不足：日常账户中仅有 ${MoneyFormatter.format(currentBalance, accCurrency)} 可用。',
-              it: 'Saldo insufficiente: Solo ${MoneyFormatter.format(currentBalance, accCurrency)} disponibile.',
+              ne:
+                  'अपर्याप्त ब्यालेन्स: सापटी दिन खातामा मात्र ${MoneyFormatter.format(currentBalance, accCurrency)} उपलब्ध छ।',
+              es:
+                  'Saldo insuficiente: Solo ${MoneyFormatter.format(currentBalance, accCurrency)} disponible.',
+              fr:
+                  'Solde insuffisant : Seulement ${MoneyFormatter.format(currentBalance, accCurrency)} disponible.',
+              de:
+                  'Unzureichender Saldo: Nur ${MoneyFormatter.format(currentBalance, accCurrency)} verfügbar.',
+              ja:
+                  '残高不足: 日常口座には${MoneyFormatter.format(currentBalance, accCurrency)}しかありません。',
+              zh:
+                  '余额不足：日常账户中仅有 ${MoneyFormatter.format(currentBalance, accCurrency)} 可用。',
+              it:
+                  'Saldo insufficiente: Solo ${MoneyFormatter.format(currentBalance, accCurrency)} disponibile.',
             );
             setState(() {
               _amountError = tr.insufficientBalance;
@@ -136,7 +151,10 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
         amountMinor: amountMinor,
         currencyCode: viewModel.baseCurrency,
         dueDate: _dueDate,
-        note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+        note:
+            _noteController.text.trim().isEmpty
+                ? null
+                : _noteController.text.trim(),
         linkCashFlow: _linkCashFlow,
         interestRatePercent: interest,
       );
@@ -146,10 +164,19 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
           context,
           tr.t(
             _type == DebtType.lent ? 'Loan record saved' : 'Debt record saved',
-            ne: _type == DebtType.lent ? 'सापटी रेकर्ड थपियो' : 'ऋण रेकर्ड थपियो',
+            ne:
+                _type == DebtType.lent
+                    ? 'सापटी रेकर्ड थपियो'
+                    : 'ऋण रेकर्ड थपियो',
             es: _type == DebtType.lent ? 'Préstamo guardado' : 'Deuda guardada',
-            fr: _type == DebtType.lent ? 'Prêt enregistré' : 'Dette enregistrée',
-            de: _type == DebtType.lent ? 'Krediteintrag gespeichert' : 'Schuldeneintrag gespeichert',
+            fr:
+                _type == DebtType.lent
+                    ? 'Prêt enregistré'
+                    : 'Dette enregistrée',
+            de:
+                _type == DebtType.lent
+                    ? 'Krediteintrag gespeichert'
+                    : 'Schuldeneintrag gespeichert',
             ja: _type == DebtType.lent ? '貸出記録を保存しました' : '借入記録を保存しました',
             zh: _type == DebtType.lent ? '借出记录已保存' : '借入记录已保存',
             it: _type == DebtType.lent ? 'Prestito salvato' : 'Debito salvato',
@@ -201,20 +228,29 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
-      builder: (sheetContext) => _CurrencyConverterSheet(
-        baseCurrency: baseCode,
-        rates: rates,
-        onApply: (convertedAmountMinor, foreignAmount, foreignCurrency, rate) {
-          final formattedAmount = (convertedAmountMinor / 100.0).toStringAsFixed(2);
-          setState(() {
-            _amountController.text = formattedAmount;
-            _conversionNote = '≈ $foreignCurrency ${foreignAmount.toStringAsFixed(2)} (@ $rate)';
-            if (_noteController.text.trim().isEmpty) {
-              _noteController.text = 'From $foreignCurrency ${foreignAmount.toStringAsFixed(2)}';
-            }
-          });
-        },
-      ),
+      builder:
+          (sheetContext) => _CurrencyConverterSheet(
+            baseCurrency: baseCode,
+            rates: rates,
+            onApply: (
+              convertedAmountMinor,
+              foreignAmount,
+              foreignCurrency,
+              rate,
+            ) {
+              final formattedAmount = (convertedAmountMinor / 100.0)
+                  .toStringAsFixed(2);
+              setState(() {
+                _amountController.text = formattedAmount;
+                _conversionNote =
+                    '≈ $foreignCurrency ${foreignAmount.toStringAsFixed(2)} (@ $rate)';
+                if (_noteController.text.trim().isEmpty) {
+                  _noteController.text =
+                      'From $foreignCurrency ${foreignAmount.toStringAsFixed(2)}';
+                }
+              });
+            },
+          ),
     );
   }
 
@@ -230,226 +266,303 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
 
     return switch (_step) {
       0 => WizardScaffold(
-          step: 0,
-          steps: 2,
-          title: tr.howMuchWasIt,
-          subtitle: tr.t('Select whether you lent or borrowed this amount.', ne: 'तपाईंले सापटी दिनुभएको वा लिनुभएको छान्नुहोस्।', es: 'Selecciona si prestaste o tomaste prestado este importe.', fr: 'Indiquez si vous avez prêté ou emprunté cette somme.', de: 'Wählen Sie, ob Sie geliehen oder geborgt haben.', ja: '貸したのか借りたのかを選択してください。', zh: '请选择该笔款项为借出或借入。', it: 'Seleziona se hai prestato o preso in prestito.'),
-          confirmClose: _amountController.text.trim().isNotEmpty,
-          discardTitle: tr.discardThis,
-          primaryLabel: tr.next,
-          onPrimary: _amountController.text.trim().isEmpty ? null : _onNext,
-          onClose: () => context.pop(),
-          child: Column(
-            children: [
-              SegmentedTabs<DebtType>(
-                options: {
-                  DebtType.lent: tr.lentReceivable,
-                  DebtType.borrowed: tr.borrowedPayable,
-                },
-                value: _type,
-                onChanged: (type) => setState(() => _type = type),
-              ),
-              const SizedBox(height: AppSpace.xxl),
-              BigAmountField(
-                currencySymbol: currencySymbol,
-                controller: _amountController,
-                subtitle: _conversionNote,
-                onCurrencyTap: () => _openCurrencyConverter(context),
-                autofocus: true,
-                isRequired: true,
-                errorText: _amountError,
-                onChanged: (val) {
-                  if (_amountError != null) setState(() => _amountError = null);
-                  setState(() {});
-                },
-              ),
-            ],
-          ),
+        step: 0,
+        steps: 2,
+        title: tr.howMuchWasIt,
+        subtitle: tr.t(
+          'Select whether you lent or borrowed this amount.',
+          ne: 'तपाईंले सापटी दिनुभएको वा लिनुभएको छान्नुहोस्।',
+          es: 'Selecciona si prestaste o tomaste prestado este importe.',
+          fr: 'Indiquez si vous avez prêté ou emprunté cette somme.',
+          de: 'Wählen Sie, ob Sie geliehen oder geborgt haben.',
+          ja: '貸したのか借りたのかを選択してください。',
+          zh: '请选择该笔款项为借出或借入。',
+          it: 'Seleziona se hai prestato o preso in prestito.',
         ),
+        confirmClose: _amountController.text.trim().isNotEmpty,
+        discardTitle: tr.discardThis,
+        primaryLabel: tr.next,
+        onPrimary: _amountController.text.trim().isEmpty ? null : _onNext,
+        onClose: () => context.pop(),
+        child: Column(
+          children: [
+            SegmentedTabs<DebtType>(
+              options: {
+                DebtType.lent: tr.lentReceivable,
+                DebtType.borrowed: tr.borrowedPayable,
+              },
+              value: _type,
+              onChanged: (type) => setState(() => _type = type),
+            ),
+            const SizedBox(height: AppSpace.xxl),
+            BigAmountField(
+              currencySymbol: currencySymbol,
+              controller: _amountController,
+              subtitle: _conversionNote,
+              onCurrencyTap: () => _openCurrencyConverter(context),
+              autofocus: true,
+              isRequired: true,
+              errorText: _amountError,
+              onChanged: (val) {
+                if (_amountError != null) setState(() => _amountError = null);
+                setState(() {});
+              },
+            ),
+          ],
+        ),
+      ),
       _ => WizardScaffold(
-          step: 1,
-          steps: 2,
-          title: tr.t('Who and when?', ne: 'कसलाई र कहिले?', es: '¿A quién y cuándo?', fr: 'À qui et quand ?', de: 'Wer und wann?', ja: '相手と期日', zh: '往来对象与日期', it: 'A chi e quando?'),
-          subtitle: tr.t('Enter the party name, due date, and account cash flow.', ne: 'पार्टीको नाम, फिर्ता मिति र खाता सिंक विवरण प्रविष्ट गर्नुहोस्।', es: 'Ingresa nombre de la parte, vencimiento y flujo.', fr: 'Saisissez le nom, l\'échéance et le flux.', de: 'Name, Fälligkeit und Geldfluss erfassen.', ja: '相手の名前、期日、口座連携を設定してください。', zh: '输入对方姓名、还款期日及账户出入账关联。', it: 'Inserisci nome, data di scadenza e flusso.'),
-          confirmClose: true,
-          discardTitle: tr.discardThis,
-          primaryLabel: _isSaving
-              ? tr.t('Saving...', ne: 'सुरक्षित गर्दै...', es: 'Guardando...', fr: 'Enregistrement...', de: 'Speichern...', ja: '保存中...', zh: '正在保存...', it: 'Salvataggio...')
-              : tr.t('Save Record', ne: 'रेकर्ड सेभ गर्नुहोस्', es: 'Guardar registro', fr: 'Enregistrer', de: 'Eintrag speichern', ja: '記録を保存', zh: '保存记录', it: 'Salva record'),
-          onPrimary: (_partyController.text.trim().isEmpty || _isSaving) ? null : _save,
-          onClose: () => context.pop(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Party name
-              UnderlineField(
-                controller: _partyController,
-                label: tr.partyNameLabel,
-                hint: tr.partyNameHint,
-                autofocus: true,
-                isRequired: true,
-                errorText: _partyError,
-                onChanged: (val) {
-                  if (_partyError != null) setState(() => _partyError = null);
-                  setState(() {});
-                },
-              ),
-
-              // Existing party suggestions (spacious horizontal merchant-style cards)
-              if (existingParties.isNotEmpty) ...[
-                const SizedBox(height: AppSpace.md),
-                Text(
-                  tr.t(
-                    'Recent people',
-                    ne: 'हालका व्यक्तिहरू',
-                    es: 'Personas recientes',
-                    fr: 'Personnes récentes',
-                    de: 'Zuletzt verwendet',
-                    ja: '最近の相手',
-                    zh: '最近往来对象',
-                    it: 'Persone recenti',
-                  ),
-                  style: text.labelMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+        step: 1,
+        steps: 2,
+        title: tr.t(
+          'Who and when?',
+          ne: 'कसलाई र कहिले?',
+          es: '¿A quién y cuándo?',
+          fr: 'À qui et quand ?',
+          de: 'Wer und wann?',
+          ja: '相手と期日',
+          zh: '往来对象与日期',
+          it: 'A chi e quando?',
+        ),
+        subtitle: tr.t(
+          'Enter the party name, due date, and account cash flow.',
+          ne: 'पार्टीको नाम, फिर्ता मिति र खाता सिंक विवरण प्रविष्ट गर्नुहोस्।',
+          es: 'Ingresa nombre de la parte, vencimiento y flujo.',
+          fr: 'Saisissez le nom, l\'échéance et le flux.',
+          de: 'Name, Fälligkeit und Geldfluss erfassen.',
+          ja: '相手の名前、期日、口座連携を設定してください。',
+          zh: '输入对方姓名、还款期日及账户出入账关联。',
+          it: 'Inserisci nome, data di scadenza e flusso.',
+        ),
+        confirmClose: true,
+        discardTitle: tr.discardThis,
+        primaryLabel:
+            _isSaving
+                ? tr.t(
+                  'Saving...',
+                  ne: 'सुरक्षित गर्दै...',
+                  es: 'Guardando...',
+                  fr: 'Enregistrement...',
+                  de: 'Speichern...',
+                  ja: '保存中...',
+                  zh: '正在保存...',
+                  it: 'Salvataggio...',
+                )
+                : tr.t(
+                  'Save Record',
+                  ne: 'रेकर्ड सेभ गर्नुहोस्',
+                  es: 'Guardar registro',
+                  fr: 'Enregistrer',
+                  de: 'Eintrag speichern',
+                  ja: '記録を保存',
+                  zh: '保存记录',
+                  it: 'Salva record',
                 ),
-                const SizedBox(height: AppSpace.sm),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final cols = constraints.maxWidth >= 420 ? 3 : 2;
-                    final cardWidth = (constraints.maxWidth - (cols - 1) * AppSpace.sm) / cols;
-                    return Wrap(
-                      spacing: AppSpace.sm,
-                      runSpacing: AppSpace.sm,
-                      children: [
-                        for (final party in existingParties.take(6))
-                          Builder(
-                            builder: (context) {
-                              final isSelected = _partyController.text.trim().toLowerCase() ==
-                                  party.trim().toLowerCase();
-                              return SizedBox(
-                                width: cardWidth,
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(AppRadius.md),
-                                    onTap: () {
-                                      setState(() {
-                                        _partyController.text = party;
-                                        _partyError = null;
-                                      });
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 150),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: AppSpace.md,
-                                        vertical: AppSpace.sm + 2,
+        onPrimary:
+            (_partyController.text.trim().isEmpty || _isSaving) ? null : _save,
+        onClose: () => context.pop(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Party name
+            UnderlineField(
+              controller: _partyController,
+              label: tr.partyNameLabel,
+              hint: tr.partyNameHint,
+              autofocus: true,
+              isRequired: true,
+              errorText: _partyError,
+              onChanged: (val) {
+                if (_partyError != null) setState(() => _partyError = null);
+                setState(() {});
+              },
+            ),
+
+            // Existing party suggestions (spacious horizontal merchant-style cards)
+            if (existingParties.isNotEmpty) ...[
+              const SizedBox(height: AppSpace.md),
+              Text(
+                tr.t(
+                  'Recent people',
+                  ne: 'हालका व्यक्तिहरू',
+                  es: 'Personas recientes',
+                  fr: 'Personnes récentes',
+                  de: 'Zuletzt verwendet',
+                  ja: '最近の相手',
+                  zh: '最近往来对象',
+                  it: 'Persone recenti',
+                ),
+                style: text.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cols = constraints.maxWidth >= 420 ? 3 : 2;
+                  final cardWidth =
+                      (constraints.maxWidth - (cols - 1) * AppSpace.sm) / cols;
+                  return Wrap(
+                    spacing: AppSpace.sm,
+                    runSpacing: AppSpace.sm,
+                    children: [
+                      for (final party in existingParties.take(6))
+                        Builder(
+                          builder: (context) {
+                            final isSelected =
+                                _partyController.text.trim().toLowerCase() ==
+                                party.trim().toLowerCase();
+                            return SizedBox(
+                              width: cardWidth,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.md,
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      _partyController.text = party;
+                                      _partyError = null;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpace.md,
+                                      vertical: AppSpace.sm + 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isSelected
+                                              ? scheme.primary.withValues(
+                                                alpha: 0.08,
+                                              )
+                                              : scheme.surface,
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.md,
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? scheme.primary.withValues(alpha: 0.08)
-                                            : scheme.surface,
-                                        borderRadius: BorderRadius.circular(AppRadius.md),
-                                        border: Border.all(
-                                          color: isSelected ? scheme.primary : scheme.outlineVariant,
-                                          width: isSelected ? 1.5 : 1.0,
+                                      border: Border.all(
+                                        color:
+                                            isSelected
+                                                ? scheme.primary
+                                                : scheme.outlineVariant,
+                                        width: isSelected ? 1.5 : 1.0,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        LetterAvatar(
+                                          party,
+                                          size: 28,
+                                          isCircle: true,
                                         ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          LetterAvatar(party, size: 28, isCircle: true),
-                                          const SizedBox(width: AppSpace.sm),
-                                          Expanded(
-                                            child: Text(
-                                              party,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: text.bodySmall?.copyWith(
-                                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                                color: isSelected ? scheme.primary : scheme.onSurface,
-                                              ),
+                                        const SizedBox(width: AppSpace.sm),
+                                        Expanded(
+                                          child: Text(
+                                            party,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: text.bodySmall?.copyWith(
+                                              fontWeight:
+                                                  isSelected
+                                                      ? FontWeight.w700
+                                                      : FontWeight.w600,
+                                              color:
+                                                  isSelected
+                                                      ? scheme.primary
+                                                      : scheme.onSurface,
                                             ),
                                           ),
-                                          if (isSelected) ...[
-                                            const SizedBox(width: AppSpace.xs),
-                                            Icon(Icons.check_circle, size: 16, color: scheme.primary),
-                                          ],
+                                        ),
+                                        if (isSelected) ...[
+                                          const SizedBox(width: AppSpace.xs),
+                                          Icon(
+                                            Icons.check_circle,
+                                            size: 16,
+                                            color: scheme.primary,
+                                          ),
                                         ],
-                                      ),
+                                      ],
                                     ),
                                   ),
                                 ),
-                              );
-                            },
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-              const SizedBox(height: AppSpace.xl),
-
-              // Due Date row
-              AppCard(
-                padding: EdgeInsets.zero,
-                child: ListRow(
-                  leading: const IconTile(HugeIcons.strokeRoundedCalendar01),
-                  title: tr.duePrefix,
-                  subtitle: _dueDate == null
-                      ? tr.noFixedDateOptional
-                      : AppDate.short(_dueDate!),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_dueDate != null)
-                        IconButton(
-                          icon: const Icon(Icons.clear, size: 16),
-                          onPressed: () => setState(() => _dueDate = null),
+                              ),
+                            );
+                          },
                         ),
-                      const Chevron(),
                     ],
-                  ),
-                  onTap: _pickDueDate,
-                ),
-              ),
-              const SizedBox(height: AppSpace.lg),
-
-              // Optional Interest Rate (%)
-              UnderlineField(
-                controller: _interestController,
-                label: tr.interestRateOptional,
-                hint: 'e.g. 5.0 for 5% annual',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: AppSpace.lg),
-
-              // Optional Note
-              UnderlineField(
-                controller: _noteController,
-                label: tr.noteOrReasonOptional,
-                hint: tr.noteReasonHint,
-              ),
-              const SizedBox(height: AppSpace.xl),
-
-              // Cash Flow Switch
-              AppCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpace.lg,
-                  vertical: AppSpace.xs,
-                ),
-                child: SwitchRow(
-                  title: tr.recordInEverydayAccount,
-                  subtitle: _type == DebtType.lent
-                      ? tr.deductEverydayBalanceNow
-                      : tr.addEverydayBalanceNow,
-                  value: _linkCashFlow,
-                  onChanged: (val) => setState(() => _linkCashFlow = val),
-                ),
+                  );
+                },
               ),
             ],
-          ),
+            const SizedBox(height: AppSpace.xl),
+
+            // Due Date row
+            AppCard(
+              padding: EdgeInsets.zero,
+              child: ListRow(
+                leading: const IconTile(HugeIcons.strokeRoundedCalendar01),
+                title: tr.duePrefix,
+                subtitle:
+                    _dueDate == null
+                        ? tr.noFixedDateOptional
+                        : AppDate.short(_dueDate!),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_dueDate != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 16),
+                        onPressed: () => setState(() => _dueDate = null),
+                      ),
+                    const Chevron(),
+                  ],
+                ),
+                onTap: _pickDueDate,
+              ),
+            ),
+            const SizedBox(height: AppSpace.lg),
+
+            // Optional Interest Rate (%)
+            UnderlineField(
+              controller: _interestController,
+              label: tr.interestRateOptional,
+              hint: 'e.g. 5.0 for 5% annual',
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+            ),
+            const SizedBox(height: AppSpace.lg),
+
+            // Optional Note
+            UnderlineField(
+              controller: _noteController,
+              label: tr.noteOrReasonOptional,
+              hint: tr.noteReasonHint,
+            ),
+            const SizedBox(height: AppSpace.xl),
+
+            // Cash Flow Switch
+            AppCard(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpace.lg,
+                vertical: AppSpace.xs,
+              ),
+              child: SwitchRow(
+                title: tr.recordInEverydayAccount,
+                subtitle:
+                    _type == DebtType.lent
+                        ? tr.deductEverydayBalanceNow
+                        : tr.addEverydayBalanceNow,
+                value: _linkCashFlow,
+                onChanged: (val) => setState(() => _linkCashFlow = val),
+              ),
+            ),
+          ],
         ),
+      ),
     };
   }
 }
@@ -463,10 +576,17 @@ class _CurrencyConverterSheet extends StatefulWidget {
 
   final String baseCurrency;
   final List<ExchangeRateQuote> rates;
-  final void Function(int convertedAmountMinor, double foreignAmount, String foreignCurrency, double rate) onApply;
+  final void Function(
+    int convertedAmountMinor,
+    double foreignAmount,
+    String foreignCurrency,
+    double rate,
+  )
+  onApply;
 
   @override
-  State<_CurrencyConverterSheet> createState() => _CurrencyConverterSheetState();
+  State<_CurrencyConverterSheet> createState() =>
+      _CurrencyConverterSheetState();
 }
 
 class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
@@ -474,12 +594,22 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
   final _foreignAmountController = TextEditingController(text: '25.00');
   final Map<String, double> _liveServerRates = {};
 
-  static const _supportedCurrencies = ['AUD', 'NPR', 'USD', 'INR', 'EUR', 'GBP'];
+  static const _supportedCurrencies = [
+    'AUD',
+    'NPR',
+    'USD',
+    'INR',
+    'EUR',
+    'GBP',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _selectedForeignCurrency = widget.baseCurrency == 'NPR' ? 'AUD' : (widget.baseCurrency == 'AUD' ? 'USD' : 'NPR');
+    _selectedForeignCurrency =
+        widget.baseCurrency == 'NPR'
+            ? 'AUD'
+            : (widget.baseCurrency == 'AUD' ? 'USD' : 'NPR');
     _fetchServerRates();
   }
 
@@ -508,24 +638,34 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
       return _liveServerRates[directPair]!;
     }
     final inversePair = '${widget.baseCurrency}_$_selectedForeignCurrency';
-    if (_liveServerRates.containsKey(inversePair) && _liveServerRates[inversePair]! != 0) {
+    if (_liveServerRates.containsKey(inversePair) &&
+        _liveServerRates[inversePair]! != 0) {
       return 1.0 / _liveServerRates[inversePair]!;
     }
 
     for (final r in widget.rates) {
-      if (r.baseCode == _selectedForeignCurrency && r.quoteCode == widget.baseCurrency) {
+      if (r.baseCode == _selectedForeignCurrency &&
+          r.quoteCode == widget.baseCurrency) {
         return r.rate;
       }
-      if (r.baseCode == widget.baseCurrency && r.quoteCode == _selectedForeignCurrency && r.rate > 0) {
+      if (r.baseCode == widget.baseCurrency &&
+          r.quoteCode == _selectedForeignCurrency &&
+          r.rate > 0) {
         return 1.0 / r.rate;
       }
     }
-    if (_selectedForeignCurrency == 'AUD' && widget.baseCurrency == 'NPR') return 93.42;
-    if (_selectedForeignCurrency == 'USD' && widget.baseCurrency == 'NPR') return 142.60;
-    if (_selectedForeignCurrency == 'INR' && widget.baseCurrency == 'NPR') return 1.60;
-    if (_selectedForeignCurrency == 'USD' && widget.baseCurrency == 'AUD') return 1.52;
-    if (_selectedForeignCurrency == 'EUR' && widget.baseCurrency == 'AUD') return 1.65;
-    if (_selectedForeignCurrency == 'NPR' && widget.baseCurrency == 'AUD') return 1.0 / 93.42;
+    if (_selectedForeignCurrency == 'AUD' && widget.baseCurrency == 'NPR')
+      return 93.42;
+    if (_selectedForeignCurrency == 'USD' && widget.baseCurrency == 'NPR')
+      return 142.60;
+    if (_selectedForeignCurrency == 'INR' && widget.baseCurrency == 'NPR')
+      return 1.60;
+    if (_selectedForeignCurrency == 'USD' && widget.baseCurrency == 'AUD')
+      return 1.52;
+    if (_selectedForeignCurrency == 'EUR' && widget.baseCurrency == 'AUD')
+      return 1.65;
+    if (_selectedForeignCurrency == 'NPR' && widget.baseCurrency == 'AUD')
+      return 1.0 / 93.42;
     return 1.0;
   }
 
@@ -546,7 +686,9 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
       ),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.lg),
+        ),
       ),
       child: SafeArea(
         child: Padding(
@@ -561,20 +703,32 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(tr.currencyAssistant, style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          tr.currencyAssistant,
+                          style: text.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           tr.t(
                             'Convert foreign amount directly into ${widget.baseCurrency}',
-                            ne: 'विदेशी रकमलाई सिधै ${widget.baseCurrency} मा रूपान्तरण गर्नुहोस्',
-                            es: 'Convierte divisas directamente a ${widget.baseCurrency}',
-                            fr: 'Convertir le montant étranger directement en ${widget.baseCurrency}',
-                            de: 'Fremdwährungsbetrag direkt in ${widget.baseCurrency} umrechnen',
+                            ne:
+                                'विदेशी रकमलाई सिधै ${widget.baseCurrency} मा रूपान्तरण गर्नुहोस्',
+                            es:
+                                'Convierte divisas directamente a ${widget.baseCurrency}',
+                            fr:
+                                'Convertir le montant étranger directement en ${widget.baseCurrency}',
+                            de:
+                                'Fremdwährungsbetrag direkt in ${widget.baseCurrency} umrechnen',
                             ja: '外貨を直接${widget.baseCurrency}に換算',
                             zh: '直接将外币金额换算为 ${widget.baseCurrency}',
-                            it: 'Converti valuta estera in ${widget.baseCurrency}',
+                            it:
+                                'Converti valuta estera in ${widget.baseCurrency}',
                           ),
-                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                          style: text.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
@@ -596,7 +750,8 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                         label: Text(code),
                         selected: _selectedForeignCurrency == code,
                         onSelected: (selected) {
-                          if (selected) setState(() => _selectedForeignCurrency = code);
+                          if (selected)
+                            setState(() => _selectedForeignCurrency = code);
                         },
                       ),
                 ],
@@ -605,12 +760,15 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
               TextField(
                 controller: _foreignAmountController,
                 autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 style: text.headlineSmall,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   labelText: tr.amountInCurrency(_selectedForeignCurrency),
-                  prefixText: '${Currency.fromCode(_selectedForeignCurrency).symbol} ',
+                  prefixText:
+                      '${Currency.fromCode(_selectedForeignCurrency).symbol} ',
                   border: const OutlineInputBorder(),
                   hintText: tr.localizeDigits('25.00'),
                 ),
@@ -621,17 +779,28 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
                 ),
                 child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(tr.rateLabel, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
                         Text(
-                          tr.localizeDigits('1 $_selectedForeignCurrency = ${rate.toStringAsFixed(2)} ${widget.baseCurrency}'),
-                          style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                          tr.rateLabel,
+                          style: text.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          tr.localizeDigits(
+                            '1 $_selectedForeignCurrency = ${rate.toStringAsFixed(2)} ${widget.baseCurrency}',
+                          ),
+                          style: text.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -639,7 +808,12 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(tr.convertedInBase(widget.baseCurrency), style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          tr.convertedInBase(widget.baseCurrency),
+                          style: text.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         Text(
                           '${Currency.fromCode(widget.baseCurrency).symbol} ${tr.localizeDigits(convertedAmount.toStringAsFixed(2))}',
                           style: text.titleMedium?.copyWith(
@@ -656,20 +830,33 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
               AppButton(
                 tr.t(
                   'Apply ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
-                  ne: '${Currency.fromCode(widget.baseCurrency).symbol} ${tr.localizeDigits(convertedAmount.toStringAsFixed(2))} लागू गर्नुहोस्',
-                  es: 'Aplicar ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
-                  fr: 'Appliquer ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
-                  de: '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} übernehmen',
-                  ja: '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} を適用',
-                  zh: '应用 ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
-                  it: 'Applica ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  ne:
+                      '${Currency.fromCode(widget.baseCurrency).symbol} ${tr.localizeDigits(convertedAmount.toStringAsFixed(2))} लागू गर्नुहोस्',
+                  es:
+                      'Aplicar ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  fr:
+                      'Appliquer ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  de:
+                      '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} übernehmen',
+                  ja:
+                      '${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)} を適用',
+                  zh:
+                      '应用 ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
+                  it:
+                      'Applica ${Currency.fromCode(widget.baseCurrency).symbol} ${convertedAmount.toStringAsFixed(2)}',
                 ),
-                onPressed: foreignAmount <= 0
-                    ? null
-                    : () {
-                        widget.onApply(convertedMinor, foreignAmount, _selectedForeignCurrency, rate);
-                        Navigator.of(context).pop();
-                      },
+                onPressed:
+                    foreignAmount <= 0
+                        ? null
+                        : () {
+                          widget.onApply(
+                            convertedMinor,
+                            foreignAmount,
+                            _selectedForeignCurrency,
+                            rate,
+                          );
+                          Navigator.of(context).pop();
+                        },
               ),
               const SizedBox(height: AppSpace.sm),
             ],

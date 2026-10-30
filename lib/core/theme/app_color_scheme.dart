@@ -19,7 +19,19 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.fill,
     required this.brand,
     required this.brandBg,
-  });
+    this.liquid = const Color(0xFF22C55E),
+    this.reserved = const Color(0xFF9CA3AF),
+    this.expenseBar = const Color(0xFF8A938E),
+    Color? hairline,
+    Color? hairlineSoft,
+    Color? segmentedBg,
+    Color? segmentedSelected,
+    Color? textMuted,
+  })  : hairline = hairline ?? const Color(0x1FFFFFFF),
+        hairlineSoft = hairlineSoft ?? const Color(0x0FFFFFFF),
+        segmentedBg = segmentedBg ?? const Color(0x14FFFFFF),
+        segmentedSelected = segmentedSelected ?? const Color(0x2EFFFFFF),
+        textMuted = textMuted ?? const Color(0xFF9CA3AF);
 
   final Color income;
   final Color incomeBg;
@@ -39,6 +51,16 @@ class AppColors extends ThemeExtension<AppColors> {
   /// Track behind segmented tabs, progress bars and filled inputs.
   final Color fill;
 
+  /// Redesigned Home Hero Design Tokens
+  final Color liquid;
+  final Color reserved;
+  final Color expenseBar;
+  final Color hairline;
+  final Color hairlineSoft;
+  final Color segmentedBg;
+  final Color segmentedSelected;
+  final Color textMuted;
+
   static const light = AppColors(
     income: AppPalette.lightGreen,
     incomeBg: AppPalette.lightGreenBg,
@@ -52,6 +74,14 @@ class AppColors extends ThemeExtension<AppColors> {
     fill: AppPalette.lightFill,
     brand: AppPalette.brandOrange,
     brandBg: AppPalette.brandOrangeBgLight,
+    liquid: Color(0xFF22C55E),
+    reserved: Color(0xFF9CA3AF),
+    expenseBar: Color(0xFF8A938E),
+    hairline: Color(0x1FFFFFFF),
+    hairlineSoft: Color(0x0FFFFFFF),
+    segmentedBg: Color(0x14FFFFFF),
+    segmentedSelected: Color(0x2EFFFFFF),
+    textMuted: Color(0xFF9CA3AF),
   );
 
   static const dark = AppColors(
@@ -67,6 +97,14 @@ class AppColors extends ThemeExtension<AppColors> {
     fill: AppPalette.darkFill,
     brand: AppPalette.brandOrange,
     brandBg: AppPalette.brandOrangeBgDark,
+    liquid: Color(0xFF22C55E),
+    reserved: Color(0xFF9CA3AF),
+    expenseBar: Color(0xFF8A938E),
+    hairline: Color(0x1F000000),
+    hairlineSoft: Color(0x0F000000),
+    segmentedBg: Color(0x14000000),
+    segmentedSelected: Color(0x2E000000),
+    textMuted: Color(0xFF7E8983),
   );
 
   @override

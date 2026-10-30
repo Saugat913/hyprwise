@@ -32,6 +32,7 @@ class UnderlineField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
     final colors = context.colors;
     final hasError = errorText != null && errorText!.isNotEmpty;
 
@@ -65,12 +66,19 @@ class UnderlineField extends StatelessWidget {
             hintText: hint,
             errorText: errorText,
             errorStyle: TextStyle(color: colors.expense, fontSize: 12, fontWeight: FontWeight.w500),
-            enabledBorder: hasError
-                ? UnderlineInputBorder(borderSide: BorderSide(color: colors.expense, width: 1.5))
-                : null,
-            focusedBorder: hasError
-                ? UnderlineInputBorder(borderSide: BorderSide(color: colors.expense, width: 2.0))
-                : null,
+            border: UnderlineInputBorder(borderSide: BorderSide(color: scheme.outlineVariant)),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: hasError ? colors.expense : scheme.outlineVariant,
+                width: hasError ? 1.5 : 1.0,
+              ),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: hasError ? colors.expense : scheme.onSurface,
+                width: hasError ? 2.0 : 1.5,
+              ),
+            ),
           ),
         ),
       ],
