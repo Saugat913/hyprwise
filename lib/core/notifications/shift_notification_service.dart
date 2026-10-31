@@ -32,6 +32,11 @@ class ShiftNotificationService {
   DateTime? _lastShiftNotifyAt;
   static const String shiftChannelId = 'hyprwise_active_shift_channel';
   static const String alertsChannelId = 'hyprwise_scheduled_alerts_channel';
+  static const DarwinNotificationDetails _darwinDetails = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+  );
 
   bool get _isNepali {
     try {
@@ -75,7 +80,16 @@ class ShiftNotificationService {
     }
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
+    const darwinSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: darwinSettings,
+      macOS: darwinSettings,
+    );
 
     try {
       await _notifications.initialize(
@@ -296,7 +310,7 @@ class ShiftNotificationService {
       ],
     );
 
-    final details = NotificationDetails(android: androidDetails);
+    final details = NotificationDetails(android: androidDetails, iOS: _darwinDetails);
 
     try {
       await _notifications.show(
@@ -364,7 +378,7 @@ class ShiftNotificationService {
           ? '$minutesBefore मिनेटमा सुरु हुँदैछ (${DateFormat('h:mm a').format(startAt)})'
           : 'Starts in $minutesBefore mins at ${DateFormat('h:mm a').format(startAt)}',
       scheduledDate: scheduledTz,
-      notificationDetails: NotificationDetails(android: androidDetails),
+      notificationDetails: NotificationDetails(android: androidDetails, iOS: _darwinDetails),
       payload: '/work',
     );
   }
@@ -404,7 +418,7 @@ class ShiftNotificationService {
           ? '$currencyCode ${(amountMinor / 100.0).toStringAsFixed(2)} आज तिर्नुपर्नेछ'
           : '$currencyCode ${(amountMinor / 100.0).toStringAsFixed(2)} is due today',
       scheduledDate: scheduledTz,
-      notificationDetails: NotificationDetails(android: androidDetails),
+      notificationDetails: NotificationDetails(android: androidDetails, iOS: _darwinDetails),
       payload: '/money',
     );
   }
@@ -455,7 +469,7 @@ class ShiftNotificationService {
       title: title,
       body: body,
       scheduledDate: scheduledTz,
-      notificationDetails: NotificationDetails(android: androidDetails),
+      notificationDetails: NotificationDetails(android: androidDetails, iOS: _darwinDetails),
       payload: '/debts',
     );
   }
@@ -497,7 +511,7 @@ class ShiftNotificationService {
       title: title,
       body: body,
       scheduledDate: tz.TZDateTime.from(at, tz.local),
-      notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500))),
+      notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500)), iOS: _darwinDetails),
       payload: '/work/shift/live',
     );
   }
@@ -522,7 +536,7 @@ class ShiftNotificationService {
         title: r.title,
         body: r.body,
         scheduledDate: tz.TZDateTime.from(r.at, tz.local),
-        notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500))),
+        notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500)), iOS: _darwinDetails),
         matchDateTimeComponents: r.weekly ? DateTimeComponents.dayOfWeekAndTime : null,
         payload: r.payload,
       );

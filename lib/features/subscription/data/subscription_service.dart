@@ -113,13 +113,15 @@ class SubscriptionService extends ChangeNotifier {
       : defaultApiKey;
   static String get appleApiKey => AppConfig.revenueCatAppleKey.isNotEmpty
       ? AppConfig.revenueCatAppleKey
-      : defaultApiKey;
+      : '';
 
   /// Active API key: Test Store key in debug mode, store key in release mode
   static String get apiKey {
     if (kDebugMode) return testStoreKey;
-    final configured = Platform.isAndroid ? googleApiKey : appleApiKey;
-    return configured.isNotEmpty ? configured : playStoreKey;
+    if (Platform.isIOS || Platform.isMacOS) {
+      return appleApiKey;
+    }
+    return googleApiKey.isNotEmpty ? googleApiKey : playStoreKey;
   }
 
   void _syncNotifiers() {

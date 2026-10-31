@@ -62,6 +62,9 @@ workflows:
           if [ -n "$REVENUECAT_GOOGLE_KEY" ]; then
             sed -i "s|^REVENUECAT_GOOGLE_KEY=.*|REVENUECAT_GOOGLE_KEY=$REVENUECAT_GOOGLE_KEY|" .env
           fi
+          if [ -n "$REVENUECAT_APPLE_KEY" ]; then
+            sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
+          fi
       - name: Run Flutter Static Analysis
         script: flutter analyze
       - name: Run Flutter Unit & Integration Tests
@@ -144,6 +147,9 @@ workflows:
           if [ -n "$REVENUECAT_GOOGLE_KEY" ]; then
             sed -i "s|^REVENUECAT_GOOGLE_KEY=.*|REVENUECAT_GOOGLE_KEY=$REVENUECAT_GOOGLE_KEY|" .env
           fi
+          if [ -n "$REVENUECAT_APPLE_KEY" ]; then
+            sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
+          fi
       - name: Run Flutter Static Analysis
         script: flutter analyze
       - name: Run Flutter Tests
@@ -171,7 +177,79 @@ workflows:
           failure: true
 
   # ----------------------------------------------------------------------------
-  # 3. Pull Request Quality Gate (PRs to main or dev)
+  # 3. iOS TestFlight Workflow (dev branch & v0.* tags)
+  # ----------------------------------------------------------------------------
+  ios-testflight:
+    name: Hyprwise TestFlight (App Store Connect)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - app_store_credentials
+      vars:
+        BUNDLE_ID: "com.hypr.hyprwise"
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+    triggering:
+      events:
+        - push
+        - tag
+      branch_patterns:
+        - pattern: 'dev'
+          include: true
+          source: true
+      tag_patterns:
+        - pattern: 'v0.*'
+          include: true
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Get Flutter dependencies
+        script: flutter pub get
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install --repo-update && cd ..
+      - name: Configure environment variables (.env)
+        script: |
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+          if [ -n "$SERVER_URL" ]; then
+            sed -i "s|^SERVER_URL=.*|SERVER_URL=$SERVER_URL|" .env
+          fi
+          if [ -n "$REVENUECAT_APPLE_KEY" ]; then
+            sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
+          fi
+      - name: Run Flutter Static Analysis
+        script: flutter analyze
+      - name: Run Flutter Unit & Integration Tests
+        script: flutter test --dart-define-from-file=.env
+      - name: Build iOS App (.ipa)
+        script: |
+          BUILD_CODE=${BUILD_NUMBER:-1}
+          flutter build ipa --release \
+            --dart-define-from-file=.env \
+            --build-number=$BUILD_CODE \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+      email:
+        recipients:
+          - dev@hyprwise.app
+        notify:
+          failure: true
+
+  # ----------------------------------------------------------------------------
+  # 4. Pull Request Quality Gate (PRs to main or dev)
   # ----------------------------------------------------------------------------
   pr-verification:
     name: PR Quality Gate & Verification

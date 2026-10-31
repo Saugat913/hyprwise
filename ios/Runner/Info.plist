@@ -68,5 +68,22 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+		<key>NSCameraUsageDescription</key>
+		<string>Hyprwise uses your camera to scan receipts and bills for instant transaction logging and spending intelligence.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Hyprwise accesses your photo library to import receipt and invoice images for financial record keeping.</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.534651621591-7v4e8ni800a1260tnh6fi5brsr3er4no</string>
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>

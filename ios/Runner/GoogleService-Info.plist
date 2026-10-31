@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyBn-QpJcyY28iN_90jDDO6BO3IOlL-UtOw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>534651621591</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.hypr.hyprwise</string>
+	<key>PROJECT_ID</key>
+	<string>tilvane</string>
+	<key>STORAGE_BUCKET</key>
+	<string>tilvane.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>CLIENT_ID</key>
+	<string>534651621591-7v4e8ni800a1260tnh6fi5brsr3er4no.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.534651621591-7v4e8ni800a1260tnh6fi5brsr3er4no</string>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:534651621591:ios:6feb492286462673942092</string>
+</dict>
+</plist>
