@@ -21,6 +21,7 @@ workflows:
       groups:
         - google_play      # Contains: GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         - android_signing  # Contains: FCI_KEYSTORE, FCI_KEYSTORE_PASSWORD, FCI_KEY_ALIAS, FCI_KEY_PASSWORD
+        - app_config       # Contains: SERVER_URL, REVENUECAT_GOOGLE_KEY, REVENUECAT_APPLE_KEY
       vars:
         PACKAGE_NAME: "com.hypr.hyprwise"
     triggering:
@@ -103,6 +104,7 @@ workflows:
       groups:
         - google_play      # Contains: GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         - android_signing  # Contains: FCI_KEYSTORE, FCI_KEYSTORE_PASSWORD, FCI_KEY_ALIAS, FCI_KEY_PASSWORD
+        - app_config       # Contains: SERVER_URL, REVENUECAT_GOOGLE_KEY, REVENUECAT_APPLE_KEY
       vars:
         PACKAGE_NAME: "com.hypr.hyprwise"
     triggering:
@@ -189,6 +191,7 @@ workflows:
       cocoapods: default
       groups:
         - app_store_credentials
+        - app_config
       vars:
         BUNDLE_ID: "com.hypr.hyprwise"
         XCODE_WORKSPACE: "ios/Runner.xcworkspace"
