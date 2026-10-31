@@ -32,6 +32,8 @@ export interface Bindings {
   GOOGLE_PROJECT_NUMBER?: string;
   REVENUECAT_SECRET_KEY?: string;
   REVENUECAT_WEBHOOK_AUTH?: string;
+  DISCORD_WEBHOOK_URL?: string;
+  BUILD_WEBHOOK_SECRET?: string;
 }
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -1396,6 +1398,164 @@ app.post('/api/telemetry/event', async (c) => {
     return c.json({ success: true, eventId: event.id });
   } catch (e: any) {
     return c.json({ error: e.message || 'Telemetry logging failed' }, 500);
+  }
+});
+
+// ==========================================
+// 10. CI/CD Build Notification & Discord Dispatcher
+// ==========================================
+app.post('/api/builds/notify', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const secret = c.env.BUILD_WEBHOOK_SECRET;
+    if (secret && authHeader !== `Bearer ${secret}`) {
+      return c.json({ error: 'Unauthorized build notification' }, 401);
+    }
+
+    const body = await c.req.json();
+    const {
+      buildId,
+      buildNumber,
+      workflow,
+      branch,
+      commit,
+      status,
+      buildUrl,
+      platform,
+    } = body;
+
+    const isSuccess = status === 'success';
+    const cleanBuildUrl =
+      buildUrl ||
+      (buildId
+        ? `https://codemagic.io/app/build/${buildId}`
+        : 'https://codemagic.io');
+    const shortCommit = commit ? String(commit).substring(0, 7) : 'head';
+    const commitUrl = commit
+      ? `https://github.com/Saugat913/finance-tracker/commit/${commit}`
+      : '';
+
+    // 1. Log event into Hyprwise Telemetry buffer & D1 (visible in /admin dashboard)
+    const event: TelemetryEvent = {
+      id: `evt_build_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      userId: 'codemagic_ci',
+      eventType: isSuccess ? 'action' : 'exception',
+      eventName: isSuccess ? 'codemagic_build_success' : 'codemagic_build_failed',
+      details: JSON.stringify({
+        workflow: workflow || 'Codemagic CI',
+        buildNumber: buildNumber || 'N/A',
+        branch: branch || 'unknown',
+        commit: shortCommit,
+        buildUrl: cleanBuildUrl,
+        platform: platform || 'cross-platform',
+      }),
+      deviceInfo: `Codemagic CI (${platform || 'Cloud'})`,
+      appVersion: buildNumber ? String(buildNumber) : '1.0.0',
+      createdAt: Date.now(),
+    };
+
+    memoryEvents.unshift(event);
+    if (memoryEvents.length > 1000) memoryEvents.pop();
+
+    if (c.env?.DB) {
+      try {
+        await c.env.DB.prepare(
+          `INSERT INTO telemetry_events (id, userId, eventType, eventName, details, deviceInfo, appVersion, createdAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          event.id,
+          event.userId,
+          event.eventType,
+          event.eventName,
+          event.details,
+          event.deviceInfo,
+          event.appVersion,
+          event.createdAt
+        ).run();
+      } catch (_) {
+        // Ignored if table is locked or migrating
+      }
+    }
+
+    // 2. Forward Rich Embed to Discord Webhook
+    let discordNotified = false;
+    const discordWebhookUrl = c.env.DISCORD_WEBHOOK_URL;
+    if (discordWebhookUrl) {
+      try {
+        const embedColor = isSuccess ? 0x10b981 : 0xef4444; // Green on success, Red on failure
+        const title = isSuccess
+          ? `🚀 Hyprwise Build #${buildNumber || ''} Succeeded`
+          : `❌ Hyprwise Build #${buildNumber || ''} Failed`;
+
+        const discordPayload = {
+          username: 'Hyprwise CI/CD',
+          avatar_url: 'https://raw.githubusercontent.com/Saugat913/finance-tracker/dev/assets/icons/app_icon.png',
+          embeds: [
+            {
+              title,
+              url: cleanBuildUrl,
+              color: embedColor,
+              fields: [
+                {
+                  name: 'Workflow',
+                  value: workflow || 'Flutter Build',
+                  inline: true,
+                },
+                {
+                  name: 'Branch / Tag',
+                  value: `\`${branch || 'dev'}\``,
+                  inline: true,
+                },
+                {
+                  name: 'Build #',
+                  value: `#${buildNumber || 'N/A'}`,
+                  inline: true,
+                },
+                {
+                  name: 'Commit',
+                  value: commitUrl
+                    ? `[\`${shortCommit}\`](${commitUrl})`
+                    : `\`${shortCommit}\``,
+                  inline: true,
+                },
+                {
+                  name: 'Status',
+                  value: isSuccess ? '✅ **Success**' : '⚠️ **Failed**',
+                  inline: true,
+                },
+                {
+                  name: 'Codemagic Dashboard',
+                  value: `[Open Build Logs & Artifacts](${cleanBuildUrl})`,
+                  inline: false,
+                },
+              ],
+              footer: {
+                text: 'Hyprwise Continuous Delivery • Cloudflare & Codemagic',
+              },
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        };
+
+        const res = await fetch(discordWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(discordPayload),
+        });
+        discordNotified = res.ok;
+      } catch (err: any) {
+        console.error('Discord dispatch error:', err?.message || err);
+      }
+    }
+
+    return c.json({
+      success: true,
+      eventId: event.id,
+      discordNotified,
+      buildUrl: cleanBuildUrl,
+    });
+  } catch (e: any) {
+    return c.json({ error: e.message || 'Notification processing failed' }, 500);
   }
 });
 

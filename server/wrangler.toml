@@ -16,3 +16,5 @@ FIREBASE_CLIENT_EMAIL = "firebase-adminsdk-fbsvc@tilvane.iam.gserviceaccount.com
 GOOGLE_PROJECT_ID = "projects/218890071998"
 GOOGLE_PROJECT_NUMBER = "218890071998"
 REVENUECAT_WEBHOOK_AUTH = "hyprwise_webhook_secret_2026"
+DISCORD_WEBHOOK_URL = ""
+BUILD_WEBHOOK_SECRET = ""
