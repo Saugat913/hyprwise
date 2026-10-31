@@ -6,9 +6,9 @@ import 'package:finance_tracker/features/accounts/data/repository/account_reposi
 import 'package:finance_tracker/features/debts/data/repository/debt_repository.dart';
 import 'package:finance_tracker/features/money/data/repository/recurring_repository.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
-import 'package:finance_tracker/features/plan/data/model/goals.dart';
-import 'package:finance_tracker/features/plan/data/repository/goal_repository.dart';
-import 'package:finance_tracker/features/plan/viewmodels/plan_view_model.dart';
+import 'package:finance_tracker/features/goals/data/model/goals.dart';
+import 'package:finance_tracker/features/goals/data/repository/goal_repository.dart';
+import 'package:finance_tracker/features/goals/viewmodels/goal_view_model.dart';
 import 'package:finance_tracker/features/settings/data/repository/exchange_rate_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';

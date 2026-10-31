@@ -654,18 +654,24 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
         return 1.0 / r.rate;
       }
     }
-    if (_selectedForeignCurrency == 'AUD' && widget.baseCurrency == 'NPR')
+    if (_selectedForeignCurrency == 'AUD' && widget.baseCurrency == 'NPR') {
       return 93.42;
-    if (_selectedForeignCurrency == 'USD' && widget.baseCurrency == 'NPR')
+    }
+    if (_selectedForeignCurrency == 'USD' && widget.baseCurrency == 'NPR') {
       return 142.60;
-    if (_selectedForeignCurrency == 'INR' && widget.baseCurrency == 'NPR')
+    }
+    if (_selectedForeignCurrency == 'INR' && widget.baseCurrency == 'NPR') {
       return 1.60;
-    if (_selectedForeignCurrency == 'USD' && widget.baseCurrency == 'AUD')
+    }
+    if (_selectedForeignCurrency == 'USD' && widget.baseCurrency == 'AUD') {
       return 1.52;
-    if (_selectedForeignCurrency == 'EUR' && widget.baseCurrency == 'AUD')
+    }
+    if (_selectedForeignCurrency == 'EUR' && widget.baseCurrency == 'AUD') {
       return 1.65;
-    if (_selectedForeignCurrency == 'NPR' && widget.baseCurrency == 'AUD')
+    }
+    if (_selectedForeignCurrency == 'NPR' && widget.baseCurrency == 'AUD') {
       return 1.0 / 93.42;
+    }
     return 1.0;
   }
 
@@ -750,8 +756,9 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                         label: Text(code),
                         selected: _selectedForeignCurrency == code,
                         onSelected: (selected) {
-                          if (selected)
+                          if (selected) {
                             setState(() => _selectedForeignCurrency = code);
+                          }
                         },
                       ),
                 ],

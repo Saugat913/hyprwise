@@ -102,22 +102,23 @@ class _AssistantScreenState extends State<AssistantScreen> {
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
-              child: HorizontalOptionSelector<ImageSource>(
-                height: 64,
-                selectedValue: null,
-                onChanged: (src) => Navigator.pop(ctx, src),
-                items: [
-                  HorizontalOptionItem(
-                    value: ImageSource.camera,
-                    label: tr.takePhotoReceiptBill,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OptionTile(
+                    title: tr.takePhotoReceiptBill,
                     subtitle: tr.opensCameraToScan,
                     icon: HugeIcons.strokeRoundedCamera01,
+                    selected: false,
+                    onTap: () => Navigator.pop(ctx, ImageSource.camera),
                   ),
-                  HorizontalOptionItem(
-                    value: ImageSource.gallery,
-                    label: tr.uploadFromLibrary,
+                  const SizedBox(height: AppSpace.sm),
+                  OptionTile(
+                    title: tr.uploadFromLibrary,
                     subtitle: tr.chooseExistingBill,
                     icon: HugeIcons.strokeRoundedImage01,
+                    selected: false,
+                    onTap: () => Navigator.pop(ctx, ImageSource.gallery),
                   ),
                 ],
               ),

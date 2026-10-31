@@ -1,6 +1,6 @@
 import 'package:finance_tracker/features/alerts/data/advice_engine.dart';
 import 'package:finance_tracker/features/shared/data/finance_snapshot.dart';
-import 'package:finance_tracker/features/plan/data/forecast_engine.dart';
+import 'package:finance_tracker/features/goals/data/forecast_engine.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';

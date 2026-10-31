@@ -113,6 +113,16 @@ class SettingsScreen extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   child: Column(
                     children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+                        child: SwitchRow(
+                          title: tr.t('Enable Alerts', ne: 'सूचनाहरू सक्रिय गर्नुहोस्', es: 'Activar alertas', fr: 'Activer les alertes', de: 'Benachrichtigungen aktivieren', ja: '通知を有効にする', zh: '启用提醒', it: 'Abilita avvisi'),
+                          subtitle: tr.t('Master ON/OFF switch for all reminders', ne: 'सबै रिमाइन्डर र सूचनाहरूको मुख्य स्विच', es: 'Interruptor principal para todos los recordatorios', fr: 'Interrupteur principal pour tous les rappels', de: 'Hauptschalter für alle Erinnerungen', ja: 'すべての通知とリマインダーのマスター切替', zh: '所有提醒与通知的总开关', it: 'Interruttore principale per tutti i promemoria'),
+                          value: viewModel.alertsMasterEnabled,
+                          onChanged: (value) => viewModel.toggleAllAlerts(value),
+                        ),
+                      ),
+                      const RowDivider(),
                       ListRow(
                         title: tr.alerts,
                         leading: const IconTile(HugeIcons.strokeRoundedNotification01),

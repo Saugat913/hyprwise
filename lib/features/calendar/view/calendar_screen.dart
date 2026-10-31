@@ -1478,44 +1478,58 @@ class _TimelineEventBlock extends StatelessWidget {
                   style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: AppSpace.lg),
-                Row(
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (item.type == CalendarItemType.shift) ...[
                       if (item.status == ShiftStatus.scheduled.value) ...[
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const AppIcon(HugeIcons.strokeRoundedEdit02, size: 16),
-                            label: Text(tr.editShift),
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              final workVm = getIt<WorkViewModel>();
-                              final shift = workVm.shifts.where((s) => s.id == item.rawId).firstOrNull;
-                              final job = shift != null ? workVm.jobsById[shift.jobId] : null;
-                              if (shift != null) {
-                                showEditShiftDialog(context, shift, job, workVm);
-                              }
-                            },
+                        FilledButton.icon(
+                          icon: const AppIcon(HugeIcons.strokeRoundedEdit02, size: 16),
+                          label: Text(tr.editShift),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: AppSpace.sm),
-                      ],
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.work_outline, size: 16),
-                          label: Text(tr.viewInWork),
                           onPressed: () {
                             Navigator.pop(ctx);
-                            context.go(AppRoutes.work);
+                            final workVm = getIt<WorkViewModel>();
+                            final shift = workVm.shifts.where((s) => s.id == item.rawId).firstOrNull;
+                            final job = shift != null ? workVm.jobsById[shift.jobId] : null;
+                            if (shift != null) {
+                              showEditShiftDialog(context, shift, job, workVm);
+                            }
                           },
                         ),
+                        const SizedBox(height: AppSpace.sm),
+                      ],
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.work_outline, size: 16),
+                        label: Text(tr.viewInWork),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          context.go(AppRoutes.work);
+                        },
                       ),
-                      const SizedBox(width: AppSpace.sm),
+                      const SizedBox(height: AppSpace.sm),
                     ],
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: Text(tr.closeAction),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
                       ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(tr.closeAction),
                     ),
                   ],
                 ),

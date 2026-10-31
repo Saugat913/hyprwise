@@ -5,9 +5,9 @@ import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
-import 'package:finance_tracker/features/plan/data/forecast_engine.dart';
-import 'package:finance_tracker/features/plan/data/model/goals.dart';
-import 'package:finance_tracker/features/plan/data/repository/goal_repository.dart';
+import 'package:finance_tracker/features/goals/data/forecast_engine.dart';
+import 'package:finance_tracker/features/goals/data/model/goals.dart';
+import 'package:finance_tracker/features/goals/data/repository/goal_repository.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';
 
@@ -29,8 +29,8 @@ class PlanForecastPoint {
   final bool isForecast;
 }
 
-class PlanViewModel extends ChangeNotifier {
-  PlanViewModel({
+class GoalViewModel extends ChangeNotifier {
+  GoalViewModel({
     required this.financeStore,
     required this.goalRepo,
     required this.accountRepo,
@@ -350,3 +350,6 @@ class PlanViewModel extends ChangeNotifier {
     super.dispose();
   }
 }
+
+/// Backwards compatibility alias for PlanViewModel
+typedef PlanViewModel = GoalViewModel;

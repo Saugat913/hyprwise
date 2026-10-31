@@ -17,7 +17,7 @@ import 'package:finance_tracker/features/home/view/home_screen.dart';
 import 'package:finance_tracker/features/home/viewmodels/home_view_model.dart';
 import 'package:finance_tracker/features/money/data/repository/recurring_repository.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
-import 'package:finance_tracker/features/plan/data/repository/goal_repository.dart';
+import 'package:finance_tracker/features/goals/data/repository/goal_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/exchange_rate_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/reminder_rule_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';

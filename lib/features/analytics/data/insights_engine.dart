@@ -1,7 +1,7 @@
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/features/shared/data/finance_snapshot.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
-import 'package:finance_tracker/features/plan/data/model/goals.dart';
+import 'package:finance_tracker/features/goals/data/model/goals.dart';
 import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';

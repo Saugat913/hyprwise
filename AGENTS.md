@@ -100,6 +100,11 @@ Run the automated release script:
 ### UI & Design System
 - **DO** use consistent `12px` border radius (`AppRadius.md` / `12.0`) across cards, sheets, and dialogs.
 - **DO** ensure all modal bottom sheets set `isScrollControlled: true` and wrap their content in a `SingleChildScrollView` with keyboard-aware padding (`MediaQuery.of(context).viewInsets.bottom`) to prevent pixel buffer overflows.
+- **DO** place all section headers (`SectionHeader`) outside white container cards (`AppCard`), keeping section titles clean and free of logos or icon prefixes.
+- **DO** stack modal bottom sheet action buttons (e.g. Edit, View, Close) vertically in a full-width `Column` (`minimumSize: Size(double.infinity, ...)`) rather than cramming them into a horizontal `Row` with `Expanded`, preventing localized string clipping and multiline overflows on compact viewports.
+- **DO** present bottom sheet choice selectors (e.g. photo source, filter options) as vertical `OptionTile` lists or responsive 3-column `GridView`s rather than horizontal strips.
+- **DO** wrap `ListTile` or `InkWell` in its own `Material` widget (`Material(shape: ..., color: ...)`) instead of an intermediate colored `Container(decoration: BoxDecoration(...))` to ensure ink splashes and touch feedback remain visible and avoid Flutter framework runtime warnings.
+- **DO** keep Hero cards (`HomeHeroCard`, `GoalScreen` outlook hero) spacious, calm, and visually unified with ambient brand geometry, rather than congested with heavy nested double borders.
 - **DO** display receipt image thumbnails inside the chat bubble when the user uploads or snaps a bill photo.
 - **DO** show actionable pills and confirmation dialogues when the AI assistant executes database actions.
 - **DONT** hardcode currency symbols or currency codes (`AUD`, `USD`). Always query the active user's base currency via `context.strings` / `CurrencyService`.
@@ -108,6 +113,10 @@ Run the automated release script:
 ### Architecture & Data Layer
 - **DO** keep the Drift SQLite database as the single source of truth for all business operations.
 - **DO** execute actual database insertions (e.g. adding 1,500 to Groceries) when the AI assistant confirms an expense command, rather than merely replying with simulated text.
+- **DO** mark `completeOnboarding()` immediately upon successful Google or Apple sign-in so returning users and cross-device sign-ins are never forced through first-run currency and language selection.
+- **DO** automatically pull the latest cloud backup (`pullCloudDataToLocal()`) on user sign-in and trigger background auto-sync (`triggerProAutoSync()`) whenever Pro users modify settings or financial data.
+- **DO** provide a master ON/OFF switch in Settings (`setAllAlerts`) to toggle all reminders and notifications globally.
+- **DO** wrap Android exact alarm scheduling with runtime permission checks (`canScheduleExactAlarms`) and fall back to `AndroidScheduleMode.inexactAllowWhileIdle` when exact alarm scheduling is disallowed by the operating system.
 - **DO** wrap background telemetry logging in `unawaited(...)` so network lag never stalls the UI thread.
 - **DONT** call asynchronous database or network operations inside Flutter `build()` methods.
 - **DONT** maintain two separate paywall implementations. RevenueCat SDK (`PurchasesUI.presentPaywall()`) is the exclusive upgrade paywall.
@@ -136,6 +145,7 @@ Run the automated release script:
 | `lib/core/telemetry/` | Crash capture, Firebase Analytics & backend telemetry forwarding (`telemetry_service.dart`). |
 | `lib/core/network/` | Hono backend client (`api_client.dart`). |
 | `lib/features/assistant/` | Gemini AI chat, OCR receipt scanner, and automated action execution. |
+| `lib/features/goals/` | Goal tracking, 3-month balance forecast engine, savings progress. |
 | `lib/features/work/` | Shift tracking, rate slider protocol, overtime calculation. |
 | `lib/features/subscription/`| RevenueCat paywall integration (`subscription_service.dart`). |
 | `server/src/index.ts` | Cloudflare Workers backend entry point. |

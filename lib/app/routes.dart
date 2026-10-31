@@ -5,7 +5,8 @@ abstract final class AppRoutes {
   static const calendar = '/calendar';
   static const analytics = '/analytics';
   static const work = '/work';
-  static const plan = '/plan';
+  static const goals = '/goals';
+  static const plan = '/goals';
 
   // Entry
   static const login = '/login';

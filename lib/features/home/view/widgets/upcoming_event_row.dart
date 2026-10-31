@@ -4,7 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
-import 'package:finance_tracker/features/plan/data/forecast_engine.dart';
+import 'package:finance_tracker/features/goals/data/forecast_engine.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
 class UpcomingEventRow extends StatelessWidget {

@@ -182,7 +182,10 @@ class AuthService extends ChangeNotifier {
 
       // Link with RevenueCat customer identity using canonical userId
       try {
-        await Purchases.logIn(userId);
+        final logInResult = await Purchases.logIn(userId);
+        if (logInResult.customerInfo.entitlements.active.containsKey('hyprwise_pro')) {
+          isPro = true;
+        }
       } catch (_) {}
 
       final user = UserProfile(
@@ -196,7 +199,16 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
-      await _restoreProCloudAfterSignIn();
+      // Pull latest cloud data automatically on login
+      await pullCloudDataToLocal();
+
+      // Ensure returning/authenticated user skips first-run onboarding screen
+      if (getIt.isRegistered<SettingsRepository>()) {
+        await getIt<SettingsRepository>().completeOnboarding();
+      }
+
+      // If user is Pro, trigger Pro auto-sync
+      triggerProAutoSync();
 
       if (getIt.isRegistered<AssistantViewModel>()) {
         unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
@@ -273,7 +285,10 @@ class AuthService extends ChangeNotifier {
 
       // Link with RevenueCat
       try {
-        await Purchases.logIn(userId);
+        final logInResult = await Purchases.logIn(userId);
+        if (logInResult.customerInfo.entitlements.active.containsKey('hyprwise_pro')) {
+          isPro = true;
+        }
       } catch (_) {}
 
       final user = UserProfile(
@@ -286,7 +301,16 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
-      await _restoreProCloudAfterSignIn();
+      // Pull latest cloud data automatically on login
+      await pullCloudDataToLocal();
+
+      // Ensure returning/authenticated user skips first-run onboarding screen
+      if (getIt.isRegistered<SettingsRepository>()) {
+        await getIt<SettingsRepository>().completeOnboarding();
+      }
+
+      // If user is Pro, trigger Pro auto-sync
+      triggerProAutoSync();
 
       if (getIt.isRegistered<AssistantViewModel>()) {
         unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());

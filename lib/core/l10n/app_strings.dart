@@ -465,6 +465,7 @@ class AppStrings {
   String get balance => _t('Balance', ne: 'मौज्दात', es: 'Saldo', fr: 'Solde', de: 'Saldo', ja: '残高', zh: '余额', it: 'Saldo');
 
   // Plan & Goals
+  String get goal => _t('Goal', ne: 'लक्ष्य', es: 'Meta', fr: 'Objectif', de: 'Ziel', ja: '目標', zh: '目标', it: 'Obiettivo');
   String get goals => _t('Goals', ne: 'लक्ष्यहरू', es: 'Metas', fr: 'Objectifs', de: 'Ziele', ja: '目標', zh: '目标');
   String get forecast => _t('Forecast', ne: 'पूर्वानुमान', es: 'Pronóstico', fr: 'Prévisions', de: 'Prognose', ja: '予測', zh: '预测');
   String get reports => _t('Reports', ne: 'मासिक प्रतिवेदन', es: 'Informes', fr: 'Rapports', de: 'Berichte', ja: 'レポート', zh: '报告');

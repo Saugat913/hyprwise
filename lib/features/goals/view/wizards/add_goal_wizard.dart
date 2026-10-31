@@ -7,8 +7,8 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
-import 'package:finance_tracker/features/plan/data/model/goals.dart';
-import 'package:finance_tracker/features/plan/viewmodels/plan_view_model.dart';
+import 'package:finance_tracker/features/goals/data/model/goals.dart';
+import 'package:finance_tracker/features/goals/viewmodels/goal_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
 class AddGoalWizard extends StatefulWidget {

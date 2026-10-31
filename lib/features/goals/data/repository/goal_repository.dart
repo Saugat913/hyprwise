@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'package:finance_tracker/core/database/app_database.dart';
-import 'package:finance_tracker/features/plan/data/model/goals.dart';
+import 'package:finance_tracker/features/goals/data/model/goals.dart';
 import 'package:finance_tracker/features/shared/data/repo_utils.dart';
 
 /// Savings goals and the contributions made towards them.

@@ -14,15 +14,15 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/money.dart';
-import 'package:finance_tracker/features/plan/viewmodels/plan_view_model.dart';
+import 'package:finance_tracker/features/goals/viewmodels/goal_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
-class PlanScreen extends StatelessWidget {
-  const PlanScreen({super.key});
+class GoalScreen extends StatelessWidget {
+  const GoalScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = getIt<PlanViewModel>();
+    final viewModel = getIt<GoalViewModel>();
 
     return ListenableBuilder(
       listenable: viewModel,
@@ -34,8 +34,7 @@ class PlanScreen extends StatelessWidget {
         final forecasts = viewModel.filteredGoalForecasts;
 
         return TabPage(
-          title: tr.plan,
-          overline: tr.forecastAndGoals,
+          title: tr.goals,
           actions: [
             TopBarAction(
               HugeIcons.strokeRoundedPlusSign,
@@ -44,26 +43,9 @@ class PlanScreen extends StatelessWidget {
             ),
           ],
           children: [
-            // Keep the plan hero as calm as Home: one forecast and the two
-            // inputs that explain it. The detailed trajectory remains in
-            // Analytics instead of competing with goals on this screen.
+            // Spacious and calm goal hero card matching Home hero card
             _PlanOutlookHero(viewModel: viewModel),
-            const SizedBox(height: AppSpace.xxl),
-
-            // Goals section header
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    tr.goals,
-                    style: text.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpace.md),
+            const SizedBox(height: AppSpace.xl),
 
             if (viewModel.goals.isNotEmpty) ...[
               SingleChildScrollView(
@@ -789,96 +771,122 @@ class _PlanOutlookHero extends StatelessWidget {
             : (monthlyDelta > 0 ? colors.income : colors.onHeroSecondary);
 
     return HeroCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
         children: [
-          Text(
-            tr.projectedBalanceIn3Months,
-            style: text.bodySmall?.copyWith(color: colors.onHeroSecondary),
-          ),
-          const SizedBox(height: AppSpace.xs),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              MoneyFormatter.format(
-                viewModel.projectedBalanceIn3Months,
-                viewModel.baseCurrency,
-              ),
-              style: text.displaySmall?.copyWith(
-                color: colors.onHero,
-                fontFamily: 'RedditMono',
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.7,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpace.xs),
-          Text(
-            tr.t(
-              'Based on your planned income and bills',
-              ne: 'तपाईंको योजना गरिएको आम्दानी र बिलमा आधारित',
-              hi: 'आपकी नियोजित आय और बिलों के आधार पर',
-              es: 'Según tus ingresos y facturas planificados',
-              fr: 'Selon vos revenus et factures prévus',
-              de: 'Basierend auf Ihren geplanten Einnahmen und Rechnungen',
-              ja: '予定収入と請求額に基づく見通し',
-              zh: '基于您的计划收入和账单',
-              it: 'In base a entrate e bollette pianificate',
-            ),
-            style: text.bodySmall?.copyWith(color: colors.onHeroSecondary),
-          ),
-          const SizedBox(height: AppSpace.lg),
-          Divider(height: 1, color: colors.onHero.withValues(alpha: 0.12)),
-          const SizedBox(height: AppSpace.md),
-          Row(
-            children: [
-              Expanded(
-                child: _PlanHeroMetric(
-                  label: tr.t(
-                    'Current balance',
-                    ne: 'हालको ब्यालेन्स',
-                    hi: 'वर्तमान बैलेंस',
-                    es: 'Saldo actual',
-                    fr: 'Solde actuel',
-                    de: 'Aktueller Kontostand',
-                    ja: '現在の残高',
-                    zh: '当前余额',
-                    it: 'Saldo attuale',
+          Positioned(
+            top: -86,
+            right: -88,
+            child: IgnorePointer(
+              child: Container(
+                width: 248,
+                height: 248,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.brand.withValues(alpha: 0.10),
+                  border: Border.all(
+                    color: colors.brand.withValues(alpha: 0.12),
+                    width: 30,
                   ),
-                  value: MoneyFormatter.format(
-                    viewModel.currentTotalBalanceMinor,
+                ),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tr.projectedBalanceIn3Months,
+                style: text.bodySmall?.copyWith(
+                  color: colors.onHeroSecondary,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  MoneyFormatter.format(
+                    viewModel.projectedBalanceIn3Months,
                     viewModel.baseCurrency,
                   ),
-                  color: colors.onHero,
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 38,
-                color: colors.onHero.withValues(alpha: 0.12),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: AppSpace.md),
-                  child: _PlanHeroMetric(
-                    label: tr.t(
-                      'Monthly change',
-                      ne: 'मासिक परिवर्तन',
-                      hi: 'मासिक बदलाव',
-                      es: 'Cambio mensual',
-                      fr: 'Variation mensuelle',
-                      de: 'Monatliche Veränderung',
-                      ja: '月ごとの変化',
-                      zh: '每月变化',
-                      it: 'Variazione mensile',
-                    ),
-                    value:
-                        '${monthlyDelta > 0 ? '+' : ''}${MoneyFormatter.format(monthlyDelta, viewModel.baseCurrency)}',
-                    color: deltaColor,
+                  style: text.displaySmall?.copyWith(
+                    color: colors.onHero,
+                    fontFamily: 'RedditMono',
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.7,
                   ),
                 ),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              Text(
+                tr.t(
+                  'Based on your planned income and bills',
+                  ne: 'तपाईंको योजना गरिएको आम्दानी र बिलमा आधारित',
+                  hi: 'आपकी नियोजित आय और बिलों के आधार पर',
+                  es: 'Según tus ingresos y facturas planificados',
+                  fr: 'Selon vos revenus et factures prévus',
+                  de: 'Basierend auf Ihren geplanten Einnahmen und Rechnungen',
+                  ja: '予定収入と請求額に基づく見通し',
+                  zh: '基于您的计划收入和账单',
+                  it: 'In base a entrate e bollette pianificate',
+                ),
+                style: text.bodySmall?.copyWith(color: colors.onHeroSecondary),
+              ),
+              const SizedBox(height: AppSpace.lg),
+              Divider(height: 1, color: colors.onHero.withValues(alpha: 0.12)),
+              const SizedBox(height: AppSpace.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: _PlanHeroMetric(
+                      label: tr.t(
+                        'Current balance',
+                        ne: 'हालको ब्यालेन्स',
+                        hi: 'वर्तमान बैलेंस',
+                        es: 'Saldo actual',
+                        fr: 'Solde actuel',
+                        de: 'Aktueller Kontostand',
+                        ja: '現在の残高',
+                        zh: '当前余额',
+                        it: 'Saldo attuale',
+                      ),
+                      value: MoneyFormatter.format(
+                        viewModel.currentTotalBalanceMinor,
+                        viewModel.baseCurrency,
+                      ),
+                      color: colors.onHero,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 38,
+                    color: colors.onHero.withValues(alpha: 0.12),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: AppSpace.md),
+                      child: _PlanHeroMetric(
+                        label: tr.t(
+                          'Monthly change',
+                          ne: 'मासिक परिवर्तन',
+                          hi: 'मासिक बदलाव',
+                          es: 'Cambio mensual',
+                          fr: 'Variation mensuelle',
+                          de: 'Monatliche Veränderung',
+                          ja: '月ごとの変化',
+                          zh: '每月变化',
+                          it: 'Variazione mensile',
+                        ),
+                        value:
+                            '${monthlyDelta > 0 ? '+' : ''}${MoneyFormatter.format(monthlyDelta, viewModel.baseCurrency)}',
+                        color: deltaColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1557,3 +1565,6 @@ class _PlanTrajectoryPainter extends CustomPainter {
       )
       : (bg: const Color(0xFFFEE2E2), fg: const Color(0xFFB91C1C));
 }
+
+/// Backwards compatibility alias for PlanScreen
+typedef PlanScreen = GoalScreen;

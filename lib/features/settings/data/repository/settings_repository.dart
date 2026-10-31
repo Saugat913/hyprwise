@@ -110,6 +110,32 @@ class SettingsRepository extends ChangeNotifier {
     );
   }
 
+  bool get alertsMasterEnabled =>
+      _settings.shiftReminders ||
+      _settings.clockOutReminder ||
+      _settings.billsDue ||
+      _settings.weeklySummary ||
+      _settings.goalNudges;
+
+  Future<void> setAllAlerts(bool enabled) {
+    return _apply(
+      _settings.copyWith(
+        shiftReminders: enabled,
+        clockOutReminder: enabled,
+        billsDue: enabled,
+        weeklySummary: enabled,
+        goalNudges: enabled,
+      ),
+      {
+        keyShiftReminders: '$enabled',
+        keyClockOutReminder: '$enabled',
+        keyBillsDue: '$enabled',
+        keyWeeklySummary: '$enabled',
+        keyGoalNudges: '$enabled',
+      },
+    );
+  }
+
   Future<void> completeOnboarding() =>
       _apply(_settings.copyWith(onboarded: true), {keyOnboarded: 'true'});
 

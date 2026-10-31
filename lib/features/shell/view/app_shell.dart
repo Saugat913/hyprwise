@@ -21,7 +21,7 @@ class AppShell extends StatefulWidget {
     ('Home', HugeIcons.strokeRoundedHome01),
     ('Calendar', HugeIcons.strokeRoundedCalendar03),
     ('Work', HugeIcons.strokeRoundedBriefcase01),
-    ('Plan', HugeIcons.strokeRoundedTarget02),
+    ('Goal', HugeIcons.strokeRoundedTarget02),
   ];
 
   @override
@@ -116,7 +116,7 @@ class _AppShellState extends State<AppShell> {
               ),
               Expanded(
                 child: _NavItem(
-                  label: context.strings.plan,
+                  label: context.strings.goal,
                   icon: AppShell._tabs[3].$2,
                   selected: widget.shell.currentIndex == 3,
                   onTap:

@@ -5,7 +5,7 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
-import 'package:finance_tracker/features/plan/data/repository/goal_repository.dart';
+import 'package:finance_tracker/features/goals/data/repository/goal_repository.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/features/assistant/mcp/app_mcp_tools.dart';

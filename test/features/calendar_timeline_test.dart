@@ -6,7 +6,7 @@ import 'package:finance_tracker/features/calendar/viewmodels/calendar_view_model
 import 'package:finance_tracker/features/debts/data/repository/debt_repository.dart';
 import 'package:finance_tracker/features/money/data/repository/recurring_repository.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
-import 'package:finance_tracker/features/plan/data/repository/goal_repository.dart';
+import 'package:finance_tracker/features/goals/data/repository/goal_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/exchange_rate_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';

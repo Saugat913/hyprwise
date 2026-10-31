@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
-import 'package:finance_tracker/features/plan/data/repository/goal_repository.dart';
+import 'package:finance_tracker/features/goals/data/repository/goal_repository.dart';
 import 'package:finance_tracker/features/shared/data/currency.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';

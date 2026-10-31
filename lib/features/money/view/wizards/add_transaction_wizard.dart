@@ -426,8 +426,9 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
                   isRequired: true,
                   errorText: _merchantError,
                   onChanged: (val) {
-                    if (_merchantError != null)
+                    if (_merchantError != null) {
                       setState(() => _merchantError = null);
+                    }
                     setState(() {});
                   },
                 ),
@@ -1096,8 +1097,9 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
     // 2. Check local database quotes
     for (final q in widget.rates) {
       if (q.baseCode == from && q.quoteCode == to) return q.rate;
-      if (q.baseCode == to && q.quoteCode == from && q.rate != 0)
+      if (q.baseCode == to && q.quoteCode == from && q.rate != 0) {
         return 1.0 / q.rate;
+      }
     }
     const defaultNprRates = {
       'AUD': 93.42,
@@ -1206,8 +1208,9 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
                       label: Text(code),
                       selected: _selectedForeignCurrency == code,
                       onSelected: (selected) {
-                        if (selected)
+                        if (selected) {
                           setState(() => _selectedForeignCurrency = code);
+                        }
                       },
                     ),
               ],

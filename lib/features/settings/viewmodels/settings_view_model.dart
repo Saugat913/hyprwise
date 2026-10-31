@@ -35,6 +35,9 @@ class SettingsViewModel extends ChangeNotifier {
   String get baseCurrency => settings.baseCurrency;
   ThemeMode get themeMode => settings.themeMode;
 
+  bool get alertsMasterEnabled => settingsRepo.alertsMasterEnabled;
+  Future<void> toggleAllAlerts(bool value) => settingsRepo.setAllAlerts(value);
+
   int get accountsCount => financeStore.accounts.length;
   int get jobsCount => financeStore.jobs.length;
 

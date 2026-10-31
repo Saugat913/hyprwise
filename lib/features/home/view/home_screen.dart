@@ -109,32 +109,14 @@ class HomeScreen extends StatelessWidget {
               onAnalytics: () => context.push(AppRoutes.analytics),
             ),
 
-            // Cash flow answers the complementary question: what changed this month?
-            if (viewModel.hasAccounts) ...[
-              HomeMonthOverview(viewModel: viewModel),
-              const SizedBox(height: AppSpace.md),
-              TopSpendingCard(viewModel: viewModel),
-              const SizedBox(height: AppSpace.md),
-              HomeAtAGlance(viewModel: viewModel),
-              const SizedBox(height: AppSpace.md),
-              HomePlanningOverview(viewModel: viewModel),
-            ],
-
-            // Get set up checklist (if not completed)
+            // Get set up checklist (if not completed) placed right under shift starting manage section
             if (viewModel.hasAccounts && !viewModel.isSetupComplete) ...[
               const SizedBox(height: AppSpace.xl),
-              Row(
-                children: [
-                  Expanded(child: Text(tr.getSetUp, style: text.titleMedium)),
-                  Text(
-                    tr.setupStepsProgress(viewModel.setupCompletedCount, 4),
-                    style: text.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              SectionHeader(
+                tr.getSetUp,
+                actionLabel: tr.setupStepsProgress(viewModel.setupCompletedCount, 4),
               ),
-              const SizedBox(height: AppSpace.md),
+              const SizedBox(height: AppSpace.sm),
               AppCard(
                 padding: EdgeInsets.zero,
                 child: Column(
@@ -185,6 +167,17 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
+            ],
+
+            // Cash flow answers the complementary question: what changed this month?
+            if (viewModel.hasAccounts) ...[
+              HomeMonthOverview(viewModel: viewModel),
+              const SizedBox(height: AppSpace.md),
+              TopSpendingCard(viewModel: viewModel),
+              const SizedBox(height: AppSpace.md),
+              HomeAtAGlance(viewModel: viewModel),
+              const SizedBox(height: AppSpace.md),
+              HomePlanningOverview(viewModel: viewModel),
             ],
 
             // Recent transactions section

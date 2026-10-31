@@ -894,26 +894,29 @@ class _CategoryFilterButton extends StatelessWidget {
 
   void _showCategorySheet(BuildContext context) {
     final theme = Theme.of(context);
+    final tr = context.strings;
 
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: theme.colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
       builder: (ctx) {
-        final tr = ctx.strings;
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpace.lg,
-                  vertical: AppSpace.md,
-                ),
-                child: Row(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
+              left: AppSpace.page,
+              right: AppSpace.page,
+              top: AppSpace.md,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
@@ -932,41 +935,42 @@ class _CategoryFilterButton extends StatelessWidget {
                       ),
                   ],
                 ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.apps_rounded),
-                title: Text(tr.allCategoriesTitle),
-                trailing:
-                    viewModel.selectedCategory == null
-                        ? Icon(Icons.check, color: theme.colorScheme.primary)
-                        : null,
-                onTap: () {
-                  viewModel.selectCategory(null);
-                  Navigator.pop(ctx);
-                },
-              ),
-              Flexible(
-                child: ListView.builder(
+                const SizedBox(height: AppSpace.md),
+                GridView.builder(
                   shrinkWrap: true,
-                  itemCount: categories.length,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: AppSpace.sm,
+                    mainAxisSpacing: AppSpace.sm,
+                    childAspectRatio: 1.15,
+                  ),
+                  itemCount: categories.length + 1,
                   itemBuilder: (context, index) {
-                    final cat = categories[index];
+                    if (index == 0) {
+                      final isSelected = viewModel.selectedCategory == null;
+                      return _AnalyticsCategoryGridCard(
+                        label: tr.allCategoriesTitle,
+                        icon: HugeIcons.strokeRoundedGridView,
+                        color: theme.colorScheme.primary,
+                        isSelected: isSelected,
+                        onTap: () {
+                          viewModel.selectCategory(null);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    }
+                    final cat = categories[index - 1];
                     final catObj = TransactionCategories.fromValue(
                       cat,
-                      TransactionType.expense,
+                      viewModel.activeType,
                     );
                     final isSelected = viewModel.selectedCategory == cat;
-
-                    return ListTile(
-                      title: Text(catObj.label),
-                      trailing:
-                          isSelected
-                              ? Icon(
-                                Icons.check,
-                                color: theme.colorScheme.primary,
-                              )
-                              : null,
+                    return _AnalyticsCategoryGridCard(
+                      label: catObj.label,
+                      icon: _categoryGlyph(cat, viewModel.activeType),
+                      color: _categoryColor(cat, context, viewModel.activeType),
+                      isSelected: isSelected,
                       onTap: () {
                         viewModel.selectCategory(cat);
                         Navigator.pop(ctx);
@@ -974,12 +978,149 @@ class _CategoryFilterButton extends StatelessWidget {
                     );
                   },
                 ),
-              ),
-              const SizedBox(height: AppSpace.md),
-            ],
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+IconGlyph _categoryGlyph(String key, TransactionType type) {
+  switch (key) {
+    case 'groceries':
+      return HugeIcons.strokeRoundedShoppingBag01;
+    case 'eating_out':
+      return HugeIcons.strokeRoundedRestaurant01;
+    case 'entertainment':
+      return HugeIcons.strokeRoundedPlay;
+    case 'transport':
+      return HugeIcons.strokeRoundedCar01;
+    case 'bills':
+      return HugeIcons.strokeRoundedReceipt;
+    case 'salary':
+      return HugeIcons.strokeRoundedCoins01;
+    case 'shift_pay':
+      return HugeIcons.strokeRoundedClock01;
+    case 'business':
+      return HugeIcons.strokeRoundedBriefcase01;
+    case 'interest':
+      return HugeIcons.strokeRoundedChartHistogram;
+    case 'gift_received':
+      return HugeIcons.strokeRoundedWallet01;
+    default:
+      return type == TransactionType.income
+          ? HugeIcons.strokeRoundedMoneyReceive02
+          : HugeIcons.strokeRoundedMoneySend02;
+  }
+}
+
+Color _categoryColor(String key, BuildContext context, TransactionType type) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  switch (key) {
+    case 'groceries':
+      return isDark ? const Color(0xFF225B40) : const Color(0xFF164A33);
+    case 'eating_out':
+      return isDark ? const Color(0xFF7A3E16) : const Color(0xFF5A2D0C);
+    case 'entertainment':
+      return isDark ? const Color(0xFF563077) : const Color(0xFF3E1F58);
+    case 'transport':
+      return isDark ? const Color(0xFF1E3A8A) : const Color(0xFF1E40AF);
+    case 'bills':
+      return isDark ? const Color(0xFF831843) : const Color(0xFF9D174D);
+    case 'salary':
+      return const Color(0xFF1F7A45);
+    case 'shift_pay':
+      return const Color(0xFF0D9488);
+    case 'business':
+      return const Color(0xFF4338CA);
+    default:
+      return type == TransactionType.income
+          ? const Color(0xFF1F7A45)
+          : Theme.of(context).colorScheme.primary;
+  }
+}
+
+class _AnalyticsCategoryGridCard extends StatelessWidget {
+  const _AnalyticsCategoryGridCard({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final dynamic icon;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withValues(alpha: 0.12) : scheme.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: isSelected ? color : scheme.outlineVariant.withValues(alpha: 0.7),
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.xs,
+            vertical: AppSpace.sm,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isSelected ? color : color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: icon is IconGlyph
+                      ? AppIcon(
+                          icon,
+                          size: 16,
+                          color: isSelected ? Colors.white : color,
+                        )
+                      : Icon(
+                          icon as IconData,
+                          size: 16,
+                          color: isSelected ? Colors.white : color,
+                        ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: text.labelSmall?.copyWith(
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? color : scheme.onSurface,
+                  fontSize: 11,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1003,14 +1144,14 @@ class _SpendingBarChart extends StatelessWidget {
     final effectiveMax = max <= 0 ? 1.0 : max;
 
     return SizedBox(
-      height: 120,
+      height: 124,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           for (var i = 0; i < values.length; i++)
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -1018,28 +1159,40 @@ class _SpendingBarChart extends StatelessWidget {
                       child: Align(
                         alignment: Alignment.bottomCenter,
                         child: Container(
-                          height: (values[i] / effectiveMax * 80).clamp(
-                            4.0,
-                            80.0,
-                          ),
+                          width: 20,
+                          height: 82,
                           decoration: BoxDecoration(
-                            color:
-                                values[i] > 0
-                                    ? color
-                                    : scheme.outlineVariant.withValues(
-                                      alpha: 0.3,
-                                    ),
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.bottomCenter,
+                            children: [
+                              FractionallySizedBox(
+                                heightFactor: values[i] > 0
+                                    ? (values[i] / effectiveMax).clamp(0.08, 1.0)
+                                    : 0.0,
+                                child: Container(
+                                  width: 20,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
                       i < labels.length ? labels[i] : '',
                       style: text.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                         fontSize: 10,
+                        fontFamily: 'RedditMono',
+                        fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
