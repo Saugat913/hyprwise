@@ -32,11 +32,13 @@ class DualBarChartData {
     required this.incomeValues,
     required this.expenseValues,
     required this.labels,
+    this.dates = const [],
   });
 
   final List<double> incomeValues;
   final List<double> expenseValues;
   final List<String> labels;
+  final List<DateTime> dates;
 
   bool get isEmpty => incomeValues.isEmpty && expenseValues.isEmpty;
   bool get hasAnyData =>
@@ -322,6 +324,7 @@ class AnalyticsViewModel extends ChangeNotifier {
     final incomeValues = <double>[];
     final expenseValues = <double>[];
     final labels = <String>[];
+    final dates = <DateTime>[];
     final totalDays = end.difference(start).inDays + 1;
 
     // Sample intervals if date range is long
@@ -333,6 +336,7 @@ class AnalyticsViewModel extends ChangeNotifier {
       incomeValues.add(incomeBuckets[key] ?? 0.0);
       expenseValues.add(expenseBuckets[key] ?? 0.0);
       labels.add(totalDays <= 7 ? AppDate.weekday(day) : DateFormatter.day(day));
+      dates.add(day);
       day = day.add(Duration(days: step));
       if (step > 1 && labels.length >= 12) break;
     }
@@ -341,6 +345,7 @@ class AnalyticsViewModel extends ChangeNotifier {
       incomeValues: incomeValues,
       expenseValues: expenseValues,
       labels: labels,
+      dates: dates,
     );
   }
 

@@ -298,6 +298,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                       incomeValues: dualChartData.incomeValues,
                                       expenseValues: dualChartData.expenseValues,
                                       labels: dualChartData.labels,
+                                      dates: dualChartData.dates,
                                       currency: viewModel.baseCurrency,
                                     ),
                                   ],
@@ -1154,18 +1155,279 @@ class _AnalyticsCategoryGridCard extends StatelessWidget {
   }
 }
 
-class _DualBarChart extends StatelessWidget {
+class _DualBarChart extends StatefulWidget {
   const _DualBarChart({
     required this.incomeValues,
     required this.expenseValues,
     required this.labels,
+    this.dates = const [],
     required this.currency,
   });
 
   final List<double> incomeValues;
   final List<double> expenseValues;
   final List<String> labels;
+  final List<DateTime> dates;
   final String currency;
+
+  @override
+  State<_DualBarChart> createState() => _DualBarChartState();
+}
+
+class _DualBarChartState extends State<_DualBarChart> {
+  late ScrollController _scrollController;
+  int? _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    final todayIdx = _findTodayIndex();
+    _selectedIndex = todayIdx >= 0
+        ? todayIdx
+        : (widget.labels.isNotEmpty ? widget.labels.length - 1 : null);
+
+    final targetIdx = _selectedIndex ?? 0;
+    const colWidth = 26.0;
+    final initialOffset = math.max(0.0, (targetIdx * colWidth) - 160.0);
+    _scrollController = ScrollController(initialScrollOffset: initialOffset);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DualBarChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.labels.length != oldWidget.labels.length ||
+        (widget.dates.isNotEmpty &&
+            oldWidget.dates.isNotEmpty &&
+            widget.dates.first != oldWidget.dates.first)) {
+      final todayIdx = _findTodayIndex();
+      setState(() {
+        _selectedIndex = todayIdx >= 0
+            ? todayIdx
+            : (widget.labels.isNotEmpty ? widget.labels.length - 1 : null);
+      });
+      _scrollToIndex(_selectedIndex ?? 0, animate: false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  int _findTodayIndex() {
+    final now = DateTime.now();
+    if (widget.dates.isNotEmpty) {
+      final idx = widget.dates.indexWhere(
+        (d) => d.year == now.year && d.month == now.month && d.day == now.day,
+      );
+      if (idx != -1) return idx;
+    }
+    final todayDayStr = now.day.toString();
+    final idx = widget.labels.indexOf(todayDayStr);
+    if (idx != -1) return idx;
+    return -1;
+  }
+
+  void _scrollToIndex(int targetIndex, {bool animate = false}) {
+    if (!_scrollController.hasClients || targetIndex < 0) return;
+    const colWidth = 26.0;
+    final position = _scrollController.position;
+    final viewportWidth = position.viewportDimension;
+    final maxScroll = position.maxScrollExtent;
+    if (viewportWidth <= 0 || maxScroll <= 0) return;
+
+    final targetOffset = ((targetIndex * colWidth) - (viewportWidth / 2) + (colWidth / 2))
+        .clamp(0.0, maxScroll);
+
+    if (animate) {
+      _scrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _scrollController.jumpTo(targetOffset);
+    }
+  }
+
+  Widget _buildSelectionSummary(
+    BuildContext context,
+    AppColors colors,
+    AppStrings tr,
+  ) {
+    final count = widget.labels.length;
+    if (_selectedIndex == null || _selectedIndex! < 0 || _selectedIndex! >= count) {
+      return const SizedBox.shrink();
+    }
+
+    final i = _selectedIndex!;
+    final income = i < widget.incomeValues.length ? widget.incomeValues[i] : 0.0;
+    final expense = i < widget.expenseValues.length ? widget.expenseValues[i] : 0.0;
+    final label = widget.labels[i];
+    final date = (i < widget.dates.length) ? widget.dates[i] : null;
+
+    final now = DateTime.now();
+    final isToday = date != null
+        ? (date.year == now.year && date.month == now.month && date.day == now.day)
+        : (label == now.day.toString());
+
+    final dateTitle = date != null
+        ? (isToday ? '$label (${tr.today})' : DateFormatter.weekdayDate(date))
+        : (isToday ? '$label (${tr.today})' : label);
+
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final net = income - expense;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIcon(
+                    HugeIcons.strokeRoundedCalendar03,
+                    size: 13,
+                    color: scheme.primary,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    dateTitle,
+                    style: text.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '${net >= 0 ? "+" : ""}${MoneyFormatter.format(net.round(), widget.currency)}',
+                style: text.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  fontFamily: 'RedditMono',
+                  color: net > 0
+                      ? colors.income
+                      : (net < 0 ? colors.expense : scheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              // Income (Green)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colors.income.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: colors.income.withValues(alpha: 0.28),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: colors.income,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        tr.income,
+                        style: text.labelSmall?.copyWith(
+                          color: colors.income,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '+${MoneyFormatter.format(income.round(), widget.currency)}',
+                        style: text.labelSmall?.copyWith(
+                          color: colors.income,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'RedditMono',
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Expense (Red)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colors.expense.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: colors.expense.withValues(alpha: 0.28),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: colors.expense,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        tr.expense,
+                        style: text.labelSmall?.copyWith(
+                          color: colors.expense,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '-${MoneyFormatter.format(expense.round(), widget.currency)}',
+                        style: text.labelSmall?.copyWith(
+                          color: colors.expense,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'RedditMono',
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1175,16 +1437,16 @@ class _DualBarChart extends StatelessWidget {
     final tr = context.strings;
 
     final maxIncome =
-        incomeValues.isEmpty ? 0.0 : incomeValues.reduce(math.max);
+        widget.incomeValues.isEmpty ? 0.0 : widget.incomeValues.reduce(math.max);
     final maxExpense =
-        expenseValues.isEmpty ? 0.0 : expenseValues.reduce(math.max);
+        widget.expenseValues.isEmpty ? 0.0 : widget.expenseValues.reduce(math.max);
     final globalMax = math.max(maxIncome, maxExpense);
     final effectiveMax = globalMax <= 0 ? 1.0 : globalMax;
 
     // Adaptive bar width based on count of day columns
     return LayoutBuilder(
       builder: (context, constraints) {
-        final count = labels.length;
+        final count = widget.labels.length;
         if (count == 0) return const SizedBox.shrink();
 
         // A comfortable day column needs at least 26px (two 7px bars + gap + margins)
@@ -1197,58 +1459,85 @@ class _DualBarChart extends StatelessWidget {
         final barSpacing = needsScroll ? 2.5 : 3.0;
 
         Widget buildDayColumnContent(int i) {
-          final income = i < incomeValues.length ? incomeValues[i] : 0.0;
-          final expense = i < expenseValues.length ? expenseValues[i] : 0.0;
-          final label = labels[i];
+          final income = i < widget.incomeValues.length ? widget.incomeValues[i] : 0.0;
+          final expense = i < widget.expenseValues.length ? widget.expenseValues[i] : 0.0;
+          final label = widget.labels[i];
+          final isSelected = _selectedIndex == i;
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 1.5),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // Income Bar (Green)
-                        _DayBarItem(
-                          value: income,
-                          effectiveMax: effectiveMax,
-                          color: colors.income,
-                          width: barWidth,
-                          tooltip:
-                              '$label · ${tr.income}: ${MoneyFormatter.format(income.round(), currency)}',
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _selectedIndex = i;
+                });
+                if (needsScroll) {
+                  _scrollToIndex(i, animate: true);
+                }
+              },
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? scheme.primary.withValues(alpha: 0.10)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: isSelected
+                      ? Border.all(
+                          color: scheme.primary.withValues(alpha: 0.45),
+                          width: 1,
+                        )
+                      : null,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 1.5, vertical: 2),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // Income Bar (Green)
+                            _DayBarItem(
+                              value: income,
+                              effectiveMax: effectiveMax,
+                              color: colors.income,
+                              width: barWidth,
+                              tooltip:
+                                  '$label · ${tr.income}: ${MoneyFormatter.format(income.round(), widget.currency)}',
+                            ),
+                            SizedBox(width: barSpacing),
+                            // Expense Bar (Red)
+                            _DayBarItem(
+                              value: expense,
+                              effectiveMax: effectiveMax,
+                              color: colors.expense,
+                              width: barWidth,
+                              tooltip:
+                                  '$label · ${tr.expense}: ${MoneyFormatter.format(expense.round(), widget.currency)}',
+                            ),
+                          ],
                         ),
-                        SizedBox(width: barSpacing),
-                        // Expense Bar (Red)
-                        _DayBarItem(
-                          value: expense,
-                          effectiveMax: effectiveMax,
-                          color: colors.expense,
-                          width: barWidth,
-                          tooltip:
-                              '$label · ${tr.expense}: ${MoneyFormatter.format(expense.round(), currency)}',
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      label,
+                      style: text.labelSmall?.copyWith(
+                        color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
+                        fontSize: 10,
+                        fontFamily: 'RedditMono',
+                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  style: text.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 10,
-                    fontFamily: 'RedditMono',
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
           );
         }
@@ -1288,10 +1577,13 @@ class _DualBarChart extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpace.sm),
+            // Descriptive Interactive Selection Summary
+            _buildSelectionSummary(context, colors, tr),
             SizedBox(
               height: 124,
               child: needsScroll
                   ? SingleChildScrollView(
+                      controller: _scrollController,
                       scrollDirection: Axis.horizontal,
                       clipBehavior: Clip.none,
                       child: columnsRow,

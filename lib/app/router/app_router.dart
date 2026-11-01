@@ -52,11 +52,17 @@ final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   observers: [TelemetryService.instance.navigationObserver],
   refreshListenable: Listenable.merge([getIt<SettingsRepository>(), getIt<AuthService>()]),
-  initialLocation: AppRoutes.welcome,
+  initialLocation: AppRoutes.home,
   redirect: (context, state) {
     final settingsRepo = getIt<SettingsRepository>();
     final authService = getIt<AuthService>();
     final location = state.matchedLocation;
+
+    // While authenticating, syncing from cloud, or checking if account is new or returning:
+    // keep on the current screen (LoginScreen displays the setup loading screen).
+    if (authService.isLoading || authService.isCloudSyncing) {
+      return null;
+    }
 
     // 1. First-time install / Not yet onboarded
     if (!settingsRepo.settings.onboarded) {

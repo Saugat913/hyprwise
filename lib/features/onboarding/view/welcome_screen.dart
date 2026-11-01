@@ -7,6 +7,7 @@ import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
+import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
@@ -17,6 +18,16 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settingsRepo = getIt<SettingsRepository>();
+    final authService = getIt.isRegistered<AuthService>() ? getIt<AuthService>() : null;
+
+    if (settingsRepo.settings.onboarded && (authService?.isAuthenticated ?? false)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.go(AppRoutes.home);
+        }
+      });
+      return const Scaffold(body: SizedBox.shrink());
+    }
 
     return ListenableBuilder(
       listenable: settingsRepo,
@@ -39,7 +50,9 @@ class WelcomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SvgPicture.asset(
-                    'assets/brand/logo/hyprwise-logo.svg',
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 'assets/brandings/hyprwise_wordmark_white.svg'
+                        : 'assets/brandings/hyprwise_wordmark.svg',
                     height: 26,
                   ),
                   const SizedBox(height: AppSpace.md),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
@@ -156,6 +157,83 @@ class _AssistantScreenState extends State<AssistantScreen> {
     }
   }
 
+  Widget _buildActiveSuggestionChips(BuildContext context, AppStrings tr) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    final chips = [
+      (
+        HugeIcons.strokeRoundedCoins01,
+        tr.t('Spent \$20 on food', ne: 'खानामा २० खर्च भयो', hi: 'खाने पर 20 खर्च हुआ', es: 'Gasté 20 en comida'),
+        tr.spentLunchPrompt,
+      ),
+      (
+        HugeIcons.strokeRoundedCalendar03,
+        tr.t('When is next shift?', ne: 'अर्को सिफ्ट कहिले छ?', hi: 'अगली शिफ्ट कब है?', es: '¿Cuándo es el próximo turno?'),
+        'When is my next shift?',
+      ),
+      (
+        HugeIcons.strokeRoundedChartHistogram,
+        tr.t('This month spending', ne: 'यो महिनाको खर्च', hi: 'इस महीने का खर्च', es: 'Gastos de este mes'),
+        tr.howMuchFoodPrompt,
+      ),
+      (
+        HugeIcons.strokeRoundedTarget02,
+        tr.t('Goal progress', ne: 'लक्ष्य प्रगति', hi: 'लक्ष्य प्रगति', es: 'Progreso de metas'),
+        'How are my savings goals doing?',
+      ),
+      (
+        HugeIcons.strokeRoundedShieldCheck,
+        tr.t('Can I afford \$100?', ne: 'के १०० खर्च गर्न सक्छु?', hi: 'क्या 100 खर्च कर सकता हूँ?', es: '¿Puedo gastar 100?'),
+        tr.canIAffordPrompt,
+      ),
+    ];
+
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
+        itemCount: chips.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
+        itemBuilder: (context, idx) {
+          final item = chips[idx];
+          return Material(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              side: BorderSide(
+                color: scheme.outlineVariant.withValues(alpha: 0.4),
+                width: 0.8,
+              ),
+            ),
+            child: InkWell(
+              onTap: () => _send(item.$3),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppIcon(item.$1, size: 14, color: scheme.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      item.$2,
+                      style: text.labelSmall?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -163,6 +241,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
     final colors = context.colors;
     final tr = context.strings;
     final subService = getIt<SubscriptionService>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListenableBuilder(
       listenable: Listenable.merge([_viewModel, subService]),
@@ -171,11 +250,105 @@ class _AssistantScreenState extends State<AssistantScreen> {
             final isPro = subService.isPro;
             return Scaffold(
               appBar: AppTopBar(
-                title: tr.assistantTitle,
-                subtitle:
-                    _viewModel.messages.isEmpty
-                        ? null
-                        : (isPro ? tr.unlimitedAiPro : tr.asksBeforeChanges),
+                titleWidget: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: scheme.primary.withValues(alpha: 0.25),
+                          width: 1.2,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(6),
+                      child: SvgPicture.asset(
+                        isDark
+                            ? 'assets/brandings/hyprwise_logo_white.svg'
+                            : 'assets/brandings/hyprwise_logo.svg',
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Hyprwise AI',
+                                style: text.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 1.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isPro
+                                      ? colors.brand.withValues(alpha: 0.15)
+                                      : scheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isPro ? 'PRO' : 'FREE',
+                                  style: text.labelSmall?.copyWith(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: isPro
+                                        ? colors.brand
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            isPro
+                                ? tr.unlimitedAiPro
+                                : (_viewModel.remainingFreeQueries > 0
+                                    ? tr.t(
+                                        '${_viewModel.remainingFreeQueries} free queries left today',
+                                        ne: 'आज ${_viewModel.remainingFreeQueries} प्रश्न बाँकी',
+                                        hi: 'आज ${_viewModel.remainingFreeQueries} प्रश्न शेष',
+                                        es: '${_viewModel.remainingFreeQueries} consultas gratis hoy',
+                                        fr: '${_viewModel.remainingFreeQueries} requêtes gratuites aujourd\'hui',
+                                        de: '${_viewModel.remainingFreeQueries} kostenlose Anfragen heute',
+                                        ja: '本日残り${_viewModel.remainingFreeQueries}回無料',
+                                        zh: '今日剩余 ${_viewModel.remainingFreeQueries} 次免费提问',
+                                        it: '${_viewModel.remainingFreeQueries} richieste gratuite oggi',
+                                      )
+                                    : tr.t(
+                                        'Daily limit reached · Upgrade to Pro',
+                                        ne: 'दैनिक सीमा सकियो · प्रो मा जानुहोस्',
+                                        hi: 'दैनिक सीमा समाप्त · प्रो लें',
+                                        es: 'Límite alcanzado · Mejora a Pro',
+                                        fr: 'Limite atteinte · Passer à Pro',
+                                        de: 'Limit erreicht · Auf Pro upgraden',
+                                        ja: '上限到達 · Proへアップグレード',
+                                        zh: '已达上限 · 升级到专业版',
+                                        it: 'Limite raggiunto · Passa a Pro',
+                                      )),
+                            style: text.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 actions: [
                   if (!isPro)
                     IconButton(
@@ -190,8 +363,28 @@ class _AssistantScreenState extends State<AssistantScreen> {
                           ),
                     ),
                   TopBarAction(
-                    HugeIcons.strokeRoundedRefresh,
-                    onPressed: _viewModel.clear,
+                    HugeIcons.strokeRoundedCamera01,
+                    tooltip: tr.scanBillTooltip,
+                    onPressed: () => _pickBillImage(context),
+                  ),
+                  TopBarAction(
+                    HugeIcons.strokeRoundedDelete02,
+                    tooltip: tr.t(
+                      'New Chat',
+                      ne: 'नयाँ च्याट',
+                      hi: 'नया चैट',
+                      es: 'Nuevo chat',
+                      fr: 'Nouvelle discussion',
+                      de: 'Neuer Chat',
+                      ja: '新しいチャット',
+                      zh: '开启新会话',
+                      it: 'Nuova chat',
+                    ),
+                    onPressed: () {
+                      if (_viewModel.messages.isNotEmpty) {
+                        _viewModel.clear();
+                      }
+                    },
                   ),
                 ],
               ),
@@ -204,70 +397,186 @@ class _AssistantScreenState extends State<AssistantScreen> {
                       builder: (context, _) {
                         if (_viewModel.messages.isEmpty) {
                           return ListView(
-                            padding: const EdgeInsets.all(AppSpace.page),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpace.page,
+                              vertical: AppSpace.sm,
+                            ),
                             children: [
+                              const SizedBox(height: AppSpace.md),
+                              // Centered Hyprwise Logo Emblem
+                              Center(
+                                child: Container(
+                                  width: 72,
+                                  height: 72,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: scheme.primary.withValues(alpha: 0.08),
+                                    border: Border.all(
+                                      color: scheme.primary.withValues(alpha: 0.25),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: scheme.primary.withValues(
+                                          alpha: isDark ? 0.22 : 0.12,
+                                        ),
+                                        blurRadius: 24,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  padding: const EdgeInsets.all(16),
+                                  child: SvgPicture.asset(
+                                    isDark
+                                        ? 'assets/brandings/hyprwise_logo_white.svg'
+                                        : 'assets/brandings/hyprwise_logo.svg',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpace.lg),
+
+                              // What can I do for you headline
                               Text(
                                 tr.whatCanIDoForYou,
-                                style: text.headlineSmall,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                tr.assistantIntroSubtitle,
-                                style: text.bodyMedium?.copyWith(
-                                  color: scheme.onSurfaceVariant,
+                                textAlign: TextAlign.center,
+                                style: text.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
                                 ),
                               ),
-                              const SizedBox(height: AppSpace.xxl),
+                              const SizedBox(height: 6),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpace.md,
+                                ),
+                                child: Text(
+                                  tr.t(
+                                    'Your private AI copilot for personal finance & shift management. Ask questions, record expenses, schedule shifts, or snap receipts.',
+                                    ne:
+                                        'व्यक्तिगत वित्त र सिफ्ट व्यवस्थापनको लागि तपाईंको निजी एआई सहायक। प्रश्न सोध्नुहोस्, खर्च रेकर्ड गर्नुहोस्, वा रसिद स्क्यान गर्नुहोस्।',
+                                    hi:
+                                        'व्यक्तिगत वित्त और शिफ्ट प्रबंधन के लिए आपका निजी एआई सहायक। प्रश्न पूछें, खर्च दर्ज करें, या रसीद स्कैन करें।',
+                                    es:
+                                        'Tu copiloto de IA privado para finanzas y turnos. Pregunta, registra gastos, planifica turnos o escanea recibos.',
+                                    fr:
+                                        'Votre copilote IA privé pour vos finances et vos quarts. Posez des questions, enregistrez des dépenses ou scannez des reçus.',
+                                    de:
+                                        'Ihr privater KI-Assistent für Finanzen und Schichten. Fragen stellen, Ausgaben erfassen oder Belege scannen.',
+                                    ja:
+                                        '個人の財務とシフト管理のためのAIアシスタント。質問、支出の記録、レシートのスキャンができます。',
+                                    zh:
+                                        '用于个人财务和排班管理的私人AI助手。解答疑问、记录支出、安排排班或扫描收据。',
+                                    it:
+                                        'Il tuo copilota IA privato per finanze e turni. Fai domande, registra spese o scansiona ricevute.',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: text.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpace.xl),
 
-                              Text(
-                                tr.doSection,
-                                style: text.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
+                              // Section 1: Quick Actions
+                              SectionHeader(
+                                tr.t(
+                                  'Quick Actions',
+                                  ne: 'द्रुत कार्यहरू',
+                                  hi: 'त्वरित कार्य',
+                                  es: 'Acciones Rápidas',
+                                  fr: 'Actions rapides',
+                                  de: 'Schnellaktionen',
+                                  ja: 'クイックアクション',
+                                  zh: '快捷操作',
+                                  it: 'Azioni rapide',
                                 ),
                               ),
-                              const SizedBox(height: AppSpace.sm),
+                              const SizedBox(height: AppSpace.xs),
                               _PromptCard(
                                 title: tr.addExpense,
                                 subtitle: tr.spentLunchSubtitle,
                                 icon: HugeIcons.strokeRoundedCoins01,
+                                badge: tr.t('Expense', ne: 'खर्च', hi: 'खर्च', es: 'Gasto'),
                                 onTap: () => _send(tr.spentLunchPrompt),
                               ),
-                              const SizedBox(height: AppSpace.sm),
                               _PromptCard(
                                 title: tr.scheduleShift,
                                 subtitle: tr.cafeFridaySubtitle,
                                 icon: HugeIcons.strokeRoundedCalendar03,
+                                badge: tr.t('Shift', ne: 'सिफ्ट', hi: 'शिफ्ट', es: 'Turno'),
                                 onTap: () => _send(tr.cafeFridayPrompt),
                               ),
-                              const SizedBox(height: AppSpace.sm),
                               _PromptCard(
                                 title: tr.moveMoneyToGoal,
                                 subtitle: tr.emergencyFundMoveSubtitle,
                                 icon: HugeIcons.strokeRoundedTarget02,
+                                badge: tr.t('Goal', ne: 'लक्ष्य', hi: 'लक्ष्य', es: 'Meta'),
                                 onTap: () => _send(tr.emergencyFundMovePrompt),
                               ),
-                              const SizedBox(height: AppSpace.xl),
+                              _PromptCard(
+                                title: tr.takePhotoReceiptBill,
+                                subtitle: tr.opensCameraToScan,
+                                icon: HugeIcons.strokeRoundedCamera01,
+                                badge: tr.t('OCR', ne: 'स्क्यान', hi: 'स्कैन', es: 'OCR'),
+                                onTap: () => _pickBillImage(context),
+                              ),
+                              const SizedBox(height: AppSpace.lg),
 
-                              Text(
-                                tr.askSection,
-                                style: text.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
+                              // Section 2: Financial Intelligence
+                              SectionHeader(
+                                tr.t(
+                                  'Financial Intelligence',
+                                  ne: 'वित्तीय बुद्धिमत्ता',
+                                  hi: 'वित्तीय बुद्धिमत्ता',
+                                  es: 'Inteligencia Financiera',
+                                  fr: 'Intelligence financière',
+                                  de: 'Finanzielle Intelligenz',
+                                  ja: '財務インテリジェンス',
+                                  zh: '财务分析智能',
+                                  it: 'Intelligenza finanziaria',
                                 ),
                               ),
-                              const SizedBox(height: AppSpace.sm),
+                              const SizedBox(height: AppSpace.xs),
                               _PromptCard(
                                 title: tr.howMuchSpendFoodTitle,
                                 subtitle: tr.thisMonthSoFarSubtitle,
                                 icon: HugeIcons.strokeRoundedChartHistogram,
                                 onTap: () => _send(tr.howMuchFoodPrompt),
                               ),
-                              const SizedBox(height: AppSpace.sm),
                               _PromptCard(
                                 title: tr.canIAffordTitle,
                                 subtitle: tr.basedOnForecastSubtitle,
                                 icon: HugeIcons.strokeRoundedShieldCheck,
                                 onTap: () => _send(tr.canIAffordPrompt),
                               ),
+                              _PromptCard(
+                                title: tr.t(
+                                  'Next upcoming shift',
+                                  ne: 'आगामी कार्य सिफ्ट',
+                                  hi: 'आगामी कार्य शिफ्ट',
+                                  es: 'Próximo turno programado',
+                                  fr: 'Prochain quart prévu',
+                                  de: 'Nächste Schicht',
+                                  ja: '次の予定シフト',
+                                  zh: '下一次待排班次',
+                                  it: 'Prossimo turno programmato',
+                                ),
+                                subtitle: tr.t(
+                                  'When is my next shift and how much will I earn?',
+                                  ne: 'मेरो अर्को सिफ्ट कहिले छ र कति कमाइ हुन्छ?',
+                                  hi: 'मेरी अगली शिफ्ट कब है और मैं कितना कमाऊँगा?',
+                                  es: '¿Cuándo es mi próximo turno y cuánto ganaré?',
+                                  fr: 'Quand aura lieu mon prochain quart et combien vais-je gagner ?',
+                                  de: 'Wann ist meine nächste Schicht und wie viel werde ich verdienen?',
+                                  ja: '次のシフトはいつで、いくら稼げますか？',
+                                  zh: '我的下一个班次是什么时候，预计收入是多少？',
+                                  it: 'Quando sarà il mio prossimo turno e quanto guadagnerò?',
+                                ),
+                                icon: HugeIcons.strokeRoundedClock01,
+                                onTap: () => _send('When is my next shift and what are my hours?'),
+                              ),
+                              const SizedBox(height: AppSpace.xl),
                             ],
                           );
                         }
@@ -595,109 +904,135 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     ),
                   ),
 
-                  // Input bar with rounded inbox, camera bill scanner, and highlighted outlined send button
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpace.md,
-                      AppSpace.sm,
-                      AppSpace.md,
-                      AppSpace.md,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.surface,
-                      border: Border(
-                        top: BorderSide(color: scheme.outlineVariant),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        // Camera / Bill Scanner button
-                        IconButton.outlined(
-                          style: IconButton.styleFrom(
-                            foregroundColor: scheme.onSurfaceVariant,
-                            side: BorderSide(color: scheme.outlineVariant),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.lg),
-                            ),
-                            padding: const EdgeInsets.all(10),
-                            minimumSize: const Size(44, 44),
-                          ),
-                          icon: const AppIcon(
-                            HugeIcons.strokeRoundedCamera01,
-                            size: 20,
-                          ),
-                          tooltip: tr.scanBillTooltip,
-                          onPressed: () => _pickBillImage(context),
+                  // Modern clean input bar with suggestions and animated send button
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _inputController,
+                    builder: (context, value, _) {
+                      final hasText = value.text.trim().isNotEmpty;
+                      return Container(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpace.md,
+                          AppSpace.xs,
+                          AppSpace.md,
+                          AppSpace.sm,
                         ),
-                        const SizedBox(width: AppSpace.sm),
+                        decoration: BoxDecoration(
+                          color: scheme.surface,
+                          border: Border(
+                            top: BorderSide(
+                              color: scheme.outlineVariant.withValues(alpha: 0.35),
+                              width: 0.8,
+                            ),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_viewModel.messages.isNotEmpty) ...[
+                              _buildActiveSuggestionChips(context, tr),
+                              const SizedBox(height: AppSpace.xs),
+                            ],
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                // Camera / Bill Scanner button
+                                IconButton(
+                                  style: IconButton.styleFrom(
+                                    foregroundColor: scheme.primary,
+                                    backgroundColor: scheme.primary.withValues(alpha: 0.08),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                                      side: BorderSide(
+                                        color: scheme.primary.withValues(alpha: 0.2),
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.all(10),
+                                    minimumSize: const Size(44, 44),
+                                  ),
+                                  icon: const AppIcon(
+                                    HugeIcons.strokeRoundedCamera01,
+                                    size: 20,
+                                  ),
+                                  tooltip: tr.scanBillTooltip,
+                                  onPressed: () => _pickBillImage(context),
+                                ),
+                                const SizedBox(width: AppSpace.sm),
 
-                        // Proper rounded inbox container
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpace.md,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: scheme.surfaceContainerHighest.withValues(
-                                alpha: 0.45,
-                              ),
-                              borderRadius: BorderRadius.circular(AppRadius.lg),
-                              border: Border.all(color: scheme.outlineVariant),
-                            ),
-                            child: TextField(
-                              controller: _inputController,
-                              style: text.bodyMedium,
-                              decoration: InputDecoration(
-                                hintText: tr.askOrTypeNotesHint,
-                                hintStyle: text.bodyMedium?.copyWith(
-                                  color: scheme.onSurfaceVariant.withValues(
-                                    alpha: 0.7,
+                                // Rounded input container
+                                Expanded(
+                                  child: Container(
+                                    constraints: const BoxConstraints(maxHeight: 120),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpace.md,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: scheme.surfaceContainerHighest.withValues(
+                                        alpha: 0.45,
+                                      ),
+                                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                                      border: Border.all(
+                                        color: hasText
+                                            ? scheme.primary.withValues(alpha: 0.5)
+                                            : scheme.outlineVariant.withValues(alpha: 0.4),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: TextField(
+                                      controller: _inputController,
+                                      maxLines: null,
+                                      textInputAction: TextInputAction.send,
+                                      style: text.bodyMedium,
+                                      decoration: InputDecoration(
+                                        hintText: tr.askOrTypeNotesHint,
+                                        hintStyle: text.bodyMedium?.copyWith(
+                                          color: scheme.onSurfaceVariant.withValues(
+                                            alpha: 0.65,
+                                          ),
+                                          fontSize: 13.5,
+                                        ),
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          vertical: 10,
+                                        ),
+                                      ),
+                                      onSubmitted: (_) => _send(),
+                                    ),
                                   ),
                                 ),
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                errorBorder: InputBorder.none,
-                                focusedErrorBorder: InputBorder.none,
-                                disabledBorder: InputBorder.none,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                              ),
-                              onSubmitted: (_) => _send(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpace.sm),
+                                const SizedBox(width: AppSpace.sm),
 
-                        // Highlighted outlined send button
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: scheme.primary,
-                            backgroundColor: scheme.primary.withValues(
-                              alpha: 0.1,
+                                // Animated dynamic send button
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  child: IconButton(
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: hasText
+                                          ? scheme.primary
+                                          : scheme.surfaceContainerHighest,
+                                      foregroundColor: hasText
+                                          ? scheme.onPrimary
+                                          : scheme.onSurfaceVariant.withValues(alpha: 0.4),
+                                      shape: const CircleBorder(),
+                                      padding: const EdgeInsets.all(10),
+                                      minimumSize: const Size(44, 44),
+                                    ),
+                                    onPressed: hasText ? () => _send() : null,
+                                    icon: const Icon(
+                                      Icons.arrow_upward_rounded,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            side: BorderSide(color: scheme.primary, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.lg),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            minimumSize: const Size(44, 44),
-                          ),
-                          onPressed: () => _send(),
-                          child: Icon(
-                            Icons.arrow_upward_rounded,
-                            size: 20,
-                            color: scheme.primary,
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -713,22 +1048,123 @@ class _PromptCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
+    this.badge,
     required this.onTap,
   });
 
   final String title;
   final String subtitle;
   final IconGlyph icon;
+  final String? badge;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return OptionTile(
-      title: title,
-      subtitle: subtitle,
-      icon: icon,
-      selected: false,
-      onTap: onTap,
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: Material(
+        color: scheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.md,
+              vertical: AppSpace.sm + 2,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Center(
+                    child: AppIcon(
+                      icon,
+                      size: 20,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpace.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: text.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (badge != null) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: scheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.pill,
+                                ),
+                              ),
+                              child: Text(
+                                badge!,
+                                style: text.labelSmall?.copyWith(
+                                  color: scheme.primary,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: text.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpace.xs),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 13,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

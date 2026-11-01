@@ -61,35 +61,31 @@ flutter:
     - assets/icons/merchants/
     - assets/icons/
     - assets/brandings/
-    - assets/brand/
-    - assets/brand/logo/
-    - assets/brand/app-icon/
-    - assets/brand/android/
-    - assets/brand/web/
+    - assets/fonts/
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/brandings/hyprwise_hw_app_icon.png"
-  image_path_ios: "assets/brandings/hyprwise_hw_app_icon.png"
-  adaptive_icon_background: "assets/brand/android/ic_launcher_background.png"
-  adaptive_icon_foreground: "assets/brand/android/ic_launcher_foreground.png"
-  adaptive_icon_monochrome: "assets/brand/android/ic_launcher_monochrome.png"
+  image_path: "assets/brandings/hyprwise_app_icon_1024.png"
+  image_path_ios: "assets/brandings/hyprwise_app_icon_ios_1024.png"
+  adaptive_icon_background: "assets/brandings/ic_launcher_background.png"
+  adaptive_icon_foreground: "assets/brandings/ic_launcher_foreground.png"
+  adaptive_icon_monochrome: "assets/brandings/ic_launcher_monochrome.png"
   remove_alpha_ios: true
   min_sdk_android: 23
 
 flutter_native_splash:
   color: "#FFFFFF"
   color_dark: "#0F0F11"
-  image: assets/brand/android/splash-light-icon.png
-  image_dark: assets/brand/android/splash-dark-icon.png
-  branding: assets/brandings/hyprwise_wordmark_transparent.png
-  branding_dark: assets/brandings/hyprwise_wordmark_transparent.png
+  image: assets/brandings/splash_icon_light.png
+  image_dark: assets/brandings/splash_icon_dark.png
+  branding: assets/brandings/branding_banner_light.png
+  branding_dark: assets/brandings/branding_banner_dark.png
   branding_mode: bottom
   android_12:
     color: "#FFFFFF"
     color_dark: "#0F0F11"
-    image: assets/brand/android/splash-light-icon.png
-    image_dark: assets/brand/android/splash-dark-icon.png
-    branding: assets/brandings/hyprwise_wordmark_transparent.png
-    branding_dark: assets/brandings/hyprwise_wordmark_transparent.png
+    image: assets/brandings/splash_icon_light.png
+    image_dark: assets/brandings/splash_icon_dark.png
+    branding: assets/brandings/branding_banner_light.png
+    branding_dark: assets/brandings/branding_banner_dark.png

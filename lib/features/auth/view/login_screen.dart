@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -36,11 +38,14 @@ class LoginScreen extends StatelessWidget {
         final authService = getIt<AuthService>();
         final tr = context.strings;
 
-        if (authService.isCloudSyncing) {
+        if (authService.isAuthenticated ||
+            authService.isLoading ||
+            authService.isCloudSyncing) {
           return const _AccountSetupSyncScreen();
         }
 
         void onAuthSuccess() {
+          if (!context.mounted) return;
           if (!settingsRepo.settings.onboarded) {
             context.go(AppRoutes.currency);
           } else {
@@ -64,8 +69,8 @@ class LoginScreen extends StatelessWidget {
                   Center(
                     child: SvgPicture.asset(
                       isDark
-                          ? 'assets/brand/logo/hyprwise-mark-white.svg'
-                          : 'assets/brand/logo/hyprwise-mark.svg',
+                          ? 'assets/brandings/hyprwise_logo_white.svg'
+                          : 'assets/brandings/hyprwise_logo.svg',
                       width: 72,
                       height: 72,
                     ),
@@ -366,77 +371,433 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
-class _AccountSetupSyncScreen extends StatelessWidget {
+class _AccountSetupSyncScreen extends StatefulWidget {
   const _AccountSetupSyncScreen();
+
+  @override
+  State<_AccountSetupSyncScreen> createState() => _AccountSetupSyncScreenState();
+}
+
+class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _scaleAnimation = Tween<double>(
+    begin: 0.94,
+    end: 1.06,
+  ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+
+  Timer? _navTimer;
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _navTimer?.cancel();
+    super.dispose();
+  }
+
+  void _checkAndNavigate() {
+    final authService = getIt<AuthService>();
+    final settingsRepo = getIt<SettingsRepository>();
+    if (authService.isAuthenticated &&
+        !authService.isLoading &&
+        !authService.isCloudSyncing) {
+      if (_navTimer != null) return;
+      _navTimer = Timer(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        if (!settingsRepo.settings.onboarded) {
+          context.go(AppRoutes.currency);
+        } else {
+          context.go(AppRoutes.home);
+        }
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAndNavigate());
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final colors = context.colors;
     final tr = context.strings;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final authService = getIt<AuthService>();
+
+    _checkAndNavigate();
+
+    final isAuthDone = authService.isAuthenticated;
+    final isSyncing = authService.isCloudSyncing;
+    final isAllDone = isAuthDone && !authService.isLoading && !isSyncing;
+
+    final double targetProgress;
+    final String statusLabel;
+
+    if (isAllDone) {
+      targetProgress = 1.0;
+      statusLabel = tr.t(
+        'Workspace ready! Opening...',
+        ne: 'कार्यक्षेत्र तयार भयो! खुल्दैछ...',
+        hi: 'कार्यक्षेत्र तैयार है! खोला जा रहा है...',
+        es: '¡Espacio listo! Abriendo...',
+        fr: 'Espace prêt ! Ouverture...',
+        de: 'Arbeitsbereich bereit! Wird geöffnet...',
+        ja: '準備完了！開いています...',
+        zh: '准备就绪！正在打开...',
+        it: 'Pronto! Apertura...',
+      );
+    } else if (isSyncing || isAuthDone) {
+      targetProgress = 0.65;
+      statusLabel = tr.t(
+        'Scanning cloud backup & ledger...',
+        ne: 'क्लाउड ब्याकअप र लेजर जाँच हुँदैछ...',
+        hi: 'क्लाउड बैकअप और बहीखाता स्कैन किया जा रहा है...',
+        es: 'Comprobando copia de seguridad en la nube...',
+        fr: 'Vérification de la sauvegarde cloud...',
+        de: 'Cloud-Backup und Hauptbuch werden gescannt...',
+        ja: 'クラウドバックアップを確認しています...',
+        zh: '正在扫描云备份和账本...',
+        it: 'Scansione del backup cloud in corso...',
+      );
+    } else {
+      targetProgress = 0.30;
+      statusLabel = tr.t(
+        'Verifying secure credentials...',
+        ne: 'सुरक्षित प्रमाणिकरण जाँच हुँदैछ...',
+        hi: 'सुरक्षित क्रेडेंशियल सत्यापित किए जा रहे हैं...',
+        es: 'Verificando credenciales seguras...',
+        fr: 'Vérification des identifiants...',
+        de: 'Anmeldedaten werden überprüft...',
+        ja: '認証情報を確認しています...',
+        zh: '正在验证安全凭据...',
+        it: 'Verifica delle credenziali in corso...',
+      );
+    }
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.page),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(flex: 4),
-              Icon(
-                Icons.cloud_download_outlined,
-                size: 48,
-                color: scheme.primary,
-              ),
-              const SizedBox(height: AppSpace.xl),
-              Text(
-                tr.t(
-                  'Setting up your account',
-                  ne: 'तपाईंको खाता तयार हुँदैछ',
-                  hi: 'आपका खाता तैयार हो रहा है',
-                  es: 'Estamos configurando tu cuenta',
-                  fr: 'Configuration de votre compte',
-                  de: 'Ihr Konto wird eingerichtet',
-                  ja: 'アカウントを設定しています',
-                  zh: '正在设置您的账户',
-                  it: 'Stiamo configurando il tuo account',
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.page,
+              vertical: AppSpace.lg,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Branded Emblem with ambient glow
+                Center(
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: scheme.primary.withValues(alpha: 0.08),
+                        border: Border.all(
+                          color: scheme.primary.withValues(alpha: 0.25),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: scheme.primary.withValues(
+                              alpha: isDark ? 0.20 : 0.12,
+                            ),
+                            blurRadius: 28,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(18),
+                      child: SvgPicture.asset(
+                        isDark
+                            ? 'assets/brandings/hyprwise_logo_white.svg'
+                            : 'assets/brandings/hyprwise_logo.svg',
+                      ),
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                style: text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+                const SizedBox(height: AppSpace.xl),
+
+                // Headline
+                Text(
+                  tr.t(
+                    'Checking account & setting up',
+                    ne: 'खाता जाँच र सेटअप हुँदैछ',
+                    hi: 'खाता जाँच और सेटअप हो रहा है',
+                    es: 'Verificando cuenta y configurando',
+                    fr: 'Vérification du compte et configuration',
+                    de: 'Konto wird überprüft und eingerichtet',
+                    ja: 'アカウントを確認・設定しています',
+                    zh: '正在检查账户并进行设置',
+                    it: 'Verifica dell\'account e configurazione',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: text.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              Text(
-                tr.t(
-                  'Downloading your preferences and latest financial data securely.',
-                  ne:
-                      'तपाईंका प्राथमिकता र पछिल्लो वित्तीय डाटा सुरक्षित रूपमा डाउनलोड हुँदैछ।',
-                  hi:
-                      'आपकी प्राथमिकताएँ और नवीनतम वित्तीय डेटा सुरक्षित रूप से डाउनलोड हो रहा है।',
-                  es:
-                      'Descargando de forma segura tus preferencias y los datos financieros más recientes.',
-                  fr:
-                      'Téléchargement sécurisé de vos préférences et de vos dernières données financières.',
-                  de:
-                      'Ihre Einstellungen und neuesten Finanzdaten werden sicher heruntergeladen.',
-                  ja: '設定と最新の家計データを安全にダウンロードしています。',
-                  zh: '正在安全下载您的偏好设置和最新财务数据。',
-                  it:
-                      'Stiamo scaricando in sicurezza le tue preferenze e gli ultimi dati finanziari.',
+                const SizedBox(height: AppSpace.xs),
+                Text(
+                  tr.t(
+                    'Preparing your offline-first financial dashboard & cloud backup securely.',
+                    ne:
+                        'तपाईंको अफलाइन-पहिलो वित्तीय ड्यासबोर्ड र क्लाउड ब्याकअप सुरक्षित रूपमा तयार गर्दै।',
+                    hi:
+                        'आपके ऑफ़लाइन-प्रथम वित्तीय डैशबोर्ड और क्लाउड बैकअप को सुरक्षित रूप से तैयार किया जा रहा है।',
+                    es:
+                        'Preparando de forma segura tu panel financiero y copia en la nube.',
+                    fr:
+                        'Préparation sécurisée de votre tableau de bord et sauvegarde cloud.',
+                    de:
+                        'Ihr Offline-First-Dashboard und Cloud-Backup werden sicher vorbereitet.',
+                    ja: 'オフライン優先の財務ダッシュボードとクラウドバックアップを安全に準備しています。',
+                    zh: '正在安全准备您的离线优先财务仪表板和云备份。',
+                    it:
+                        'Preparazione sicura della dashboard finanziaria offline e del backup cloud.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: text.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.4,
+                const SizedBox(height: AppSpace.xl),
+
+                // Multi-step Progress Card
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Smooth Progress Bar
+                      TweenAnimationBuilder<double>(
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeOutCubic,
+                        tween: Tween<double>(begin: 0.15, end: targetProgress),
+                        builder: (context, value, _) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.pill,
+                                ),
+                                child: LinearProgressIndicator(
+                                  value: value,
+                                  minHeight: 6,
+                                  backgroundColor:
+                                      scheme.surfaceContainerHighest,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    isAllDone ? colors.income : scheme.primary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpace.xs),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    statusLabel,
+                                    style: text.labelSmall?.copyWith(
+                                      color:
+                                          isAllDone
+                                              ? colors.income
+                                              : scheme.onSurfaceVariant,
+                                      fontWeight:
+                                          isAllDone
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${(value * 100).toInt()}%',
+                                    style: text.labelSmall?.copyWith(
+                                      color:
+                                          isAllDone
+                                              ? colors.income
+                                              : scheme.primary,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: 'RedditMono',
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: AppSpace.md),
+                      const Divider(height: 1),
+                      const SizedBox(height: AppSpace.sm),
+
+                      // Step 1: Authentication
+                      _buildStepTile(
+                        context: context,
+                        title: tr.t(
+                          'Verifying credentials & identity',
+                          ne: 'प्रमाणिकरण र पहिचान जाँच',
+                          hi: 'क्रेडेंशियल और पहचान का सत्यापन',
+                          es: 'Verificando credenciales e identidad',
+                          fr: 'Vérification des identifiants et de l\'identité',
+                          de: 'Anmeldedaten und Identität werden überprüft',
+                          ja: '認証情報とIDを確認しています',
+                          zh: '正在验证凭据和身份',
+                          it: 'Verifica credenziali e identità',
+                        ),
+                        isDone: isAuthDone,
+                        isActive: !isAuthDone,
+                      ),
+
+                      // Step 2: Cloud Backup & Ledger
+                      _buildStepTile(
+                        context: context,
+                        title: tr.t(
+                          'Checking cloud backups & ledger',
+                          ne: 'क्लाउड ब्याकअप र लेजर जाँच',
+                          hi: 'क्लाउड बैकअप और बहीखाता जाँच',
+                          es: 'Comprobando copias de seguridad en la nube',
+                          fr: 'Vérification des sauvegardes et du grand livre',
+                          de: 'Cloud-Backups und Hauptbuch werden geprüft',
+                          ja: 'クラウドバックアップと元帳を確認しています',
+                          zh: '正在检查云备份和账本',
+                          it: 'Verifica backup cloud e registro',
+                        ),
+                        isDone: isAllDone || (!isSyncing && isAuthDone),
+                        isActive: isSyncing,
+                      ),
+
+                      // Step 3: Local Workspace Vault
+                      _buildStepTile(
+                        context: context,
+                        title: tr.t(
+                          'Securing offline-first database vault',
+                          ne: 'अफलाइन-पहिलो डेटाबेस सुरक्षित गरिँदै',
+                          hi: 'ऑफ़लाइन डेटाबेस वॉल्ट को सुरक्षित किया जा रहा है',
+                          es: 'Asegurando bóveda local offline-first',
+                          fr: 'Sécurisation de la base de données hors ligne',
+                          de: 'Lokaler Datenbank-Tresor wird eingerichtet',
+                          ja: 'ローカルデータベースを安全に構築しています',
+                          zh: '正在安全配置本地数据库',
+                          it: 'Protezione del database locale offline-first',
+                        ),
+                        isDone: isAllDone,
+                        isActive: isAuthDone && !isSyncing && !isAllDone,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpace.xl),
-              const LinearProgressIndicator(),
-              const Spacer(flex: 5),
-            ],
+                const SizedBox(height: AppSpace.xl),
+
+                // Offline-First Privacy Reassurance Badge
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: 0.4),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 14,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          tr.offlineSecurityBadge,
+                          style: text.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStepTile({
+    required BuildContext context,
+    required String title,
+    required bool isDone,
+    required bool isActive,
+  }) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final colors = context.colors;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5.0),
+      child: Row(
+        children: [
+          if (isDone)
+            Icon(
+              Icons.check_circle_rounded,
+              size: 18,
+              color: colors.income,
+            )
+          else if (isActive)
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+              ),
+            )
+          else
+            Icon(
+              Icons.radio_button_unchecked,
+              size: 18,
+              color: scheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(
+              title,
+              style: text.bodySmall?.copyWith(
+                color:
+                    isDone
+                        ? scheme.onSurface
+                        : (isActive ? scheme.primary : scheme.onSurfaceVariant),
+                fontWeight:
+                    isDone || isActive ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

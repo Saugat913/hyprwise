@@ -316,7 +316,9 @@ class SettingsScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       SvgPicture.asset(
-                        'assets/brand/logo/hyprwise-logo.svg',
+                        Theme.of(context).brightness == Brightness.dark
+                            ? 'assets/brandings/hyprwise_wordmark_white.svg'
+                            : 'assets/brandings/hyprwise_wordmark.svg',
                         height: 22,
                       ),
                       const SizedBox(height: AppSpace.xs),

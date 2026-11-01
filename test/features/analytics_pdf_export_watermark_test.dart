@@ -166,7 +166,9 @@ void main() {
             final streamBytes = bytes.sublist(start, end);
             final decompressed = zlib.decode(streamBytes);
             final decompressedText = String.fromCharCodes(decompressed);
-            if (decompressedText.contains('HYPRWISE')) {
+            // In TrueType fonts, 'HYPRWISE' glyphs are encoded as 00010002000300040005000600070008 with 76 Tf
+            if (decompressedText.contains('HYPRWISE') ||
+                (decompressedText.contains('76 Tf') && decompressedText.contains('00010002000300040005000600070008'))) {
               foundWatermark = true;
               break;
             }

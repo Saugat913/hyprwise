@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
@@ -16,6 +18,7 @@ import 'package:finance_tracker/features/analytics/data/analytics_tab_data.dart'
 import 'package:finance_tracker/features/analytics/viewmodels/analytics_view_model.dart';
 import 'package:finance_tracker/features/debts/data/model/debt.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
+import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 
@@ -53,12 +56,19 @@ abstract final class AnalyticsPdfService {
     final subService = getIt.isRegistered<SubscriptionService>() ? getIt<SubscriptionService>() : null;
     final isPro = isProOverride ?? (subService?.isPro ?? false);
 
-    // Load brand icon if available
+    // Load brand icon if available from brandings
     pw.ImageProvider? brandLogo;
-    try {
-      final logoBytes = await rootBundle.load('assets/brand/app-icon/hyprwise-app-icon-1024.png');
-      brandLogo = pw.MemoryImage(logoBytes.buffer.asUint8List());
-    } catch (_) {}
+    for (final path in [
+      'assets/brandings/hyprwise_app_icon_1024.png',
+      'assets/brandings/hyprwise_mark.png',
+      'assets/brandings/hyprwise_app_icon_light.png',
+    ]) {
+      try {
+        final logoBytes = await rootBundle.load(path);
+        brandLogo = pw.MemoryImage(logoBytes.buffer.asUint8List());
+        break;
+      } catch (_) {}
+    }
 
     // Colors: Hyprwise Brand Orange used exclusively for the top header branding.
     // The rest of the document uses a clean black-and-white / monochrome palette.
@@ -70,10 +80,29 @@ abstract final class AnalyticsPdfService {
     final barFillColor = PdfColor.fromHex('#1F2937'); // Solid dark fill for category bars
     final barTrackColor = PdfColor.fromHex('#E5E7EB'); // Neutral track for category bars
     final watermarkColor = PdfColor.fromHex('#E5E7EB'); // Subtle watermark grey for free tier
+    final incomeColor = PdfColor.fromHex('#10B981'); // Emerald green for income
+    final expenseColor = PdfColor.fromHex('#EF4444'); // Coral red for expense
+
+    // Load custom TTF font for complete Unicode / glyph coverage across all languages
+    pw.Font? customFont;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/GoogleSans.ttf');
+      customFont = pw.Font.ttf(fontData);
+    } catch (_) {}
+
+    final pdfTheme = customFont != null
+        ? pw.ThemeData.withFont(
+            base: customFont,
+            bold: customFont,
+            italic: customFont,
+            boldItalic: customFont,
+          )
+        : pw.ThemeData.base();
 
     pdf.addPage(
       pw.MultiPage(
         pageTheme: pw.PageTheme(
+          theme: pdfTheme,
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
           buildBackground: (context) {
@@ -208,7 +237,7 @@ abstract final class AnalyticsPdfService {
                   ),
                   pw.SizedBox(height: 3),
                   pw.Text(
-                    'Period: $startDateStr - $endDateStr (${vm.dateFilter.label})',
+                    'Period: $startDateStr - $endDateStr (${_filterLabelEnglish(vm.dateFilter)})',
                     style: pw.TextStyle(fontSize: 9.5, color: secondaryTextColor),
                   ),
                 ],
@@ -311,9 +340,30 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Section 2: Income Analysis (Black & White)
+          // Section 2: Cash Flow Trends & Daily Activity (if data is available)
+          if (vm.dualChartData.hasAnyData) ...[
+            pw.Text(
+              '2. CASH FLOW OVERVIEW & DAILY ACTIVITY',
+              style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
+            ),
+            pw.SizedBox(height: 8),
+            _buildTrendChart(
+              data: vm.dualChartData,
+              currency: currency,
+              incomeColor: incomeColor,
+              expenseColor: expenseColor,
+              trackColor: barTrackColor,
+              surfaceColor: surfaceColor,
+              borderColor: borderColor,
+              textColor: darkColor,
+              secondaryTextColor: secondaryTextColor,
+            ),
+            pw.SizedBox(height: 16),
+          ],
+
+          // Section 3: Income Analysis (Black & White)
           pw.Text(
-            '2. INCOME ANALYSIS',
+            vm.dualChartData.hasAnyData ? '3. INCOME ANALYSIS' : '2. INCOME ANALYSIS',
             style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
@@ -340,7 +390,7 @@ abstract final class AnalyticsPdfService {
                 else
                   for (final cat in incomeData.categories.take(6)) ...[
                     _buildCategoryChartBar(
-                      label: cat.label,
+                      label: _categoryEnglishName(cat.categoryKey, cat.label),
                       amountMinor: cat.amountMinor,
                       totalMinor: incomeTotal > 0 ? incomeTotal : 1,
                       currency: currency,
@@ -366,16 +416,16 @@ abstract final class AnalyticsPdfService {
               headers: ['Top Income Source / Payer', 'Category', 'Count', 'Total Amount'],
               data: [
                 for (final s in incomeData.top.take(5))
-                  [s.name, s.category, '${s.count} txns', '$currency ${(s.amountMinor / 100).toStringAsFixed(2)}'],
+                  [_safeText(s.name), _categoryEnglishName('', s.category), '${s.count} txns', '$currency ${(s.amountMinor / 100).toStringAsFixed(2)}'],
               ],
             ),
           ],
 
           pw.SizedBox(height: 16),
 
-          // Section 3: Expense Analysis (Black & White)
+          // Section 4: Expense Analysis (Black & White)
           pw.Text(
-            '3. EXPENSE ANALYSIS',
+            vm.dualChartData.hasAnyData ? '4. EXPENSE ANALYSIS' : '3. EXPENSE ANALYSIS',
             style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
@@ -402,7 +452,7 @@ abstract final class AnalyticsPdfService {
                 else
                   for (final cat in expenseData.categories.take(6)) ...[
                     _buildCategoryChartBar(
-                      label: cat.label,
+                      label: _categoryEnglishName(cat.categoryKey, cat.label),
                       amountMinor: cat.amountMinor,
                       totalMinor: expenseTotal > 0 ? expenseTotal : 1,
                       currency: currency,
@@ -428,16 +478,16 @@ abstract final class AnalyticsPdfService {
               headers: ['Top Merchant / Payee', 'Category', 'Count', 'Total Amount'],
               data: [
                 for (final m in expenseData.top.take(5))
-                  [m.name, m.category, '${m.count} txns', '$currency ${(m.amountMinor / 100).toStringAsFixed(2)}'],
+                  [_safeText(m.name), _categoryEnglishName('', m.category), '${m.count} txns', '$currency ${(m.amountMinor / 100).toStringAsFixed(2)}'],
               ],
             ),
           ],
 
           pw.SizedBox(height: 16),
 
-          // Section 4: Lending & Borrowing Analysis (Black & White)
+          // Section 5: Lending & Borrowing Analysis (Black & White)
           pw.Text(
-            '4. LENDING & BORROWING (DEBTS)',
+            vm.dualChartData.hasAnyData ? '5. LENDING & BORROWING (DEBTS)' : '4. LENDING & BORROWING (DEBTS)',
             style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
@@ -491,9 +541,9 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Section 5: Shifts & Work Wage Analysis (Black & White)
+          // Section 6: Shifts & Work Wage Analysis (Black & White)
           pw.Text(
-            '5. SHIFTS & WORK ANALYSIS',
+            vm.dualChartData.hasAnyData ? '6. SHIFTS & WORK ANALYSIS' : '5. SHIFTS & WORK ANALYSIS',
             style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
@@ -556,9 +606,11 @@ abstract final class AnalyticsPdfService {
 
           pw.SizedBox(height: 16),
 
-          // Section 6: Itemized Transaction Register (Black & White)
+          // Section 7: Itemized Transaction Register (Black & White)
           pw.Text(
-            '6. ITEMIZED TRANSACTION REGISTER (${transactions.length} records)',
+            vm.dualChartData.hasAnyData
+                ? '7. ITEMIZED TRANSACTION REGISTER (${transactions.length} records)'
+                : '6. ITEMIZED TRANSACTION REGISTER (${transactions.length} records)',
             style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5),
           ),
           pw.SizedBox(height: 8),
@@ -578,8 +630,8 @@ abstract final class AnalyticsPdfService {
                   [
                     DateFormatter.numeric(DateTime.fromMillisecondsSinceEpoch(t.occurredAt)),
                     t.type.toUpperCase(),
-                    t.category,
-                    t.note != null && t.note!.isNotEmpty ? t.note! : '-',
+                    _categoryEnglishName('', t.category),
+                    _safeText(t.note != null && t.note!.isNotEmpty ? t.note! : '-'),
                     '$currency ${(t.amountMinor / 100).toStringAsFixed(2)}',
                   ],
               ],
@@ -588,8 +640,21 @@ abstract final class AnalyticsPdfService {
       ),
     );
 
-    // Save PDF to Public Downloads directory
-    final targetDir = outputDirectory ?? await ExportService.getPublicDownloadsDirectory();
+    // Save PDF to a safe working directory first (guaranteed zero PathAccessException)
+    Directory targetDir;
+    if (outputDirectory != null) {
+      targetDir = outputDirectory;
+    } else {
+      try {
+        targetDir = await getTemporaryDirectory();
+      } catch (_) {
+        try {
+          targetDir = await getApplicationDocumentsDirectory();
+        } catch (_) {
+          targetDir = Directory.systemTemp;
+        }
+      }
+    }
     final dateStr = DateFormatter.numeric(DateTime.now(), locale: 'en').replaceAll('/', '-');
     final fileName = 'hyprwise_analytics_report_$dateStr.pdf';
     final file = File('${targetDir.path}/$fileName');
@@ -695,6 +760,126 @@ abstract final class AnalyticsPdfService {
           ],
         ),
       ],
+    );
+  }
+
+  static pw.Widget _buildTrendChart({
+    required DualBarChartData data,
+    required String currency,
+    required PdfColor incomeColor,
+    required PdfColor expenseColor,
+    required PdfColor trackColor,
+    required PdfColor surfaceColor,
+    required PdfColor borderColor,
+    required PdfColor textColor,
+    required PdfColor secondaryTextColor,
+  }) {
+    if (!data.hasAnyData || data.labels.isEmpty) {
+      return pw.SizedBox();
+    }
+
+    double maxVal = 0.0;
+    for (int i = 0; i < data.incomeValues.length; i++) {
+      if (data.incomeValues[i] > maxVal) maxVal = data.incomeValues[i];
+      if (i < data.expenseValues.length && data.expenseValues[i] > maxVal) {
+        maxVal = data.expenseValues[i];
+      }
+    }
+    if (maxVal <= 0) maxVal = 1.0;
+
+    // Show at most 14 latest bars to keep columns crisp and clean on A4
+    final count = data.labels.length;
+    final startIndex = count > 14 ? count - 14 : 0;
+    final visibleLabels = data.labels.sublist(startIndex);
+    final visibleIncome = data.incomeValues.sublist(startIndex);
+    final visibleExpense = data.expenseValues.sublist(startIndex);
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        color: surfaceColor,
+        borderRadius: pw.BorderRadius.circular(6),
+        border: pw.Border.all(color: borderColor, width: 0.7),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'Income vs Expense Flow (${visibleLabels.length} Intervals)',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: textColor),
+              ),
+              pw.Row(
+                children: [
+                  pw.Container(width: 8, height: 8, decoration: pw.BoxDecoration(color: incomeColor, borderRadius: pw.BorderRadius.circular(2))),
+                  pw.SizedBox(width: 4),
+                  pw.Text('Income', style: pw.TextStyle(fontSize: 7.5, color: secondaryTextColor, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(width: 10),
+                  pw.Container(width: 8, height: 8, decoration: pw.BoxDecoration(color: expenseColor, borderRadius: pw.BorderRadius.circular(2))),
+                  pw.SizedBox(width: 4),
+                  pw.Text('Expense', style: pw.TextStyle(fontSize: 7.5, color: secondaryTextColor, fontWeight: pw.FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 10),
+          pw.Container(
+            height: 64,
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+              children: [
+                for (int i = 0; i < visibleLabels.length; i++) ...[
+                  pw.Expanded(
+                    child: pw.Column(
+                      mainAxisAlignment: pw.MainAxisAlignment.end,
+                      children: [
+                        pw.Container(
+                          height: 48,
+                          alignment: pw.Alignment.bottomCenter,
+                          child: pw.Row(
+                            crossAxisAlignment: pw.CrossAxisAlignment.end,
+                            mainAxisAlignment: pw.MainAxisAlignment.center,
+                            children: [
+                              // Income Bar
+                              pw.Container(
+                                width: 5.5,
+                                height: ((visibleIncome[i] / maxVal) * 44).clamp(1.5, 44.0),
+                                decoration: pw.BoxDecoration(
+                                  color: visibleIncome[i] > 0 ? incomeColor : trackColor,
+                                  borderRadius: const pw.BorderRadius.vertical(top: pw.Radius.circular(1.5)),
+                                ),
+                              ),
+                              pw.SizedBox(width: 2),
+                              // Expense Bar
+                              pw.Container(
+                                width: 5.5,
+                                height: ((visibleExpense[i] / maxVal) * 44).clamp(1.5, 44.0),
+                                decoration: pw.BoxDecoration(
+                                  color: visibleExpense[i] > 0 ? expenseColor : trackColor,
+                                  borderRadius: const pw.BorderRadius.vertical(top: pw.Radius.circular(1.5)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          visibleLabels[i],
+                          style: pw.TextStyle(fontSize: 6.5, color: secondaryTextColor),
+                          maxLines: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -860,6 +1045,44 @@ abstract final class AnalyticsPdfService {
           ),
         );
       } else {
+        String finalSavedPath = file.path;
+        final dateStr = DateFormatter.numeric(DateTime.now(), locale: 'en').replaceAll('/', '-');
+        final fileName = 'hyprwise_analytics_report_$dateStr.pdf';
+
+        try {
+          final bytes = await file.readAsBytes();
+          final chosenPath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save PDF Report',
+            fileName: fileName,
+            bytes: bytes,
+            type: FileType.custom,
+            allowedExtensions: ['pdf'],
+          );
+
+          if (chosenPath != null) {
+            finalSavedPath = chosenPath;
+            final chosenFile = File(chosenPath);
+            if (!await chosenFile.exists() || await chosenFile.length() == 0) {
+              await chosenFile.writeAsBytes(bytes, flush: true);
+            }
+          } else {
+            // User dismissed or cancelled file picker
+            return;
+          }
+        } catch (_) {
+          // Fallback: try copying to public downloads directory safely
+          try {
+            final publicDir = await ExportService.getPublicDownloadsDirectory();
+            final targetFile = File('${publicDir.path}/$fileName');
+            await file.copy(targetFile.path);
+            finalSavedPath = targetFile.path;
+          } catch (_) {
+            // Keep using the verified file in temp/docs
+          }
+        }
+
+        if (!context.mounted) return;
+
         showDialog<void>(
           context: context,
           builder: (ctx) {
@@ -893,7 +1116,7 @@ abstract final class AnalyticsPdfService {
                       border: Border.all(color: scheme.outlineVariant),
                     ),
                     child: SelectableText(
-                      file.path,
+                      finalSavedPath,
                       style: text.bodySmall?.copyWith(fontFamily: 'RedditMono'),
                     ),
                   ),
@@ -909,7 +1132,7 @@ abstract final class AnalyticsPdfService {
                   label: Text(trCtx.shareFileButton),
                   onPressed: () {
                     Navigator.pop(ctx);
-                    SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+                    SharePlus.instance.share(ShareParams(files: [XFile(finalSavedPath)]));
                   },
                 ),
               ],
@@ -922,5 +1145,61 @@ abstract final class AnalyticsPdfService {
         showToast(context, 'PDF Export failed: $e');
       }
     }
+  }
+
+  static String _filterLabelEnglish(AnalyticsDateFilter filter) {
+    return switch (filter) {
+      AnalyticsDateFilter.thisMonth => 'This Month',
+      AnalyticsDateFilter.thisWeek => 'This Week',
+      AnalyticsDateFilter.last30Days => 'Last 30 Days',
+      AnalyticsDateFilter.thisYear => 'This Year',
+      AnalyticsDateFilter.custom => 'Custom Period',
+    };
+  }
+
+  static String _categoryEnglishName(String categoryKey, String fallback) {
+    if (categoryKey.isNotEmpty) {
+      for (final cat in TransactionCategories.builtIn) {
+        if (cat.value == categoryKey || cat.defaultLabel.toLowerCase() == categoryKey.toLowerCase()) {
+          return cat.defaultLabel;
+        }
+      }
+    }
+    final hasNonAscii = fallback.runes.any((r) => r > 127);
+    if (!hasNonAscii) return fallback;
+    final f = fallback.toLowerCase();
+    if (f.contains('食料品') || f.contains('食')) return 'Groceries';
+    if (f.contains('交通') || f.contains('費')) return 'Transport';
+    if (f.contains('シフト') || f.contains('給')) return 'Shift Pay';
+    if (f.contains('給与') || f.contains('給料')) return 'Salary';
+    if (f.contains('住居') || f.contains('家賃')) return 'Housing & Rent';
+    if (f.contains('光熱費') || f.contains('電気')) return 'Utilities';
+    if (f.contains('外食') || f.contains('飲食')) return 'Dining & Takeaway';
+    if (f.contains('買物') || f.contains('ショッピング')) return 'Shopping';
+    if (f.contains('娯楽')) return 'Entertainment';
+    if (f.contains('医療') || f.contains('健康')) return 'Health & Medical';
+    if (f.contains('投資')) return 'Investment';
+    if (f.contains('ギフト') || f.contains('贈与')) return 'Gift';
+    if (f.contains('収入')) return 'Other Income';
+    if (f.contains('支出') || f.contains('その他')) return 'Other Expense';
+
+    final buffer = StringBuffer();
+    for (final rune in fallback.runes) {
+      if (rune <= 127) buffer.writeCharCode(rune);
+    }
+    final cleaned = buffer.toString().trim();
+    return cleaned.isNotEmpty ? cleaned : 'Category';
+  }
+
+  static String _safeText(String text) {
+    if (text.isEmpty) return text;
+    final hasNonAscii = text.runes.any((r) => r > 127);
+    if (!hasNonAscii) return text;
+    final buffer = StringBuffer();
+    for (final rune in text.runes) {
+      if (rune <= 127) buffer.writeCharCode(rune);
+    }
+    final cleaned = buffer.toString().trim();
+    return cleaned.isNotEmpty ? cleaned : 'Item';
   }
 }

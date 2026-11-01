@@ -342,15 +342,7 @@ class _ActiveShiftBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: isOnBreak ? colors.warning : colors.income,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: AppSpace.sm),
+         
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,14 +420,14 @@ class _HomeActionPanel extends StatelessWidget {
         color: colors.brand,
         onTap: onTransfer,
       ),
-      _QuickActionItem(
-        title: workViewModel.isClockedIn ? tr.activeShift : tr.startShift,
-        icon: workViewModel.isClockedIn
-            ? HugeIcons.strokeRoundedClock01
-            : HugeIcons.strokeRoundedPlay,
-        color: colors.income,
-        onTap: onShift,
-      ),
+      // _QuickActionItem(
+      //   title: workViewModel.isClockedIn ? tr.activeShift : tr.startShift,
+      //   icon: workViewModel.isClockedIn
+      //       ? HugeIcons.strokeRoundedClock01
+      //       : HugeIcons.strokeRoundedPlay,
+      //   color: colors.income,
+      //   onTap: onShift,
+      // ),
       _QuickActionItem(
         title: tr.hyprAi,
         icon: HugeIcons.strokeRoundedChatBot,

@@ -18,10 +18,13 @@ import 'package:finance_tracker/features/work/data/repository/job_repository.dar
 import 'package:finance_tracker/features/work/data/repository/shift_repository.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late AppDatabase db;
   late FinanceStore store;
   late AccountRepository accountRepo;
   late TransactionRepository txRepo;
+  late SettingsRepository settingsRepo;
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -32,7 +35,7 @@ void main() {
     final shiftRepo = ShiftRepository(db);
     final goalRepo = GoalRepository(db);
     final ratesRepo = ExchangeRateRepository(db);
-    final settingsRepo = SettingsRepository(db);
+    settingsRepo = SettingsRepository(db);
     await settingsRepo.load();
 
     store = FinanceStore(
@@ -105,30 +108,31 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
-    final accId = await accountRepo.add(
-      name: 'Checking',
-      type: AccountType.bank,
-      currencyCode: 'USD',
-      openingBalanceMinor: 100000,
-    );
-
-    final now = DateTime.now();
-    for (int day = 1; day <= 30; day++) {
-      await txRepo.add(
-        accountId: accId,
-        amountMinor: 1000 * day,
-        type: day % 2 == 0 ? TransactionType.income : TransactionType.expense,
-        category: day % 2 == 0 ? 'salary' : 'groceries',
-        occurredAt: now.subtract(Duration(days: day)),
+    await tester.runAsync(() async {
+      final accId = await accountRepo.add(
+        name: 'Checking',
+        type: AccountType.bank,
+        currencyCode: 'USD',
+        openingBalanceMinor: 100000,
       );
-    }
 
-    await Future.delayed(const Duration(milliseconds: 50));
+      final now = DateTime.now();
+      for (int day = 1; day <= 30; day++) {
+        await txRepo.add(
+          accountId: accId,
+          amountMinor: 1000 * day,
+          type: day % 2 == 0 ? TransactionType.income : TransactionType.expense,
+          category: day % 2 == 0 ? 'salary' : 'groceries',
+          occurredAt: now.subtract(Duration(days: day)),
+        );
+      }
+    });
 
     final vm = AnalyticsViewModel(financeStore: store);
     vm.setDateFilter(AnalyticsDateFilter.thisMonth);
 
     await getIt.reset();
+    getIt.registerSingleton<SettingsRepository>(settingsRepo);
     getIt.registerSingleton<AnalyticsViewModel>(vm);
 
     await tester.pumpWidget(

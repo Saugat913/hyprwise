@@ -87,13 +87,27 @@ class ExportResult {
 }
 
 abstract final class ExportService {
-  /// Resolves the public downloads directory across platforms
+  /// Resolves the public downloads directory across platforms safely
   static Future<Directory> getPublicDownloadsDirectory() async {
     if (Platform.isAndroid) {
-      final publicDownload = Directory('/storage/emulated/0/Download');
-      if (await publicDownload.exists()) {
-        return publicDownload;
+      try {
+        final publicDownload = Directory('/storage/emulated/0/Download');
+        if (await publicDownload.exists()) {
+          // Verify write permission by attempting to write a test probe
+          final probe = File('${publicDownload.path}/.hyprwise_probe_${DateTime.now().millisecondsSinceEpoch}');
+          await probe.writeAsString('ok');
+          await probe.delete();
+          return publicDownload;
+        }
+      } catch (_) {
+        // Direct public storage writes are blocked by Scoped Storage
       }
+      try {
+        final extDirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
+        if (extDirs != null && extDirs.isNotEmpty && await extDirs.first.exists()) {
+          return extDirs.first;
+        }
+      } catch (_) {}
     }
 
     try {
@@ -142,8 +156,15 @@ abstract final class ExportService {
     }
 
     final targetDir = await getPublicDownloadsDirectory();
-    final file = File('${targetDir.path}/$fileName');
-    await file.writeAsString(content, flush: true);
+    File file = File('${targetDir.path}/$fileName');
+    try {
+      await file.writeAsString(content, flush: true);
+    } catch (_) {
+      // Fallback to app documents directory if public path threw PathAccessException
+      final safeDir = await getApplicationDocumentsDirectory();
+      file = File('${safeDir.path}/$fileName');
+      await file.writeAsString(content, flush: true);
+    }
 
     if (destination == ExportDestination.share) {
       await SharePlus.instance.share(
