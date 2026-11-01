@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -44,7 +45,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       builder: (context, _) {
         final text = Theme.of(context).textTheme;
         final scheme = Theme.of(context).colorScheme;
-        final (chartValues, chartLabels) = viewModel.chartData;
+        final dualChartData = viewModel.dualChartData;
         final topMerchants = viewModel.topMerchants;
         final categories = viewModel.availableCategories;
 
@@ -202,7 +203,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                       ),
                             )
                           else ...[
-                            // Active summary card (Spent or Income)
+                            // Cash flow overview & daily dual bar chart (Income + Expense per day)
                             AppCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,9 +225,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                                     viewModel.activeType,
                                                   ).label,
                                                 ))
-                                            : (isExpense
-                                                ? tr.totalSpending
-                                                : tr.totalIncome),
+                                            : tr.analyticsTabOverview,
                                         style: text.bodyMedium?.copyWith(
                                           color: scheme.onSurfaceVariant,
                                         ),
@@ -257,43 +256,49 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                     ],
                                   ),
                                   const SizedBox(height: AppSpace.sm),
-                                  Text(
-                                    MoneyFormatter.format(
-                                      viewModel.activeTotalMinor,
-                                      viewModel.baseCurrency,
-                                    ),
-                                    style: text.displaySmall?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color:
-                                          isExpense
-                                              ? scheme.onSurface
-                                              : colors.income,
-                                    ),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                                    textBaseline: TextBaseline.alphabetic,
+                                    children: [
+                                      Text(
+                                        MoneyFormatter.format(
+                                          viewModel.netMinor,
+                                          viewModel.baseCurrency,
+                                          signed: true,
+                                        ),
+                                        style: text.displaySmall?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: viewModel.netMinor >= 0
+                                              ? colors.income
+                                              : colors.expense,
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppSpace.xs),
+                                      Text(
+                                        tr.netSavings,
+                                        style: text.labelMedium?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: AppSpace.sm),
+                                  const SizedBox(height: AppSpace.xs),
                                   Text(
                                     tr.transactionsRecordedCount(
-                                      viewModel.filteredTransactions
-                                          .where(
-                                            (t) =>
-                                                t.type ==
-                                                viewModel.activeType.value,
-                                          )
-                                          .length,
+                                      viewModel.filteredTransactions.length,
                                     ),
                                     style: text.bodySmall?.copyWith(
                                       color: scheme.onSurfaceVariant,
                                     ),
                                   ),
-                                  if (chartValues.isNotEmpty) ...[
-                                    const SizedBox(height: AppSpace.xl),
-                                    _SpendingBarChart(
-                                      values: chartValues,
-                                      labels: chartLabels,
-                                      color:
-                                          isExpense
-                                              ? scheme.onSurface
-                                              : colors.income,
+                                  if (dualChartData.labels.isNotEmpty) ...[
+                                    const SizedBox(height: AppSpace.lg),
+                                    _DualBarChart(
+                                      incomeValues: dualChartData.incomeValues,
+                                      expenseValues: dualChartData.expenseValues,
+                                      labels: dualChartData.labels,
+                                      currency: viewModel.baseCurrency,
                                     ),
                                   ],
                                 ],
@@ -311,7 +316,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          isExpense ? tr.income : tr.expense,
+                                          tr.income,
                                           style: text.bodySmall?.copyWith(
                                             color: scheme.onSurfaceVariant,
                                           ),
@@ -319,13 +324,37 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                         const SizedBox(height: 2),
                                         Text(
                                           MoneyFormatter.format(
-                                            isExpense
-                                                ? viewModel.incomeMinor
-                                                : viewModel.expenseMinor,
+                                            viewModel.incomeMinor,
                                             viewModel.baseCurrency,
                                           ),
                                           style: text.titleMedium?.copyWith(
                                             fontWeight: FontWeight.w700,
+                                            color: colors.income,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          tr.expense,
+                                          style: text.bodySmall?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          MoneyFormatter.format(
+                                            viewModel.expenseMinor,
+                                            viewModel.baseCurrency,
+                                          ),
+                                          style: text.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: colors.expense,
                                           ),
                                         ),
                                       ],
@@ -1125,83 +1154,213 @@ class _AnalyticsCategoryGridCard extends StatelessWidget {
   }
 }
 
-class _SpendingBarChart extends StatelessWidget {
-  const _SpendingBarChart({
-    required this.values,
+class _DualBarChart extends StatelessWidget {
+  const _DualBarChart({
+    required this.incomeValues,
+    required this.expenseValues,
     required this.labels,
-    required this.color,
+    required this.currency,
   });
 
-  final List<double> values;
+  final List<double> incomeValues;
+  final List<double> expenseValues;
   final List<String> labels;
-  final Color color;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    final max = values.isEmpty ? 1.0 : values.reduce((a, b) => a > b ? a : b);
-    final effectiveMax = max <= 0 ? 1.0 : max;
+    final colors = context.colors;
+    final tr = context.strings;
 
-    return SizedBox(
-      height: 124,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (var i = 0; i < values.length; i++)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          width: 20,
-                          height: 82,
-                          decoration: BoxDecoration(
-                            color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
-                          ),
-                          child: Stack(
+    final maxIncome =
+        incomeValues.isEmpty ? 0.0 : incomeValues.reduce(math.max);
+    final maxExpense =
+        expenseValues.isEmpty ? 0.0 : expenseValues.reduce(math.max);
+    final globalMax = math.max(maxIncome, maxExpense);
+    final effectiveMax = globalMax <= 0 ? 1.0 : globalMax;
+
+    // Compact bar width when many days are shown (e.g. month-view)
+    final isCompact = labels.length > 7;
+    final barWidth = isCompact ? 6.5 : 9.0;
+    final barSpacing = isCompact ? 2.0 : 3.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Legend
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _ChartLegendBadge(
+              color: colors.income,
+              label: tr.income,
+            ),
+            const SizedBox(width: AppSpace.md),
+            _ChartLegendBadge(
+              color: colors.expense,
+              label: tr.expense,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.sm),
+        SizedBox(
+          height: 124,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (var i = 0; i < labels.length; i++)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Align(
                             alignment: Alignment.bottomCenter,
-                            children: [
-                              FractionallySizedBox(
-                                heightFactor: values[i] > 0
-                                    ? (values[i] / effectiveMax).clamp(0.08, 1.0)
-                                    : 0.0,
-                                child: Container(
-                                  width: 20,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                                  ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                // Income Bar (Green)
+                                _DayBarItem(
+                                  value:
+                                      i < incomeValues.length
+                                          ? incomeValues[i]
+                                          : 0.0,
+                                  effectiveMax: effectiveMax,
+                                  color: colors.income,
+                                  width: barWidth,
+                                  tooltip:
+                                      '${labels[i]} · ${tr.income}: ${MoneyFormatter.format((i < incomeValues.length ? incomeValues[i] : 0.0).round(), currency)}',
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: barSpacing),
+                                // Expense Bar (Red)
+                                _DayBarItem(
+                                  value:
+                                      i < expenseValues.length
+                                          ? expenseValues[i]
+                                          : 0.0,
+                                  effectiveMax: effectiveMax,
+                                  color: colors.expense,
+                                  width: barWidth,
+                                  tooltip:
+                                      '${labels[i]} · ${tr.expense}: ${MoneyFormatter.format((i < expenseValues.length ? expenseValues[i] : 0.0).round(), currency)}',
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          labels[i],
+                          style: text.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 10,
+                            fontFamily: 'RedditMono',
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      i < labels.length ? labels[i] : '',
-                      style: text.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 10,
-                        fontFamily: 'RedditMono',
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChartLegendBadge extends StatelessWidget {
+  const _ChartLegendBadge({
+    required this.color,
+    required this.label,
+  });
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: text.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DayBarItem extends StatelessWidget {
+  const _DayBarItem({
+    required this.value,
+    required this.effectiveMax,
+    required this.color,
+    required this.width,
+    required this.tooltip,
+  });
+
+  final double value;
+  final double effectiveMax;
+  final Color color;
+  final double width;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    const barHeight = 82.0;
+    final factor =
+        value > 0 ? (value / effectiveMax).clamp(0.08, 1.0) : 0.0;
+
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: width,
+        height: barHeight,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
+        alignment: Alignment.bottomCenter,
+        child:
+            factor > 0
+                ? FractionallySizedBox(
+                  heightFactor: factor,
+                  child: Container(
+                    width: width,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                  ),
+                )
+                : const SizedBox.shrink(),
       ),
     );
   }

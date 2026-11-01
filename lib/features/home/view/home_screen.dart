@@ -92,26 +92,9 @@ class HomeScreen extends StatelessWidget {
               _ActiveShiftBanner(workViewModel: workViewModel),
             ],
 
-            // Quick actions placed right below the hero & active shift banner
-            const SizedBox(height: AppSpace.xxl),
-            SectionHeader(tr.quickActions),
-            const SizedBox(height: AppSpace.sm),
-            _HomeActionPanel(
-              workViewModel: workViewModel,
-              onTransfer: () => context.push(AppRoutes.transfers),
-              onShift:
-                  () => context.push(
-                    workViewModel.isClockedIn
-                        ? AppRoutes.liveShift
-                        : AppRoutes.startShift,
-                  ),
-              onAssistant: () => context.push(AppRoutes.assistant),
-              onAnalytics: () => context.push(AppRoutes.analytics),
-            ),
-
             // Get set up checklist (if not completed) placed right under shift starting manage section
             if (viewModel.hasAccounts && !viewModel.isSetupComplete) ...[
-              const SizedBox(height: AppSpace.xl),
+              const SizedBox(height: AppSpace.xs),
               SectionHeader(
                 tr.getSetUp,
                 actionLabel: tr.setupStepsProgress(viewModel.setupCompletedCount, 4),
@@ -169,19 +152,38 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
 
+            // Quick actions placed right below the hero & active shift banner
+            const SizedBox(height: AppSpace.xs),
+            SectionHeader(tr.quickActions),
+            const SizedBox(height: AppSpace.xs),
+            _HomeActionPanel(
+              workViewModel: workViewModel,
+              onTransfer: () => context.push(AppRoutes.transfers),
+              onShift:
+                  () => context.push(
+                    workViewModel.isClockedIn
+                        ? AppRoutes.liveShift
+                        : AppRoutes.startShift,
+                  ),
+              onAssistant: () => context.push(AppRoutes.assistant),
+              onAnalytics: () => context.push(AppRoutes.analytics),
+            ),
+
+            
+
             // Cash flow answers the complementary question: what changed this month?
             if (viewModel.hasAccounts) ...[
               HomeMonthOverview(viewModel: viewModel),
-              const SizedBox(height: AppSpace.md),
+              const SizedBox(height: AppSpace.xs),
               TopSpendingCard(viewModel: viewModel),
-              const SizedBox(height: AppSpace.md),
+              const SizedBox(height: AppSpace.xs),
               HomeAtAGlance(viewModel: viewModel),
-              const SizedBox(height: AppSpace.md),
+              const SizedBox(height: AppSpace.xs),
               HomePlanningOverview(viewModel: viewModel),
             ],
 
             // Recent transactions section
-            const SizedBox(height: AppSpace.xxl),
+            const SizedBox(height: AppSpace.sm),
             SectionHeader(
               tr.recentTransactions,
               actionLabel: tr.seeAll,
@@ -419,82 +421,93 @@ class _HomeActionPanel extends StatelessWidget {
     final tr = context.strings;
     final colors = context.colors;
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: AppSpace.md,
-      crossAxisSpacing: AppSpace.md,
-      childAspectRatio: 1.85,
-      children: [
-        _QuickActionTile(
-          title: tr.transfer,
-          subtitle: tr.accounts,
-          icon: HugeIcons.strokeRoundedCoinsSwap,
-          color: colors.brand,
-          onTap: onTransfer,
+    final actions = [
+      _QuickActionItem(
+        title: tr.transfer,
+        icon: HugeIcons.strokeRoundedCoinsSwap,
+        color: colors.brand,
+        onTap: onTransfer,
+      ),
+      _QuickActionItem(
+        title: workViewModel.isClockedIn ? tr.activeShift : tr.startShift,
+        icon: workViewModel.isClockedIn
+            ? HugeIcons.strokeRoundedClock01
+            : HugeIcons.strokeRoundedPlay,
+        color: colors.income,
+        onTap: onShift,
+      ),
+      _QuickActionItem(
+        title: tr.hyprAi,
+        icon: HugeIcons.strokeRoundedChatBot,
+        color: colors.brand,
+        onTap: onAssistant,
+      ),
+      _QuickActionItem(
+        title: tr.t(
+          'Analytics',
+          ne: 'विश्लेषण',
+          hi: 'एनालिटिक्स',
+          es: 'Análisis',
+          fr: 'Analyses',
+          de: 'Analysen',
+          ja: '分析',
+          zh: '分析',
+          it: 'Analisi',
         ),
-        _QuickActionTile(
-          title: workViewModel.isClockedIn ? tr.activeShift : tr.startShift,
-          subtitle:
-              workViewModel.isClockedIn ? tr.running : tr.liveTimeTracking,
-          icon:
-              workViewModel.isClockedIn
-                  ? HugeIcons.strokeRoundedClock01
-                  : HugeIcons.strokeRoundedPlay,
-          color: colors.income,
-          onTap: onShift,
-        ),
-        _QuickActionTile(
-          title: tr.hyprAi,
-          subtitle: tr.financialAi,
-          icon: HugeIcons.strokeRoundedChatBot,
-          color: colors.brand,
-          onTap: onAssistant,
-        ),
-        _QuickActionTile(
-          title: tr.t(
-            'Analytics',
-            ne: 'विश्लेषण',
-            hi: 'एनालिटिक्स',
-            es: 'Análisis',
-            fr: 'Analyses',
-            de: 'Analysen',
-            ja: '分析',
-            zh: '分析',
-            it: 'Analisi',
-          ),
-          subtitle: tr.t(
-            'Trends & insights',
-            ne: 'प्रवृत्ति र अन्तर्दृष्टि',
-            hi: 'रुझान और अंतर्दृष्टि',
-            es: 'Tendencias e ideas',
-            fr: 'Tendances et aperçus',
-            de: 'Trends & Einblicke',
-            ja: '傾向と分析',
-            zh: '趋势与洞察',
-            it: 'Tendenze e approfondimenti',
-          ),
-          icon: HugeIcons.strokeRoundedAnalytics01,
-          color: colors.liquid,
-          onTap: onAnalytics,
-        ),
-      ],
+        icon: HugeIcons.strokeRoundedAnalytics01,
+        color: colors.liquid,
+        onTap: onAnalytics,
+      ),
+    ];
+
+    return SizedBox(
+      height: 44,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: actions.length,
+        itemBuilder: (context, index) {
+          final action = actions[index];
+          return Padding(
+            padding: EdgeInsets.only(
+              right: index == actions.length - 1 ? 0 : AppSpace.sm,
+            ),
+            child: _QuickActionTile(
+              title: action.title,
+              icon: action.icon,
+              color: action.color,
+              onTap: action.onTap,
+            ),
+          );
+        },
+      ),
     );
   }
 }
 
-class _QuickActionTile extends StatelessWidget {
-  const _QuickActionTile({
+class _QuickActionItem {
+  const _QuickActionItem({
     required this.title,
-    required this.subtitle,
     required this.icon,
     required this.color,
     required this.onTap,
   });
 
   final String title;
-  final String subtitle;
+  final IconGlyph icon;
+  final Color color;
+  final VoidCallback onTap;
+}
+
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String title;
   final IconGlyph icon;
   final Color color;
   final VoidCallback onTap;
@@ -515,47 +528,31 @@ class _QuickActionTile extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpace.md,
-            vertical: AppSpace.sm,
+            vertical: AppSpace.xs,
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 alignment: Alignment.center,
-                child: AppIcon(icon, size: 18, color: color),
+                child: AppIcon(icon, size: 16, color: color),
               ),
-              const SizedBox(width: AppSpace.sm + 2),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: text.labelMedium?.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: text.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+              const SizedBox(width: AppSpace.sm),
+              Text(
+                title,
+                style: text.labelMedium?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w600,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

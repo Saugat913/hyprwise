@@ -27,6 +27,22 @@ enum AnalyticsDateFilter {
   }
 }
 
+class DualBarChartData {
+  const DualBarChartData({
+    required this.incomeValues,
+    required this.expenseValues,
+    required this.labels,
+  });
+
+  final List<double> incomeValues;
+  final List<double> expenseValues;
+  final List<String> labels;
+
+  bool get isEmpty => incomeValues.isEmpty && expenseValues.isEmpty;
+  bool get hasAnyData =>
+      incomeValues.any((v) => v > 0) || expenseValues.any((v) => v > 0);
+}
+
 class AnalyticsMerchantSpend {
   const AnalyticsMerchantSpend({
     required this.name,
@@ -248,7 +264,7 @@ class AnalyticsViewModel extends ChangeNotifier {
 
   int get netMinor => incomeMinor - expenseMinor;
 
-  bool get hasData => activeTotalMinor > 0;
+  bool get hasData => incomeMinor > 0 || expenseMinor > 0;
 
   /// Category breakdown for the active period (or subcategories/merchants if single category selected)
   List<CategorySpend> get categoryBreakdown {
@@ -278,29 +294,33 @@ class AnalyticsViewModel extends ChangeNotifier {
     return list;
   }
 
-  /// Daily spending or income breakdown for chart
-  (List<double>, List<String>) get chartData {
+  /// Daily income and expense breakdown for dual bar chart
+  DualBarChartData get dualChartData {
     final (start, end) = dateRange;
-    final dayBuckets = <int, double>{};
+    final incomeBuckets = <int, double>{};
+    final expenseBuckets = <int, double>{};
 
     for (final t in filteredTransactions) {
-      if (t.type == _activeType.value) {
-        final d = AppDate.dateOnly(
-          DateTime.fromMillisecondsSinceEpoch(t.occurredAt),
-        );
-        final key = d.millisecondsSinceEpoch;
-        final amt =
-            financeStore.snapshot
-                .convert(
-                  t.amountMinor,
-                  financeStore.snapshot.currencyOf(t.accountId),
-                )
-                .toDouble();
-        dayBuckets.update(key, (v) => v + amt, ifAbsent: () => amt);
+      final d = AppDate.dateOnly(
+        DateTime.fromMillisecondsSinceEpoch(t.occurredAt),
+      );
+      final key = d.millisecondsSinceEpoch;
+      final amt = financeStore.snapshot
+          .convert(
+            t.amountMinor,
+            financeStore.snapshot.currencyOf(t.accountId),
+          )
+          .toDouble();
+
+      if (t.type == TransactionType.income.value) {
+        incomeBuckets.update(key, (v) => v + amt, ifAbsent: () => amt);
+      } else if (t.type == TransactionType.expense.value) {
+        expenseBuckets.update(key, (v) => v + amt, ifAbsent: () => amt);
       }
     }
 
-    final values = <double>[];
+    final incomeValues = <double>[];
+    final expenseValues = <double>[];
     final labels = <String>[];
     final totalDays = end.difference(start).inDays + 1;
 
@@ -310,14 +330,27 @@ class AnalyticsViewModel extends ChangeNotifier {
     var day = start;
     while (!day.isAfter(end)) {
       final key = AppDate.dateOnly(day).millisecondsSinceEpoch;
-      final val = dayBuckets[key] ?? 0.0;
-      values.add(val);
+      incomeValues.add(incomeBuckets[key] ?? 0.0);
+      expenseValues.add(expenseBuckets[key] ?? 0.0);
       labels.add(totalDays <= 7 ? AppDate.weekday(day) : DateFormatter.day(day));
       day = day.add(Duration(days: step));
-      if (step > 1 && values.length >= 12) break;
+      if (step > 1 && labels.length >= 12) break;
     }
 
-    return (values, labels);
+    return DualBarChartData(
+      incomeValues: incomeValues,
+      expenseValues: expenseValues,
+      labels: labels,
+    );
+  }
+
+  /// Daily spending or income breakdown for chart
+  (List<double>, List<String>) get chartData {
+    final data = dualChartData;
+    final values = _activeType == TransactionType.income
+        ? data.incomeValues
+        : data.expenseValues;
+    return (values, data.labels);
   }
 
   /// Top merchants or income sources based on filtered set

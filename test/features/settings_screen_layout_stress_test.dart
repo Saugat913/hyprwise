@@ -481,8 +481,8 @@ void main() {
       // 1. Scroll to Privacy Policy
       final privacyFinder = find.text(tr.privacyPolicy);
       for (int i = 0; i < 8; i++) {
-        if (privacyFinder.evaluate().isNotEmpty) break;
-        await tester.drag(scrollableFinder, const Offset(0, -250));
+        if (privacyFinder.evaluate().isNotEmpty && tester.getCenter(privacyFinder).dy <= 550) break;
+        await tester.drag(scrollableFinder, const Offset(0, -200));
         await tester.pump(const Duration(milliseconds: 50));
       }
 
