@@ -1,9 +1,12 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
+import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/features/accounts/data/model/account_type.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
 import 'package:finance_tracker/features/analytics/viewmodels/analytics_view_model.dart';
+import 'package:finance_tracker/features/analytics/view/analytics_screen.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/money/data/repository/recurring_repository.dart';
 import 'package:finance_tracker/features/money/data/repository/transaction_repository.dart';
@@ -95,5 +98,46 @@ void main() {
     expect(dualData.incomeValues.any((v) => v == 50000.0), isTrue);
     expect(dualData.expenseValues.any((v) => v == 20000.0), isTrue);
     expect(dualData.hasAnyData, isTrue);
+  });
+
+  testWidgets('Dual bar chart renders 31 days on compact 360px viewport without overflow', (tester) async {
+    tester.view.physicalSize = const Size(360, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final accId = await accountRepo.add(
+      name: 'Checking',
+      type: AccountType.bank,
+      currencyCode: 'USD',
+      openingBalanceMinor: 100000,
+    );
+
+    final now = DateTime.now();
+    for (int day = 1; day <= 30; day++) {
+      await txRepo.add(
+        accountId: accId,
+        amountMinor: 1000 * day,
+        type: day % 2 == 0 ? TransactionType.income : TransactionType.expense,
+        category: day % 2 == 0 ? 'salary' : 'groceries',
+        occurredAt: now.subtract(Duration(days: day)),
+      );
+    }
+
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    final vm = AnalyticsViewModel(financeStore: store);
+    vm.setDateFilter(AnalyticsDateFilter.thisMonth);
+
+    await getIt.reset();
+    getIt.registerSingleton<AnalyticsViewModel>(vm);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AnalyticsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull, reason: 'RenderFlex overflowed in dual bar chart');
   });
 }

@@ -1181,98 +1181,126 @@ class _DualBarChart extends StatelessWidget {
     final globalMax = math.max(maxIncome, maxExpense);
     final effectiveMax = globalMax <= 0 ? 1.0 : globalMax;
 
-    // Compact bar width when many days are shown (e.g. month-view)
-    final isCompact = labels.length > 7;
-    final barWidth = isCompact ? 6.5 : 9.0;
-    final barSpacing = isCompact ? 2.0 : 3.0;
+    // Adaptive bar width based on count of day columns
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final count = labels.length;
+        if (count == 0) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Legend
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            _ChartLegendBadge(
-              color: colors.income,
-              label: tr.income,
-            ),
-            const SizedBox(width: AppSpace.md),
-            _ChartLegendBadge(
-              color: colors.expense,
-              label: tr.expense,
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpace.sm),
-        SizedBox(
-          height: 124,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (var i = 0; i < labels.length; i++)
+        // A comfortable day column needs at least 26px (two 7px bars + gap + margins)
+        const minColWidth = 26.0;
+        final availableWidth = constraints.maxWidth;
+        final fitWidth = availableWidth / count;
+        final needsScroll = fitWidth < minColWidth;
+
+        final barWidth = needsScroll ? 7.0 : (fitWidth > 40 ? 9.0 : 7.0);
+        final barSpacing = needsScroll ? 2.5 : 3.0;
+
+        Widget buildDayColumnContent(int i) {
+          final income = i < incomeValues.length ? incomeValues[i] : 0.0;
+          final expense = i < expenseValues.length ? expenseValues[i] : 0.0;
+          final label = labels[i];
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1.5),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 1.5),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                // Income Bar (Green)
-                                _DayBarItem(
-                                  value:
-                                      i < incomeValues.length
-                                          ? incomeValues[i]
-                                          : 0.0,
-                                  effectiveMax: effectiveMax,
-                                  color: colors.income,
-                                  width: barWidth,
-                                  tooltip:
-                                      '${labels[i]} · ${tr.income}: ${MoneyFormatter.format((i < incomeValues.length ? incomeValues[i] : 0.0).round(), currency)}',
-                                ),
-                                SizedBox(width: barSpacing),
-                                // Expense Bar (Red)
-                                _DayBarItem(
-                                  value:
-                                      i < expenseValues.length
-                                          ? expenseValues[i]
-                                          : 0.0,
-                                  effectiveMax: effectiveMax,
-                                  color: colors.expense,
-                                  width: barWidth,
-                                  tooltip:
-                                      '${labels[i]} · ${tr.expense}: ${MoneyFormatter.format((i < expenseValues.length ? expenseValues[i] : 0.0).round(), currency)}',
-                                ),
-                              ],
-                            ),
-                          ),
+                        // Income Bar (Green)
+                        _DayBarItem(
+                          value: income,
+                          effectiveMax: effectiveMax,
+                          color: colors.income,
+                          width: barWidth,
+                          tooltip:
+                              '$label · ${tr.income}: ${MoneyFormatter.format(income.round(), currency)}',
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          labels[i],
-                          style: text.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontSize: 10,
-                            fontFamily: 'RedditMono',
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        SizedBox(width: barSpacing),
+                        // Expense Bar (Red)
+                        _DayBarItem(
+                          value: expense,
+                          effectiveMax: effectiveMax,
+                          color: colors.expense,
+                          width: barWidth,
+                          tooltip:
+                              '$label · ${tr.expense}: ${MoneyFormatter.format(expense.round(), currency)}',
                         ),
                       ],
                     ),
                   ),
                 ),
-            ],
-          ),
-        ),
-      ],
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: text.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 10,
+                    fontFamily: 'RedditMono',
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          );
+        }
+
+        final columnsRow = Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (var i = 0; i < count; i++)
+              if (needsScroll)
+                SizedBox(
+                  width: minColWidth,
+                  child: buildDayColumnContent(i),
+                )
+              else
+                Expanded(
+                  child: buildDayColumnContent(i),
+                ),
+          ],
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Legend
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _ChartLegendBadge(
+                  color: colors.income,
+                  label: tr.income,
+                ),
+                const SizedBox(width: AppSpace.md),
+                _ChartLegendBadge(
+                  color: colors.expense,
+                  label: tr.expense,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpace.sm),
+            SizedBox(
+              height: 124,
+              child: needsScroll
+                  ? SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      child: columnsRow,
+                    )
+                  : columnsRow,
+            ),
+          ],
+        );
+      },
     );
   }
 }
