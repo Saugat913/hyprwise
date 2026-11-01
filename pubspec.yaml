@@ -70,8 +70,8 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/brand/app-icon/hyprwise-app-icon-1024.png"
-  image_path_ios: "assets/brand/app-icon/hyprwise-app-icon-ios-1024.png"
+  image_path: "assets/brandings/hyprwise_hw_app_icon.png"
+  image_path_ios: "assets/brandings/hyprwise_hw_app_icon.png"
   adaptive_icon_background: "assets/brand/android/ic_launcher_background.png"
   adaptive_icon_foreground: "assets/brand/android/ic_launcher_foreground.png"
   adaptive_icon_monochrome: "assets/brand/android/ic_launcher_monochrome.png"
@@ -83,13 +83,13 @@ flutter_native_splash:
   color_dark: "#0F0F11"
   image: assets/brand/android/splash-light-icon.png
   image_dark: assets/brand/android/splash-dark-icon.png
-  branding: assets/brand/android/branding-light.png
-  branding_dark: assets/brand/android/branding-dark.png
+  branding: assets/brandings/hyprwise_wordmark_transparent.png
+  branding_dark: assets/brandings/hyprwise_wordmark_transparent.png
   branding_mode: bottom
   android_12:
     color: "#FFFFFF"
     color_dark: "#0F0F11"
     image: assets/brand/android/splash-light-icon.png
     image_dark: assets/brand/android/splash-dark-icon.png
-    branding: assets/brand/android/branding-light.png
-    branding_dark: assets/brand/android/branding-dark.png
+    branding: assets/brandings/hyprwise_wordmark_transparent.png
+    branding_dark: assets/brandings/hyprwise_wordmark_transparent.png
