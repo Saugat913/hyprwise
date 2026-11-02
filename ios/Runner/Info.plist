@@ -74,6 +74,8 @@
 		<string>Hyprwise uses your camera to scan receipts and bills for instant transaction logging and spending intelligence.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Hyprwise accesses your photo library to import receipt and invoice images for financial record keeping.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Hyprwise uses your location to adapt regional currency formatting, timezone scheduling, and localized shift wage calculation.</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
