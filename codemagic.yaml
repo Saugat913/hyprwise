@@ -40,12 +40,12 @@ workflows:
         script: |
           if [ -n "$FCI_KEYSTORE" ]; then
             echo "Configuring release keystore from Codemagic environment..."
-            echo "$FCI_KEYSTORE" | base64 --decode > android/app/release.keystore
+            echo "$FCI_KEYSTORE" | base64 --decode > android/app/upload-keystore.jks
             cat <<EOF > android/key.properties
           storePassword=$FCI_KEYSTORE_PASSWORD
           keyPassword=$FCI_KEY_PASSWORD
           keyAlias=$FCI_KEY_ALIAS
-          storeFile=../app/release.keystore
+          storeFile=upload-keystore.jks
           EOF
           else
             echo "Warning: Release signing not configured in environment; debug signing will be used."
@@ -148,12 +148,12 @@ workflows:
         script: |
           if [ -n "$FCI_KEYSTORE" ]; then
             echo "Configuring release keystore..."
-            echo "$FCI_KEYSTORE" | base64 --decode > android/app/release.keystore
+            echo "$FCI_KEYSTORE" | base64 --decode > android/app/upload-keystore.jks
             cat <<EOF > android/key.properties
           storePassword=$FCI_KEYSTORE_PASSWORD
           keyPassword=$FCI_KEY_PASSWORD
           keyAlias=$FCI_KEY_ALIAS
-          storeFile=../app/release.keystore
+          storeFile=upload-keystore.jks
           EOF
           else
             echo "Warning: FCI_KEYSTORE not detected; ensure signing is configured before uploading to Play Store."
