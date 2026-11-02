@@ -325,7 +325,113 @@ workflows:
           failure: true
 
   # ----------------------------------------------------------------------------
-  # 4. Pull Request Quality Gate (PRs to main or dev)
+  # 4. iOS Production Release Workflow (main branch, patch/* & v1.* tags)
+  # ----------------------------------------------------------------------------
+  ios-production:
+    name: Hyprwise Production Release (App Store)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - app_store_credentials
+        - app_config
+      vars:
+        BUNDLE_ID: "com.hypr.hyprwise"
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+    triggering:
+      events:
+        - push
+        - tag
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+        - pattern: 'patch'
+          include: true
+          source: true
+      tag_patterns:
+        - pattern: 'v1.*'
+          include: true
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Get Flutter dependencies
+        script: flutter pub get
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install --repo-update && cd ..
+      - name: Configure environment variables (.env)
+        script: |
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+          if [ -n "$SERVER_URL" ]; then
+            sed -i "s|^SERVER_URL=.*|SERVER_URL=$SERVER_URL|" .env
+          fi
+          if [ -n "$REVENUECAT_APPLE_KEY" ]; then
+            sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
+          fi
+      - name: Run Flutter Static Analysis
+        script: flutter analyze
+      - name: Run Flutter Unit & Integration Tests
+        script: flutter test --dart-define-from-file=.env
+      - name: Build Production iOS App (.ipa)
+        script: |
+          PROD_BUILD_CODE=$((100 + ${BUILD_NUMBER:-0}))
+          flutter build ipa --release \
+            --dart-define-from-file=.env \
+            --build-number=$PROD_BUILD_CODE \
+            --export-options-plist=/Users/builder/export_options.plist
+          touch /tmp/BUILD_SUCCESS
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      scripts:
+        - name: Notify Hyprwise Server (Dispatches to Discord)
+          script: |
+            STATUS="failure"
+            if [ -f /tmp/BUILD_SUCCESS ]; then
+              STATUS="success"
+            fi
+            BUILD_URL="https://codemagic.io/app/$CM_PROJECT_ID/build/$CM_BUILD_ID"
+            NOTIFY_URL="${SERVER_URL:-https://api.hyprwise.app}/api/builds/notify"
+            curl -s -m 15 -X POST "$NOTIFY_URL" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "buildId": "'"$CM_BUILD_ID"'",
+                "buildNumber": "'"$PROD_BUILD_CODE"'",
+                "workflow": "'"$CM_WORKFLOW_NAME"'",
+                "branch": "'"$CM_BRANCH"'",
+                "commit": "'"$CM_COMMIT"'",
+                "status": "'"$STATUS"'",
+                "buildUrl": "'"$BUILD_URL"'",
+                "platform": "ios"
+              }' || true
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: false
+      email:
+        recipients:
+          - dev@hyprwise.app
+        notify:
+          success: true
+          failure: true
+
+  # ----------------------------------------------------------------------------
+  # 5. Pull Request Quality Gate (PRs to main or dev)
   # ----------------------------------------------------------------------------
   pr-verification:
     name: PR Quality Gate & Verification

@@ -50,7 +50,7 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 
-# Secrets, Env, and Firebase Credentials
+# Secrets, Env, and Signing Credentials
 .env
 .env.*
 !.env.example
@@ -62,6 +62,13 @@ server/.env.*
 *.key
 *.pem
 *.jks
+*.keystore
+*.p8
+*.p12
+*.cer
+*.mobileprovision
+android/key.properties
+export_options.plist
 firepit-log.txt
 android/build/
 scratch_cmp/
