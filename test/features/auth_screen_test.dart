@@ -51,7 +51,7 @@ void main() {
     expect(find.text('hyprwise'), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
     expect(find.text('Continue with Apple'), findsNothing);
-    expect(find.text('Continue as Guest (Offline)'), findsOneWidget);
+    expect(find.text('Continue as Guest (Offline)'), findsNothing);
 
     // Verify SVG logos are rendered
     expect(find.byType(SvgPicture), findsWidgets);

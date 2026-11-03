@@ -8,6 +8,7 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
+import 'package:finance_tracker/features/auth/data/model/user_profile.dart';
 import 'package:finance_tracker/features/settings/viewmodels/settings_view_model.dart';
 import 'package:finance_tracker/features/shared/data/currency.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
@@ -596,10 +597,23 @@ class _AccountAuthCard extends StatelessWidget {
       listenable: Listenable.merge([authService, subService]),
       builder: (context, _) {
         final user = authService.currentUser;
-        if (user != null && !authService.isGuest) {
-          final displayName = user.displayName.trim().isNotEmpty
-              ? user.displayName.trim()
-              : (user.email.contains('@') ? user.email.split('@').first : (user.email.isNotEmpty ? user.email : 'User'));
+        if (user != null) {
+          final isAnonymous = authService.isGuest || user.provider == AuthProvider.guest;
+          final displayName = isAnonymous
+              ? tr.t(
+                  'Anonymous User',
+                  ne: 'अज्ञात प्रयोगकर्ता',
+                  hi: 'गुमनाम उपयोगकर्ता',
+                  es: 'Usuario anónimo',
+                  fr: 'Utilisateur anonyme',
+                  de: 'Anonymer Benutzer',
+                  ja: '匿名ユーザー',
+                  zh: '匿名用户',
+                  it: 'Utente anonimo',
+                )
+              : (user.displayName.trim().isNotEmpty
+                  ? user.displayName.trim()
+                  : (user.email.contains('@') ? user.email.split('@').first : (user.email.isNotEmpty ? user.email : 'User')));
           final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
           return AppCard(
             padding: const EdgeInsets.all(AppSpace.md),
@@ -613,20 +627,28 @@ class _AccountAuthCard extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 22,
-                          backgroundColor: scheme.primaryContainer,
-                          backgroundImage: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
+                          backgroundColor: isAnonymous
+                              ? scheme.surfaceContainerHighest
+                              : scheme.primaryContainer,
+                          backgroundImage: (!isAnonymous && user.photoUrl != null && user.photoUrl!.isNotEmpty)
                               ? NetworkImage(user.photoUrl!)
                               : null,
-                          child: (user.photoUrl == null || user.photoUrl!.isEmpty)
-                              ? Text(
-                                  initial,
-                                  style: TextStyle(
-                                    color: scheme.onPrimaryContainer,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                          child: isAnonymous
+                              ? AppIcon(
+                                  HugeIcons.strokeRoundedUser,
+                                  size: 20,
+                                  color: scheme.onSurfaceVariant,
                                 )
-                              : null,
+                              : (user.photoUrl == null || user.photoUrl!.isEmpty)
+                                  ? Text(
+                                      initial,
+                                      style: TextStyle(
+                                        color: scheme.onPrimaryContainer,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    )
+                                  : null,
                         ),
                         if (subService.isPro || subService.everSupported)
                           Positioned(
@@ -670,7 +692,7 @@ class _AccountAuthCard extends StatelessWidget {
                             style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (user.email.isNotEmpty) ...[
+                          if (!isAnonymous && user.email.isNotEmpty) ...[
                             const SizedBox(height: 1),
                             Text(
                               user.email,
@@ -734,6 +756,47 @@ class _AccountAuthCard extends StatelessWidget {
                             ],
                           ),
                         ),
+                    ],
+                  ),
+                ],
+                if (isAnonymous) ...[
+                  const SizedBox(height: AppSpace.sm),
+                  Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                  const SizedBox(height: AppSpace.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: const Icon(Icons.g_mobiledata, size: 20),
+                          label: const Text('Connect Google', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          onPressed: () async {
+                            await authService.signInWithGoogle();
+                            if (context.mounted) showToast(context, tr.signedInWithGoogle);
+                          },
+                        ),
+                      ),
+                      if (Theme.of(context).platform == TargetPlatform.iOS ||
+                          Theme.of(context).platform == TargetPlatform.macOS) ...[
+                        const SizedBox(width: AppSpace.sm),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            icon: const Icon(Icons.apple, size: 16),
+                            label: const Text('Connect Apple', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                            onPressed: () async {
+                              await authService.signInWithApple();
+                              if (context.mounted) showToast(context, tr.signedInWithApple);
+                            },
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],

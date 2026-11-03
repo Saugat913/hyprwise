@@ -199,6 +199,11 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
+      // Fresh start: wipe any leftover local cached database data before loading account data
+      if (getIt.isRegistered<DataRepository>()) {
+        await getIt<DataRepository>().eraseAll();
+      }
+
       // Pull latest cloud data automatically on login
       await pullCloudDataToLocal();
 
@@ -300,6 +305,11 @@ class AuthService extends ChangeNotifier {
       );
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+      // Fresh start: wipe any leftover local cached database data before loading account data
+      if (getIt.isRegistered<DataRepository>()) {
+        await getIt<DataRepository>().eraseAll();
+      }
 
       // Pull latest cloud data automatically on login
       await pullCloudDataToLocal();
@@ -739,6 +749,11 @@ class AuthService extends ChangeNotifier {
 
     if (getIt.isRegistered<SubscriptionService>()) {
       await getIt<SubscriptionService>().resetOnLogout();
+    }
+
+    // Fresh start: erase all local database data on sign out
+    if (getIt.isRegistered<DataRepository>()) {
+      await getIt<DataRepository>().eraseAll();
     }
 
     // Firebase Analytics Tracking

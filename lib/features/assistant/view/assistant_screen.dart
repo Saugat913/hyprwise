@@ -13,6 +13,7 @@ import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/assistant/view/widgets/chat_widgets.dart';
 import 'package:finance_tracker/features/assistant/viewmodels/assistant_view_model.dart';
+import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
@@ -155,83 +156,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
         debugPrint('Error picking bill image: $e');
       }
     }
-  }
-
-  Widget _buildActiveSuggestionChips(BuildContext context, AppStrings tr) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    final chips = [
-      (
-        HugeIcons.strokeRoundedCoins01,
-        tr.t('Spent \$20 on food', ne: 'खानामा २० खर्च भयो', hi: 'खाने पर 20 खर्च हुआ', es: 'Gasté 20 en comida'),
-        tr.spentLunchPrompt,
-      ),
-      (
-        HugeIcons.strokeRoundedCalendar03,
-        tr.t('When is next shift?', ne: 'अर्को सिफ्ट कहिले छ?', hi: 'अगली शिफ्ट कब है?', es: '¿Cuándo es el próximo turno?'),
-        'When is my next shift?',
-      ),
-      (
-        HugeIcons.strokeRoundedChartHistogram,
-        tr.t('This month spending', ne: 'यो महिनाको खर्च', hi: 'इस महीने का खर्च', es: 'Gastos de este mes'),
-        tr.howMuchFoodPrompt,
-      ),
-      (
-        HugeIcons.strokeRoundedTarget02,
-        tr.t('Goal progress', ne: 'लक्ष्य प्रगति', hi: 'लक्ष्य प्रगति', es: 'Progreso de metas'),
-        'How are my savings goals doing?',
-      ),
-      (
-        HugeIcons.strokeRoundedShieldCheck,
-        tr.t('Can I afford \$100?', ne: 'के १०० खर्च गर्न सक्छु?', hi: 'क्या 100 खर्च कर सकता हूँ?', es: '¿Puedo gastar 100?'),
-        tr.canIAffordPrompt,
-      ),
-    ];
-
-    return SizedBox(
-      height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
-        itemCount: chips.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.xs),
-        itemBuilder: (context, idx) {
-          final item = chips[idx];
-          return Material(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              side: BorderSide(
-                color: scheme.outlineVariant.withValues(alpha: 0.4),
-                width: 0.8,
-              ),
-            ),
-            child: InkWell(
-              onTap: () => _send(item.$3),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AppIcon(item.$1, size: 14, color: scheme.primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      item.$2,
-                      style: text.labelSmall?.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 
   @override
@@ -491,58 +415,78 @@ class _AssistantScreenState extends State<AssistantScreen> {
                           itemCount: count,
                           itemBuilder: (context, i) {
                             if (i == _viewModel.messages.length) {
-                              return const TypingIndicator();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpace.md),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _AssistantChatAvatar(isDark: isDark, scheme: scheme),
+                                    const SizedBox(width: AppSpace.sm),
+                                    const Flexible(child: TypingIndicator()),
+                                  ],
+                                ),
+                              );
                             }
                             final msg = _viewModel.messages[i];
                             if (msg.isUser) {
                               return ChatEntrance(
                                 fromRight: true,
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Container(
-                                    margin: const EdgeInsets.only(
-                                      bottom: AppSpace.md,
-                                      left: 48,
-                                    ),
-                                    padding: const EdgeInsets.all(AppSpace.sm),
-                                    decoration: BoxDecoration(
-                                      color: colors.hero,
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.lg,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        if (msg.imageBytes != null) ...[
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              AppRadius.md,
-                                            ),
-                                            child: Image.memory(
-                                              msg.imageBytes!,
-                                              width: 220,
-                                              height: 160,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                          const SizedBox(height: AppSpace.xs),
-                                        ],
-                                        Padding(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: AppSpace.md),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Flexible(
+                                        child: Container(
+                                          margin: const EdgeInsets.only(left: 48),
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: AppSpace.sm,
-                                            vertical: 4,
+                                            horizontal: AppSpace.md,
+                                            vertical: 10,
                                           ),
-                                          child: Text(
-                                            msg.text,
-                                            style: text.bodyMedium?.copyWith(
-                                              color: colors.onHero,
+                                          decoration: BoxDecoration(
+                                            color: colors.hero,
+                                            borderRadius: const BorderRadius.only(
+                                              topLeft: Radius.circular(AppRadius.lg),
+                                              topRight: Radius.circular(AppRadius.xs),
+                                              bottomLeft: Radius.circular(AppRadius.lg),
+                                              bottomRight: Radius.circular(AppRadius.lg),
                                             ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: [
+                                              if (msg.imageBytes != null) ...[
+                                                ClipRRect(
+                                                  borderRadius: BorderRadius.circular(
+                                                    AppRadius.md,
+                                                  ),
+                                                  child: Image.memory(
+                                                    msg.imageBytes!,
+                                                    width: 220,
+                                                    height: 160,
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: AppSpace.xs),
+                                              ],
+                                              Text(
+                                                msg.text,
+                                                style: text.bodyMedium?.copyWith(
+                                                  color: colors.onHero,
+                                                  height: 1.4,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                      const SizedBox(width: AppSpace.sm),
+                                      const Padding(
+                                        padding: EdgeInsets.only(top: 2),
+                                        child: _UserChatAvatar(),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               );
@@ -561,113 +505,115 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                     : chartKindForQuery(prevUser);
                             final isLast = i == _viewModel.messages.length - 1;
                             return ChatEntrance(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    margin: const EdgeInsets.only(
-                                      bottom: AppSpace.md,
-                                      right: 32,
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpace.md),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: _AssistantChatAvatar(isDark: isDark, scheme: scheme),
                                     ),
-                                    padding: const EdgeInsets.all(AppSpace.lg),
-                                    decoration: BoxDecoration(
-                                      color: scheme.surface,
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.lg,
-                                      ),
-                                      border: Border.all(
-                                        color: scheme.outlineVariant,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (msg.headline != null &&
-                                            msg.headline!.isNotEmpty) ...[
-                                          Text(
-                                            msg.headline!,
-                                            style: text.titleMedium?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: AppSpace.xs),
-                                        ],
-                                        MarkdownBody(
-                                          data: msg.text,
-                                          selectable: true,
-                                          styleSheet:
-                                              MarkdownStyleSheet.fromTheme(
-                                                Theme.of(context),
-                                              ).copyWith(
-                                                p: text.bodyMedium?.copyWith(
-                                                  height: 1.45,
-                                                ),
-                                                strong: text.bodyMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      height: 1.45,
-                                                    ),
-                                                em: text.bodyMedium?.copyWith(
-                                                  fontStyle: FontStyle.italic,
-                                                  height: 1.45,
-                                                ),
-                                                listBullet: text.bodyMedium
-                                                    ?.copyWith(
-                                                      color: scheme.primary,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                h1: text.titleMedium?.copyWith(
-                                                  fontWeight: FontWeight.w800,
-                                                ),
-                                                h2: text.titleSmall?.copyWith(
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                                h3: text.bodyLarge?.copyWith(
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                                blockquote: text.bodySmall
-                                                    ?.copyWith(
-                                                      color:
-                                                          scheme
-                                                              .onSurfaceVariant,
-                                                      fontStyle:
-                                                          FontStyle.italic,
-                                                    ),
-                                                code: text.bodySmall?.copyWith(
-                                                  fontFamily: 'monospace',
-                                                  backgroundColor: scheme
-                                                      .surfaceContainerHighest
-                                                      .withValues(alpha: 0.5),
-                                                ),
-                                                codeblockDecoration:
-                                                    BoxDecoration(
-                                                      color: scheme
-                                                          .surfaceContainerHighest
-                                                          .withValues(
-                                                            alpha: 0.5,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            AppRadius.sm,
-                                                          ),
-                                                    ),
+                                    const SizedBox(width: AppSpace.sm),
+                                    Flexible(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            margin: const EdgeInsets.only(right: 24),
+                                            padding: const EdgeInsets.all(AppSpace.md),
+                                            decoration: BoxDecoration(
+                                              color: scheme.surface,
+                                              borderRadius: const BorderRadius.only(
+                                                topLeft: Radius.circular(AppRadius.xs),
+                                                topRight: Radius.circular(AppRadius.lg),
+                                                bottomLeft: Radius.circular(AppRadius.lg),
+                                                bottomRight: Radius.circular(AppRadius.lg),
                                               ),
-                                        ),
-                                        if (msg.explanation != null) ...[
-                                          const SizedBox(height: AppSpace.sm),
-                                          Text(
-                                            msg.explanation!,
-                                            style: text.bodySmall?.copyWith(
-                                              color: scheme.onSurfaceVariant,
+                                              border: Border.all(
+                                                color: scheme.outlineVariant,
+                                              ),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // Body text only (Response headline HyperAI removed)
+                                                MarkdownBody(
+                                                  data: msg.text,
+                                                  selectable: true,
+                                                  styleSheet:
+                                                      MarkdownStyleSheet.fromTheme(
+                                                        Theme.of(context),
+                                                      ).copyWith(
+                                                        p: text.bodyMedium?.copyWith(
+                                                          height: 1.45,
+                                                        ),
+                                                        strong: text.bodyMedium
+                                                            ?.copyWith(
+                                                              fontWeight:
+                                                                  FontWeight.w700,
+                                                              height: 1.45,
+                                                            ),
+                                                        em: text.bodyMedium?.copyWith(
+                                                          fontStyle: FontStyle.italic,
+                                                          height: 1.45,
+                                                        ),
+                                                        listBullet: text.bodyMedium
+                                                            ?.copyWith(
+                                                              color: scheme.primary,
+                                                              fontWeight:
+                                                                  FontWeight.bold,
+                                                            ),
+                                                        h1: text.titleMedium?.copyWith(
+                                                          fontWeight: FontWeight.w800,
+                                                        ),
+                                                        h2: text.titleSmall?.copyWith(
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                        h3: text.bodyLarge?.copyWith(
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                        blockquote: text.bodySmall
+                                                            ?.copyWith(
+                                                              color:
+                                                                  scheme
+                                                                      .onSurfaceVariant,
+                                                              fontStyle:
+                                                                  FontStyle.italic,
+                                                            ),
+                                                        code: text.bodySmall?.copyWith(
+                                                          fontFamily: 'monospace',
+                                                          backgroundColor: scheme
+                                                              .surfaceContainerHighest
+                                                              .withValues(alpha: 0.5),
+                                                        ),
+                                                        codeblockDecoration:
+                                                            BoxDecoration(
+                                                              color: scheme
+                                                                  .surfaceContainerHighest
+                                                                  .withValues(
+                                                                    alpha: 0.5,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    AppRadius.sm,
+                                                                  ),
+                                                            ),
+                                                      ),
+                                                ),
+                                                if (msg.explanation != null) ...[
+                                                  const SizedBox(height: AppSpace.sm),
+                                                  Text(
+                                                    msg.explanation!,
+                                                    style: text.bodySmall?.copyWith(
+                                                      color: scheme.onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
                                           ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
 
                                   if (chartKind != null)
                                     ChatChartCard(
@@ -794,8 +740,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                   ],
                                 ],
                               ),
-                            );
-                          },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                         );
                       },
                     ),
@@ -822,15 +772,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
                             ),
                           ),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_viewModel.messages.isNotEmpty) ...[
-                              _buildActiveSuggestionChips(context, tr),
-                              const SizedBox(height: AppSpace.xs),
-                            ],
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 // Camera / Bill Scanner button
                                 IconButton(
@@ -926,11 +869,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
                 ],
               ),
             ),
@@ -1272,6 +1213,82 @@ class _InteractiveActionCardState extends State<_InteractiveActionCard> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UserChatAvatar extends StatelessWidget {
+  const _UserChatAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    final authService = getIt<AuthService>();
+    final user = authService.currentUser;
+    final scheme = Theme.of(context).colorScheme;
+    final isAnon = authService.isGuest || user == null;
+    if (isAnon) {
+      return CircleAvatar(
+        radius: 16,
+        backgroundColor: scheme.surfaceContainerHighest,
+        child: AppIcon(
+          HugeIcons.strokeRoundedUser,
+          size: 16,
+          color: scheme.onSurfaceVariant,
+        ),
+      );
+    }
+    final displayName = user.displayName.trim().isNotEmpty
+        ? user.displayName.trim()
+        : (user.email.contains('@') ? user.email.split('@').first : 'User');
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: scheme.primaryContainer,
+      backgroundImage: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
+          ? NetworkImage(user.photoUrl!)
+          : null,
+      child: (user.photoUrl == null || user.photoUrl!.isEmpty)
+          ? Text(
+              initial,
+              style: TextStyle(
+                color: scheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            )
+          : null,
+    );
+  }
+}
+
+class _AssistantChatAvatar extends StatelessWidget {
+  const _AssistantChatAvatar({required this.isDark, required this.scheme});
+  final bool isDark;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: scheme.primary.withValues(alpha: 0.1),
+        border: Border.all(
+          color: scheme.primary.withValues(alpha: 0.25),
+          width: 1.2,
+        ),
+      ),
+      padding: const EdgeInsets.all(5),
+      child: Image.asset(
+        'assets/brandings/hyprwise_app_icon_1024.png',
+        errorBuilder: (context, error, stackTrace) => SvgPicture.asset(
+          isDark
+              ? 'assets/brandings/hyprwise_logo_white.svg'
+              : 'assets/brandings/hyprwise_logo.svg',
+        ),
       ),
     );
   }

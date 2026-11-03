@@ -503,6 +503,22 @@ Respond ONLY with a JSON object in this exact format:
     }
   }
 
+  String _preferredLanguageInstruction() {
+    final code = AppStrings.current().localeCode;
+    final name = switch (code) {
+      'ne' => 'Nepali (नेपाली, Devanagari script)',
+      'es' => 'Spanish (Español)',
+      'fr' => 'French (Français)',
+      'de' => 'German (Deutsch)',
+      'ja' => 'Japanese (日本語)',
+      'zh' => 'Simplified Chinese (简体中文)',
+      'hi' => 'Hindi (हिन्दी, Devanagari script)',
+      'it' => 'Italian (Italiano)',
+      _ => 'English',
+    };
+    return 'User preferred language: $name (locale code: "$code"). You MUST reply in this language. Fallback to English only if the language is completely unsupported.';
+  }
+
   bool _isTyping = false;
   bool get isTyping => _isTyping;
 
@@ -919,7 +935,7 @@ CRITICAL RULES & GUARDRAILS:
    - When the user asks to add an expense, record income, convert currency, schedule a shift, or check balances/cash flow, call the matching tool declaration.
 4. CURRENCY, LANGUAGE & FORMATTING:
    - Adaptively use the user's base currency (${financeStore.baseCurrency}) and appropriate native symbols (\$ for USD, A\$ for AUD, ¥ for JPY, € for EUR, रु for NPR, ₹ for INR).
-   - Active app locale code: "${AppStrings.current().localeCode}". Respond in the user's selected language (e.g., if locale is "ne", reply in natural Nepali using Devanagari script).
+   - ${_preferredLanguageInstruction()}
 5. DYNAMIC FOLLOW-UP SUGGESTIONS:
    - Always conclude your response with 2 to 3 concise, highly relevant follow-up questions or actions the user might want to tap next.
    - Format them on the very last line as:
@@ -987,7 +1003,9 @@ User Financial Snapshot (Live On-Device Ledger):
             // Ask Gemini to synthesize conversational reasoning with the tool execution output
             try {
               final toolFollowUp =
-                  'Tool "${call.name}" executed with result: ${jsonEncode(toolResult)}. Provide your direct answer and conversational financial reasoning to the user\'s inquiry: "$text" based on this data.';
+                  'Tool "${call.name}" executed with result: ${jsonEncode(toolResult)}. '
+                  'Provide your direct answer and conversational financial reasoning to the user\'s inquiry: "$text" based on this data. '
+                  '${_preferredLanguageInstruction()}';
               final followUpRes = await ApiClient.instance.chatWithAiDetailed(
                 toolFollowUp,
                 messageHistory: [
@@ -1006,7 +1024,7 @@ User Financial Snapshot (Live On-Device Ledger):
                 _messages.add(
                   AssistantMessage(
                     isUser: false,
-                    headline: 'Hypr AI',
+                    headline: null,
                     text: parsed.text,
                     isConfirmed: createdTxId != null,
                     createdTransactionId: createdTxId,
@@ -1117,7 +1135,7 @@ User Financial Snapshot (Live On-Device Ledger):
               _messages.add(
                 AssistantMessage(
                   isUser: false,
-                  headline: 'Hypr AI',
+                  headline: null,
                   text: serverAiResponse.content ?? 'Action executed.',
                 ),
               );
@@ -1134,8 +1152,8 @@ User Financial Snapshot (Live On-Device Ledger):
             AssistantMessage(
               isUser: false,
               text: parsed.text,
-              headline: 'Hypr AI',
-              explanation: 'Powered by Hypr AI engine.',
+              headline: null,
+              explanation: null,
               suggestions: parsed.suggestions.isNotEmpty
                   ? parsed.suggestions
                   : const [

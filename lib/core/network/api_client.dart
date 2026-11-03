@@ -576,7 +576,7 @@ class ApiClient {
     }
   }
 
-  /// Sends a telemetry, interaction, or exception event to the server
+  /// Sends a telemetry event (No-op: Firebase Analytics handles analytics directly).
   Future<bool> sendTelemetryEvent({
     required String eventType,
     required String eventName,
@@ -585,28 +585,6 @@ class ApiClient {
     String? appVersion,
     String? userId,
   }) async {
-    try {
-      final host = await getBaseUrl();
-      if (host == null) return false;
-
-      final res = await http
-          .post(
-            Uri.parse('$host/api/telemetry/event'),
-            headers: _headers,
-            body: jsonEncode({
-              'eventType': eventType,
-              'eventName': eventName,
-              if (details != null) 'details': details,
-              if (deviceInfo != null) 'deviceInfo': deviceInfo,
-              if (appVersion != null) 'appVersion': appVersion,
-              if (userId != null) 'userId': userId,
-            }),
-          )
-          .timeout(const Duration(seconds: 3));
-
-      return res.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    return true;
   }
 }

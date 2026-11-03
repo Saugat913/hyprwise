@@ -4,7 +4,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/firebase_options.dart';
 
 /// Lightweight telemetry, analytics, and diagnostics service backed by Firebase Analytics.
@@ -23,6 +22,7 @@ class TelemetryService {
   static FirebaseAnalytics? _analytics;
   FirebaseAnalytics? get analytics => _analytics;
   static String? _currentUserId;
+  static String? get currentUserId => _currentUserId;
 
   /// Returns a [NavigatorObserver] for route analytics.
   NavigatorObserver get navigationObserver => TelemetryNavigatorObserver();
@@ -92,14 +92,6 @@ class TelemetryService {
         }
       }
     }
-
-    // Forward customer interaction to server monitoring dashboard
-    unawaited(ApiClient.instance.sendTelemetryEvent(
-      eventType: 'action',
-      eventName: sanitizedName,
-      details: sanitizedParams,
-      userId: _currentUserId,
-    ));
   }
 
   /// Logs screen transitions for UX analytics.
@@ -120,13 +112,6 @@ class TelemetryService {
         }
       }
     }
-
-    // Forward screen view event to server monitoring dashboard
-    unawaited(ApiClient.instance.sendTelemetryEvent(
-      eventType: 'screen_view',
-      eventName: 'view_$screenName',
-      userId: _currentUserId,
-    ));
   }
 
   /// Sets the user ID for Firebase Analytics user tracking.
@@ -282,14 +267,6 @@ class TelemetryService {
         );
       } catch (_) {}
     }
-
-    // Forward exception and stack trace to server monitoring dashboard
-    unawaited(ApiClient.instance.sendTelemetryEvent(
-      eventType: 'exception',
-      eventName: (reason ?? exception.runtimeType.toString()).takeMax(80),
-      details: '$exception\n${stackTrace ?? ""}',
-      userId: _currentUserId,
-    ));
   }
 
   static String _sanitizeEventName(String name) {

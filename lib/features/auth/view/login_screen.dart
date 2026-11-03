@@ -33,7 +33,6 @@ class LoginScreen extends StatelessWidget {
       builder: (context, _) {
         final text = Theme.of(context).textTheme;
         final scheme = Theme.of(context).colorScheme;
-        final colors = context.colors;
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final authService = getIt<AuthService>();
         final tr = context.strings;
@@ -212,82 +211,6 @@ class LoginScreen extends StatelessWidget {
                               ),
                             ),
                           ],
-                          const SizedBox(height: AppSpace.lg),
-
-                          // Divider "or"
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Divider(
-                                  color: scheme.outlineVariant.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpace.md,
-                                ),
-                                child: Text(
-                                  tr.orDivider,
-                                  style: text.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant.withValues(
-                                      alpha: 0.8,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Divider(
-                                  color: scheme.outlineVariant.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpace.md),
-
-                          // Continue as Guest (Offline) Button
-                          SizedBox(
-                            height: 44,
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: colors.fill.withValues(
-                                  alpha: 0.4,
-                                ),
-                                side: BorderSide(
-                                  color: scheme.outlineVariant.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.pill,
-                                  ),
-                                ),
-                              ),
-                              onPressed:
-                                  loading
-                                      ? null
-                                      : () async {
-                                        await authService.signInAsGuest();
-                                        onAuthSuccess();
-                                      },
-                              icon: Icon(
-                                Icons.offline_bolt_outlined,
-                                size: 18,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                              label: Text(
-                                tr.continueAsGuest,
-                                style: text.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: scheme.onSurface,
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       );
                     },
