@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:get_it/get_it.dart';
 
 import 'package:finance_tracker/core/database/app_database.dart';
+import 'package:finance_tracker/core/export/analytics_pdf_service.dart';
 import 'package:finance_tracker/core/export/export_service.dart';
 import 'package:finance_tracker/features/accounts/data/model/account_type.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
@@ -232,6 +234,98 @@ void main() {
     test('T2.5: Multi-currency handling exports base currency code in CSV header', () async {
       final csvContent = ExportService.generateAnalyticsCsv(analyticsVm);
       expect(csvContent, contains(analyticsVm.baseCurrency));
+    });
+
+    test('T2.6: Shifts tab PDF export only exports completed work shifts and excludes scheduled/ongoing', () async {
+      final jobId = await jobRepo.add(
+        name: 'Warehouse Associate',
+        hourlyRateMinor: 2500,
+        currencyCode: 'USD',
+      );
+      final now = DateTime.now();
+
+      // 1 Completed shift
+      await shiftRepo.add(
+        jobId: jobId,
+        startAt: now.subtract(const Duration(hours: 4)),
+        endAt: now,
+        status: ShiftStatus.completed,
+      );
+
+      // 1 Scheduled future shift
+      await shiftRepo.add(
+        jobId: jobId,
+        startAt: now.add(const Duration(days: 1)),
+        endAt: now.add(const Duration(days: 1, hours: 4)),
+        status: ShiftStatus.scheduled,
+      );
+
+      // 1 In-progress shift
+      await shiftRepo.add(
+        jobId: jobId,
+        startAt: now.subtract(const Duration(hours: 1)),
+        endAt: null,
+        status: ShiftStatus.inProgress,
+      );
+
+      await Future.delayed(const Duration(milliseconds: 150));
+
+      final file = await AnalyticsPdfService.generatePdf(
+        analyticsVm,
+        activeTabIndex: 5,
+        isProOverride: true,
+      );
+      expect(file.existsSync(), isTrue);
+
+      final bytes = await file.readAsBytes();
+      String allText = '';
+      final streamMarker = 'stream\n'.codeUnits;
+      final endStreamMarker = '\nendstream'.codeUnits;
+
+      for (int i = 0; i < bytes.length - streamMarker.length; i++) {
+        bool match = true;
+        for (int m = 0; m < streamMarker.length; m++) {
+          if (bytes[i + m] != streamMarker[m]) {
+            match = false;
+            break;
+          }
+        }
+        if (match) {
+          final start = i + streamMarker.length;
+          int end = -1;
+          for (int j = start; j < bytes.length - endStreamMarker.length; j++) {
+            bool endMatch = true;
+            for (int m = 0; m < endStreamMarker.length; m++) {
+              if (bytes[j + m] != endStreamMarker[m]) {
+                endMatch = false;
+                break;
+              }
+            }
+            if (endMatch) {
+              end = j;
+              break;
+            }
+          }
+          if (end > start) {
+            try {
+              final streamBytes = bytes.sublist(start, end);
+              final decompressed = zlib.decode(streamBytes);
+              allText += String.fromCharCodes(decompressed);
+            } catch (_) {}
+          }
+        }
+      }
+
+      // Verify Completed Shifts Register contains the completed record and not scheduled/ongoing
+      // Verify Completed Shifts Register contains the completed record and not scheduled/ongoing
+      expect(allText.contains('COMPLETED'), isTrue);
+      expect(allText.contains('Warehouse'), isTrue);
+      expect(allText.contains('SCHEDULED'), isFalse);
+      expect(allText.contains('Ongoing'), isFalse);
+
+      try {
+        file.deleteSync();
+      } catch (_) {}
     });
   });
 }

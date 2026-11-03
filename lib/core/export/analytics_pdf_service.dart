@@ -21,6 +21,7 @@ import 'package:finance_tracker/features/money/data/model/transaction_type.dart'
 import 'package:finance_tracker/features/shared/data/categories.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
+import 'package:finance_tracker/features/work/data/model/work.dart';
 
 abstract final class AnalyticsPdfService {
   /// Generates the branded PDF document for the active analytics state
@@ -68,7 +69,15 @@ abstract final class AnalyticsPdfService {
         final logoBytes = await rootBundle.load(path);
         brandLogo = pw.MemoryImage(logoBytes.buffer.asUint8List());
         break;
-      } catch (_) {}
+      } catch (_) {
+        try {
+          final file = File(path);
+          if (file.existsSync()) {
+            brandLogo = pw.MemoryImage(file.readAsBytesSync());
+            break;
+          }
+        } catch (_) {}
+      }
     }
 
     // Load watermark banner image from asset banner
@@ -81,7 +90,15 @@ abstract final class AnalyticsPdfService {
         final bannerBytes = await rootBundle.load(path);
         watermarkBannerImage = pw.MemoryImage(bannerBytes.buffer.asUint8List());
         break;
-      } catch (_) {}
+      } catch (_) {
+        try {
+          final file = File(path);
+          if (file.existsSync()) {
+            watermarkBannerImage = pw.MemoryImage(file.readAsBytesSync());
+            break;
+          }
+        } catch (_) {}
+      }
     }
 
     // Colors: Hyprwise Brand Orange used exclusively for the top header branding.
@@ -93,7 +110,6 @@ abstract final class AnalyticsPdfService {
     final borderColor = PdfColor.fromHex('#E5E7EB'); // Subtle neutral border
     final barFillColor = PdfColor.fromHex('#1F2937'); // Solid dark fill for category bars
     final barTrackColor = PdfColor.fromHex('#E5E7EB'); // Neutral track for category bars
-    final watermarkColor = PdfColor.fromHex('#E5E7EB'); // Subtle watermark grey for free tier
     final incomeColor = PdfColor.fromHex('#10B981'); // Emerald green for income
     final expenseColor = PdfColor.fromHex('#EF4444'); // Coral red for expense
 
@@ -120,35 +136,18 @@ abstract final class AnalyticsPdfService {
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
           buildBackground: (context) {
-            if (isPro) {
+            if (isPro || watermarkBannerImage == null) {
               return pw.SizedBox();
             }
-            // Hyprwise watermark across the page for the free tier using brand asset banner
+            // Hyprwise watermark across the page for the free tier using brand asset banner exclusively
             return pw.FullPage(
               ignoreMargins: true,
               child: pw.Center(
                 child: pw.Transform.rotate(
-                  angle: -0.40,
-                  child: pw.Column(
-                    mainAxisSize: pw.MainAxisSize.min,
-                    children: [
-                      if (watermarkBannerImage != null) ...[
-                        pw.Opacity(
-                          opacity: 0.12,
-                          child: pw.Image(watermarkBannerImage, width: 340),
-                        ),
-                        pw.SizedBox(height: 12),
-                      ],
-                      pw.Text(
-                        'HYPRWISE',
-                        style: pw.TextStyle(
-                          color: watermarkColor,
-                          fontSize: 76,
-                          fontWeight: pw.FontWeight.bold,
-                          letterSpacing: 14,
-                        ),
-                      ),
-                    ],
+                  angle: -0.38,
+                  child: pw.Opacity(
+                    opacity: 0.14,
+                    child: pw.Image(watermarkBannerImage, width: 380),
                   ),
                 ),
               ),
@@ -663,7 +662,20 @@ abstract final class AnalyticsPdfService {
         ];
 
       case 5: // Shifts & Work Tab Report
-        final allShifts = vm.financeStore.shifts;
+        final (startRange, endRange) = vm.dateRange;
+        final startMs = startRange.millisecondsSinceEpoch;
+        final endMs = endRange.millisecondsSinceEpoch;
+        final jobsById = {for (final j in vm.financeStore.jobs) j.id: j};
+
+        // Filter ONLY completed shifts within the selected analytics period (no scheduled or in-progress)
+        final completedShifts = vm.financeStore.shifts.where((s) {
+          if (s.status != ShiftStatus.completed.value || s.endAt == null) {
+            return false;
+          }
+          return s.startAt >= startMs && s.startAt <= endMs;
+        }).toList()
+          ..sort((a, b) => b.startAt.compareTo(a.startAt));
+
         return [
           pw.Text('1. WORK & SHIFTS OVERVIEW', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5)),
           pw.SizedBox(height: 8),
@@ -693,10 +705,10 @@ abstract final class AnalyticsPdfService {
               data: [for (final j in workData.jobs) [j.job.name, '${(j.minutes / 60.0).toStringAsFixed(1)} hrs', '${j.shifts} shifts', '$currency ${(j.earningsMinor / 100).toStringAsFixed(2)}']],
             ),
           pw.SizedBox(height: 16),
-          pw.Text('3. RECENT SHIFTS REGISTER (${allShifts.length} records)', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5)),
+          pw.Text('3. COMPLETED SHIFTS REGISTER (${completedShifts.length} records)', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5)),
           pw.SizedBox(height: 8),
-          if (allShifts.isEmpty)
-            pw.Text('No shifts found.', style: pw.TextStyle(color: secondaryTextColor, fontSize: 8.5))
+          if (completedShifts.isEmpty)
+            pw.Text('No completed shifts found in this period.', style: pw.TextStyle(color: secondaryTextColor, fontSize: 8.5))
           else
             pw.TableHelper.fromTextArray(
               border: pw.TableBorder.all(color: borderColor, width: 0.5),
@@ -705,15 +717,27 @@ abstract final class AnalyticsPdfService {
               cellStyle: const pw.TextStyle(fontSize: 7.5),
               cellAlignment: pw.Alignment.centerLeft,
               cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-              headers: ['Date', 'Start - End', 'Total Duration', 'Status'],
+              headers: ['Date', 'Job Title', 'Shift Time (Start - End)', 'Duration', 'Earnings'],
               data: [
-                for (final s in allShifts.take(100))
-                  [
-                    DateFormatter.numeric(DateTime.fromMillisecondsSinceEpoch(s.startAt)),
-                    '${DateFormat.Hm().format(DateTime.fromMillisecondsSinceEpoch(s.startAt))} - ${s.endAt != null ? DateFormat.Hm().format(DateTime.fromMillisecondsSinceEpoch(s.endAt!)) : "Ongoing"}',
-                    '${s.endAt != null ? (((s.endAt! - s.startAt) / 60000).round() / 60.0).toStringAsFixed(1) : "0.0"} hrs',
-                    s.status.toUpperCase(),
-                  ],
+                for (final s in completedShifts.take(100))
+                  () {
+                    final job = jobsById[s.jobId];
+                    final result = job != null ? ShiftEarnings.forShift(s, job) : null;
+                    final earnedMinor = result != null
+                        ? vm.financeStore.snapshot.convert(result.earningsMinor, job!.currencyCode)
+                        : 0;
+                    final workedMins = result?.workedMinutes ?? (((s.endAt! - s.startAt) / 60000).round());
+                    final earnedStr = '$currency ${(earnedMinor / 100).toStringAsFixed(2)}';
+                    final durationStr = '${(workedMins / 60.0).toStringAsFixed(1)} hrs';
+                    final timeStr = '${DateFormat.Hm().format(DateTime.fromMillisecondsSinceEpoch(s.startAt))} - ${DateFormat.Hm().format(DateTime.fromMillisecondsSinceEpoch(s.endAt!))}';
+                    return [
+                      DateFormatter.numeric(DateTime.fromMillisecondsSinceEpoch(s.startAt)),
+                      job?.name ?? 'Work Shift',
+                      timeStr,
+                      durationStr,
+                      earnedStr,
+                    ];
+                  }(),
               ],
             ),
         ];

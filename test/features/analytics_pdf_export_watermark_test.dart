@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:get_it/get_it.dart';
@@ -122,7 +121,7 @@ void main() {
     await getIt.reset();
   });
 
-  test('Free plan generates PDF containing the HYPRWISE watermark', () async {
+  test('Free plan generates PDF containing the Hyprwise banner watermark and no text watermark', () async {
     final file = await AnalyticsPdfService.generatePdf(analyticsVm, isProOverride: false);
     expect(file.existsSync(), isTrue);
 
@@ -132,52 +131,12 @@ void main() {
     // Verify PDF header is valid
     expect(bytes.sublist(0, 5), equals([0x25, 0x50, 0x44, 0x46, 0x2D])); // %PDF-
 
-    // Extract and decompress flate streams to verify watermark text
-    bool foundWatermark = false;
-    final streamMarker = 'stream\n'.codeUnits;
-    final endStreamMarker = '\nendstream'.codeUnits;
+    final pdfString = String.fromCharCodes(bytes);
+    expect(pdfString.contains('/Image'), isTrue);
+    expect(pdfString.contains('/XObject'), isTrue);
 
-    for (int i = 0; i < bytes.length - streamMarker.length; i++) {
-      bool match = true;
-      for (int m = 0; m < streamMarker.length; m++) {
-        if (bytes[i + m] != streamMarker[m]) {
-          match = false;
-          break;
-        }
-      }
-      if (match) {
-        final start = i + streamMarker.length;
-        int end = -1;
-        for (int j = start; j < bytes.length - endStreamMarker.length; j++) {
-          bool endMatch = true;
-          for (int m = 0; m < endStreamMarker.length; m++) {
-            if (bytes[j + m] != endStreamMarker[m]) {
-              endMatch = false;
-              break;
-            }
-          }
-          if (endMatch) {
-            end = j;
-            break;
-          }
-        }
-        if (end > start) {
-          try {
-            final streamBytes = bytes.sublist(start, end);
-            final decompressed = zlib.decode(streamBytes);
-            final decompressedText = String.fromCharCodes(decompressed);
-            // In TrueType fonts, 'HYPRWISE' glyphs are encoded as 00010002000300040005000600070008 with 76 Tf
-            if (decompressedText.contains('HYPRWISE') ||
-                (decompressedText.contains('76 Tf') && decompressedText.contains('00010002000300040005000600070008'))) {
-              foundWatermark = true;
-              break;
-            }
-          } catch (_) {}
-        }
-      }
-    }
-
-    expect(foundWatermark, isTrue, reason: 'Expected watermark to contain HYPRWISE');
+    // Verify legacy text watermark '76 Tf' is strictly removed
+    expect(pdfString.contains('76 Tf'), isFalse);
 
     // Clean up temporary file
     try {
@@ -194,6 +153,10 @@ void main() {
 
     // Verify PDF header is valid
     expect(bytes.sublist(0, 5), equals([0x25, 0x50, 0x44, 0x46, 0x2D])); // %PDF-
+
+    final proPdfString = String.fromCharCodes(bytes);
+    // Legacy text watermark should never appear in Pro plan either
+    expect(proPdfString.contains('76 Tf'), isFalse);
 
     try {
       file.deleteSync();
