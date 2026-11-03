@@ -97,6 +97,9 @@ class AnalyticsViewModel extends ChangeNotifier {
   int? _selectedAccountId;
   int? get selectedAccountId => _selectedAccountId;
 
+  String? _selectedDebtParty;
+  String? get selectedDebtParty => _selectedDebtParty;
+
   String get baseCurrency => financeStore.baseCurrency;
   List<Account> get accounts => financeStore.accounts;
 
@@ -134,11 +137,21 @@ class AnalyticsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectDebtParty(String? party) {
+    if (_selectedDebtParty == party) {
+      _selectedDebtParty = null; // Toggle off
+    } else {
+      _selectedDebtParty = party;
+    }
+    notifyListeners();
+  }
+
   void clearFilters() {
     _dateFilter = AnalyticsDateFilter.thisMonth;
     _customRange = null;
     _selectedCategory = null;
     _selectedAccountId = null;
+    _selectedDebtParty = null;
     notifyListeners();
   }
 
@@ -457,6 +470,42 @@ class AnalyticsViewModel extends ChangeNotifier {
 
     list.sort((a, b) => b.netMinor.abs().compareTo(a.netMinor.abs()));
     return list;
+  }
+
+  /// All counterparties with records of [type] in the active date range (plus currently selected party)
+  List<String> debtPartiesFor(DebtType type) {
+    final (start, end) = dateRange;
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = end.millisecondsSinceEpoch;
+    final parties = <String>{};
+    for (final d in debts) {
+      if (d.type == type.value && d.createdAt >= startMs && d.createdAt <= endMs) {
+        final name = d.personName.trim();
+        if (name.isNotEmpty) parties.add(name);
+      }
+    }
+    if (_selectedDebtParty != null && _selectedDebtParty!.trim().isNotEmpty) {
+      parties.add(_selectedDebtParty!.trim());
+    }
+    return parties.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
+
+  /// Total amount in base currency for [party] under [type] in the active date range
+  int partyTotalFor(String party, DebtType type) {
+    final (start, end) = dateRange;
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = end.millisecondsSinceEpoch;
+    final snap = financeStore.snapshot;
+    var sum = 0;
+    for (final d in debts) {
+      if (d.type == type.value &&
+          d.personName.trim().toLowerCase() == party.trim().toLowerCase() &&
+          d.createdAt >= startMs &&
+          d.createdAt <= endMs) {
+        sum += snap.convert(d.amountMinor, d.currencyCode);
+      }
+    }
+    return sum;
   }
 
   @override

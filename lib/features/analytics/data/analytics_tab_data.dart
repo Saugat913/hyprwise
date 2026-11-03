@@ -46,6 +46,7 @@ class AnalyticsDebtTabData {
     required this.trend,
     required this.parties,
     required this.top,
+    this.selectedParty,
   });
   final int totalMinor;
   final int outstandingMinor;
@@ -54,6 +55,7 @@ class AnalyticsDebtTabData {
   final AnalyticsTrend trend;
   final List<AnalyticsPartyTotal> parties;
   final List<Debt> top;
+  final String? selectedParty;
 }
 
 class AnalyticsJobEarnings {
@@ -196,12 +198,13 @@ extension AnalyticsTabData on AnalyticsViewModel {
     );
   }
 
-  AnalyticsDebtTabData debtTabData(DebtType type) {
+  AnalyticsDebtTabData debtTabData(DebtType type, {String? partyFilter}) {
+    final filterParty = partyFilter ?? selectedDebtParty;
     final (start, end) = dateRange;
     final startMs = start.millisecondsSinceEpoch;
     final endMs = end.millisecondsSinceEpoch;
     final snap = financeStore.snapshot;
-    final items =
+    final allTypeDebts =
         debts
             .where(
               (d) =>
@@ -211,19 +214,36 @@ extension AnalyticsTabData on AnalyticsViewModel {
             )
             .toList();
 
+    final items =
+        filterParty == null || filterParty.trim().isEmpty
+            ? allTypeDebts
+            : allTypeDebts
+                .where(
+                  (d) =>
+                      d.personName.trim().toLowerCase() ==
+                      filterParty.trim().toLowerCase(),
+                )
+                .toList();
+
     var total = 0;
     var settled = 0;
     final points = <(int, double)>[];
-    final parties = <String, (int, int)>{};
     for (final d in items) {
       final amt = snap.convert(d.amountMinor, d.currencyCode);
       total += amt;
       if (d.isSettled) settled += amt;
       points.add((d.createdAt, amt.toDouble()));
+    }
+
+    final parties = <String, (int, int)>{};
+    for (final d in allTypeDebts) {
+      final amt = snap.convert(d.amountMinor, d.currencyCode);
       final name = d.personName.trim();
+      if (name.isEmpty) continue;
       final cur = parties[name] ?? (0, 0);
       parties[name] = (cur.$1 + amt, cur.$2 + 1);
     }
+
     items.sort(
       (a, b) => snap
           .convert(b.amountMinor, b.currencyCode)
@@ -240,6 +260,7 @@ extension AnalyticsTabData on AnalyticsViewModel {
           AnalyticsPartyTotal(e.key, e.value.$1, e.value.$2),
       ]..sort((a, b) => b.amountMinor.compareTo(a.amountMinor)),
       top: items,
+      selectedParty: filterParty,
     );
   }
 

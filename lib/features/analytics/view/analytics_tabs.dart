@@ -160,6 +160,24 @@ class AnalyticsDebtTab extends StatelessWidget {
     final isLend = type == DebtType.lent;
 
     if (data.count == 0) {
+      if (viewModel.selectedDebtParty != null) {
+        return EmptyState(
+          icon: HugeIcons.strokeRoundedUserSquare,
+          title: tr.noDataForThisFilter,
+          message: tr.t(
+            'No records found for ${viewModel.selectedDebtParty} in this period.',
+            ne: 'यस अवधिमा ${viewModel.selectedDebtParty} को कुनै रेकर्ड भेटिएन।',
+            es: 'No se encontraron registros para ${viewModel.selectedDebtParty} en este período.',
+            fr: 'Aucun enregistrement trouvé pour ${viewModel.selectedDebtParty} pour cette période.',
+            de: 'Keine Einträge für ${viewModel.selectedDebtParty} in diesem Zeitraum gefunden.',
+            ja: 'この期間の${viewModel.selectedDebtParty}の記録は見つかりませんでした。',
+            zh: '此期间未找到 ${viewModel.selectedDebtParty} 的记录。',
+            it: 'Nessun record trovato per ${viewModel.selectedDebtParty} in questo periodo.',
+          ),
+          actionLabel: tr.allParties,
+          onAction: () => viewModel.selectDebtParty(null),
+        );
+      }
       return EmptyState(
         icon: HugeIcons.strokeRoundedChartHistogram,
         title: tr.noDataForThisFilter,
@@ -167,9 +185,37 @@ class AnalyticsDebtTab extends StatelessWidget {
       );
     }
 
+    final allPartiesTotal = data.parties.fold<int>(0, (sum, p) => sum + p.amountMinor);
+
     return ListView(
       padding: _tabPadding,
       children: [
+        if (viewModel.selectedDebtParty != null) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.md),
+            child: Row(
+              children: [
+                InputChip(
+                  avatar: LetterAvatar(viewModel.selectedDebtParty!, size: 20),
+                  label: Text(
+                    viewModel.selectedDebtParty!,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  onDeleted: () => viewModel.selectDebtParty(null),
+                  deleteIconColor: Theme.of(context).colorScheme.primary,
+                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                ),
+                const SizedBox(width: AppSpace.sm),
+                TextButton(
+                  onPressed: () => viewModel.selectDebtParty(null),
+                  child: Text(tr.clearAction),
+                ),
+              ],
+            ),
+          ),
+        ],
         AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,10 +260,15 @@ class AnalyticsDebtTab extends StatelessWidget {
               for (var i = 0; i < data.parties.length; i++) ...[
                 if (i > 0) const RowDivider(),
                 _ShareRow(
+                  leading: LetterAvatar(data.parties[i].name, size: 28),
                   label: data.parties[i].name,
                   amountMinor: data.parties[i].amountMinor,
-                  totalMinor: data.totalMinor,
+                  totalMinor: allPartiesTotal > 0 ? allPartiesTotal : data.totalMinor,
                   currency: currency,
+                  isSelected:
+                      viewModel.selectedDebtParty?.trim().toLowerCase() ==
+                      data.parties[i].name.trim().toLowerCase(),
+                  onTap: () => viewModel.selectDebtParty(data.parties[i].name),
                 ),
               ],
             ],
@@ -590,27 +641,56 @@ class _ShareRow extends StatelessWidget {
     required this.amountMinor,
     required this.totalMinor,
     required this.currency,
+    this.isSelected = false,
+    this.onTap,
+    this.leading,
   });
 
   final String label;
   final int amountMinor;
   final int totalMinor;
   final String currency;
+  final bool isSelected;
+  final VoidCallback? onTap;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final share = totalMinor > 0 ? amountMinor / totalMinor : 0.0;
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.all(AppSpace.lg),
       child: Column(
         children: [
           Row(
             children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: AppSpace.md),
+              ],
               Expanded(
-                child: Text(
-                  label,
-                  style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.titleSmall?.copyWith(
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                        ),
+                      ),
+                    ),
+                    if (isSelected) ...[
+                      const SizedBox(width: AppSpace.xs),
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
+                  ],
                 ),
               ),
               Text('${context.strings.formatNumber((share * 100).round())}%', style: text.bodySmall),
@@ -618,15 +698,35 @@ class _ShareRow extends StatelessWidget {
               MoneyText(
                 amountMinor,
                 currency,
-                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: text.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                ),
               ),
             ],
           ),
           const SizedBox(height: AppSpace.sm),
-          _AnimatedProgress(share, color: context.colors.brand),
+          _AnimatedProgress(
+            share,
+            color: isSelected ? Theme.of(context).colorScheme.primary : context.colors.brand,
+          ),
         ],
       ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.06)
+            : Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: content,
+        ),
+      );
+    }
+
+    return content;
   }
 }
 

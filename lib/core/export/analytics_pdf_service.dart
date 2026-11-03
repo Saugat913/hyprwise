@@ -226,8 +226,12 @@ abstract final class AnalyticsPdfService {
                       switch (activeTabIndex) {
                         1 => 'INCOME REPORT',
                         2 => 'EXPENSE REPORT',
-                        3 => 'LENT DEBTS REPORT',
-                        4 => 'BORROWED DEBTS REPORT',
+                        3 => vm.selectedDebtParty != null
+                            ? 'LENT DEBTS REPORT (${vm.selectedDebtParty})'
+                            : 'LENT DEBTS REPORT',
+                        4 => vm.selectedDebtParty != null
+                            ? 'BORROWED DEBTS REPORT (${vm.selectedDebtParty})'
+                            : 'BORROWED DEBTS REPORT',
                         5 => 'SHIFTS & WORK REPORT',
                         _ => 'ANALYTICS OVERVIEW',
                       },
@@ -264,8 +268,12 @@ abstract final class AnalyticsPdfService {
                     switch (activeTabIndex) {
                       1 => 'Income & Earnings Analytics',
                       2 => 'Expense & Spending Analytics',
-                      3 => 'Lending & Debt Receivables Summary',
-                      4 => 'Borrowing & Debt Payables Summary',
+                      3 => vm.selectedDebtParty != null
+                          ? 'Lending & Debt Receivables Summary (${vm.selectedDebtParty})'
+                          : 'Lending & Debt Receivables Summary',
+                      4 => vm.selectedDebtParty != null
+                          ? 'Borrowing & Debt Payables Summary (${vm.selectedDebtParty})'
+                          : 'Borrowing & Debt Payables Summary',
                       5 => 'Work Shifts & Wages Summary',
                       _ => 'Comprehensive Analytics Summary',
                     },
@@ -517,9 +525,21 @@ abstract final class AnalyticsPdfService {
         ];
 
       case 3: // Lent Debts Tab Report
-        final allLentDebts = vm.financeStore.debts.where((d) => d.type == 'lent').toList();
+        final (lendStart, lendEnd) = vm.dateRange;
+        final lendStartMs = lendStart.millisecondsSinceEpoch;
+        final lendEndMs = lendEnd.millisecondsSinceEpoch;
+        final allLentDebts = vm.financeStore.debts
+            .where((d) =>
+                d.type == 'lent' &&
+                d.createdAt >= lendStartMs &&
+                d.createdAt <= lendEndMs &&
+                (vm.selectedDebtParty == null ||
+                    d.personName.trim().toLowerCase() ==
+                        vm.selectedDebtParty!.trim().toLowerCase()))
+            .toList();
+        final lendPartySuffix = vm.selectedDebtParty != null ? ' (${vm.selectedDebtParty})' : '';
         return [
-          pw.Text('1. LENDING OVERVIEW (MONEY YOU LENT)', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5)),
+          pw.Text('1. LENDING OVERVIEW (MONEY YOU LENT)$lendPartySuffix', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5)),
           pw.SizedBox(height: 8),
           pw.Row(
             children: [
@@ -574,9 +594,21 @@ abstract final class AnalyticsPdfService {
         ];
 
       case 4: // Borrowed Debts Tab Report
-        final allBorrowedDebts = vm.financeStore.debts.where((d) => d.type == 'borrowed').toList();
+        final (borrowStart, borrowEnd) = vm.dateRange;
+        final borrowStartMs = borrowStart.millisecondsSinceEpoch;
+        final borrowEndMs = borrowEnd.millisecondsSinceEpoch;
+        final allBorrowedDebts = vm.financeStore.debts
+            .where((d) =>
+                d.type == 'borrowed' &&
+                d.createdAt >= borrowStartMs &&
+                d.createdAt <= borrowEndMs &&
+                (vm.selectedDebtParty == null ||
+                    d.personName.trim().toLowerCase() ==
+                        vm.selectedDebtParty!.trim().toLowerCase()))
+            .toList();
+        final borrowPartySuffix = vm.selectedDebtParty != null ? ' (${vm.selectedDebtParty})' : '';
         return [
-          pw.Text('1. BORROWING OVERVIEW (MONEY YOU OWE)', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5)),
+          pw.Text('1. BORROWING OVERVIEW (MONEY YOU OWE)$borrowPartySuffix', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: darkColor, letterSpacing: 0.5)),
           pw.SizedBox(height: 8),
           pw.Row(
             children: [

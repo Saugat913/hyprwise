@@ -52,6 +52,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         final isFiltered =
             viewModel.selectedCategory != null ||
             viewModel.selectedAccountId != null ||
+            viewModel.selectedDebtParty != null ||
             viewModel.dateFilter == AnalyticsDateFilter.custom;
 
         final isExpense = viewModel.activeType == TransactionType.expense;
@@ -148,24 +149,41 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       Expanded(
                         child: _DateRangeFilterButton(viewModel: viewModel),
                       ),
-                      // Category filter only applies to the Overview tab.
+                      // Category filter for Overview tab; Party filter for Lend & Borrow tabs.
                       ListenableBuilder(
                         listenable: _tabs,
-                        builder:
-                            (context, _) =>
-                                _tabs.index == 0
-                                    ? Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: AppSpace.sm,
-                                        ),
-                                        child: _CategoryFilterButton(
-                                          viewModel: viewModel,
-                                          categories: categories,
-                                        ),
-                                      ),
-                                    )
-                                    : const SizedBox.shrink(),
+                        builder: (context, _) {
+                          if (_tabs.index == 0) {
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  left: AppSpace.sm,
+                                ),
+                                child: _CategoryFilterButton(
+                                  viewModel: viewModel,
+                                  categories: categories,
+                                ),
+                              ),
+                            );
+                          } else if (_tabs.index == 3 || _tabs.index == 4) {
+                            final debtType =
+                                _tabs.index == 3
+                                    ? DebtType.lent
+                                    : DebtType.borrowed;
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  left: AppSpace.sm,
+                                ),
+                                child: _DebtPartyFilterButton(
+                                  viewModel: viewModel,
+                                  type: debtType,
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
                       ),
                     ],
                   ),
@@ -1015,6 +1033,175 @@ class _CategoryFilterButton extends StatelessWidget {
                     );
                   },
                 ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DebtPartyFilterButton extends StatelessWidget {
+  const _DebtPartyFilterButton({
+    required this.viewModel,
+    required this.type,
+  });
+
+  final AnalyticsViewModel viewModel;
+  final DebtType type;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tr = context.strings;
+    final parties = viewModel.debtPartiesFor(type);
+    final hasParty = viewModel.selectedDebtParty != null;
+    final label = hasParty ? viewModel.selectedDebtParty! : tr.allParties;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      onTap: () => _showPartySheet(context, parties),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color:
+              hasParty
+                  ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                  : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(
+            color:
+                hasParty
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outlineVariant,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.people_outline_rounded,
+              size: 16,
+              color:
+                  hasParty
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color:
+                      hasParty
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.keyboard_arrow_down,
+              size: 18,
+              color:
+                  hasParty
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPartySheet(BuildContext context, List<String> parties) {
+    final theme = Theme.of(context);
+    final tr = context.strings;
+    final baseCurrency = viewModel.baseCurrency;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
+              left: AppSpace.page,
+              right: AppSpace.page,
+              top: AppSpace.md,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      tr.filterByCounterparty,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (viewModel.selectedDebtParty != null)
+                      TextButton(
+                        onPressed: () {
+                          viewModel.selectDebtParty(null);
+                          Navigator.pop(ctx);
+                        },
+                        child: Text(tr.clearAction),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpace.md),
+                if (parties.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpace.xl),
+                    child: Center(
+                      child: Text(
+                        tr.noCounterpartiesYet,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  HorizontalOptionSelector<String?>(
+                    height: 56,
+                    selectedValue: viewModel.selectedDebtParty,
+                    onChanged: (party) {
+                      viewModel.selectDebtParty(party);
+                      Navigator.pop(ctx);
+                    },
+                    items: [
+                      HorizontalOptionItem<String?>(
+                        value: null,
+                        label: tr.allParties,
+                        iconData: Icons.people_alt_rounded,
+                      ),
+                      for (final party in parties)
+                        HorizontalOptionItem<String?>(
+                          value: party,
+                          label: party,
+                          subtitle: () {
+                            final total = viewModel.partyTotalFor(party, type);
+                            return MoneyFormatter.format(total, baseCurrency);
+                          }(),
+                          avatar: LetterAvatar(party, size: 28),
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),
