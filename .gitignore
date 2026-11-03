@@ -1,4 +1,5 @@
 # Miscellaneous
+node_modules/
 .agents/
 *.class
 *.log
