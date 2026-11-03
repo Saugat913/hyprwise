@@ -148,7 +148,6 @@ Run the automated release script:
 | `lib/features/goals/` | Goal tracking, 3-month balance forecast engine, savings progress. |
 | `lib/features/work/` | Shift tracking, rate slider protocol, overtime calculation. |
 | `lib/features/subscription/`| RevenueCat paywall integration (`subscription_service.dart`). |
-| `server/src/index.ts` | Cloudflare Workers backend entry point. |
-| `server/src/compliance_and_admin.ts`| Privacy Policy, Terms, Account Deletion & `/admin` dashboard. |
+| `server/` (branch `server`) | Dedicated standalone Cloudflare Workers backend (`src/index.ts`, `src/routes/`, `src/middleware/`, `src/services/`). |
 | `codemagic.yaml` | Codemagic CI/CD pipeline for Play Store release. |
 | `scripts/release.sh` | Interactive version bump, test runner, git tagger, and push automation. |
