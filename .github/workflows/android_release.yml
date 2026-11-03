@@ -27,6 +27,9 @@ name: Android Release Pipeline (Google Play Internal)
         type: string
         default: ''
 
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     name: Build Android AAB & Publish Internal
@@ -160,6 +163,8 @@ jobs:
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           name: Hyprwise ${{ steps.versioning.outputs.version_name }}
           draft: false
