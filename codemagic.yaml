@@ -1,232 +1,18 @@
 # ==============================================================================
 # Codemagic CI/CD Configuration for Hyprwise (com.hypr.hyprwise)
 # ==============================================================================
-# Workflows:
-#   1. internal-testing:   Triggered by dev branch and v0.* tags -> Play Store Internal track
-#   2. production-release: Triggered by main branch, patch/*, and v1.* tags -> Play Store Production track
-#   3. pr-verification:    Triggered by Pull Requests to main/dev -> Lint & Unit Test checks
+# Architecture:
+#   - GitHub Actions: Builds Android (.aab) & publishes to Google Play Internal Testing.
+#   - Codemagic: Dedicated strictly to iOS (.ipa) & publishes to App Store Connect / TestFlight.
 # ==============================================================================
 
 workflows:
   # ----------------------------------------------------------------------------
-  # 1. Internal Testing Workflow (dev branch & v0.* tags)
+  # iOS Release Workflow (App Store Connect / TestFlight)
+  # Triggered on release tags (v*.*.*) on main branch
   # ----------------------------------------------------------------------------
-  internal-testing:
-    name: Hyprwise Internal Testing (Play Store)
-    instance_type: mac_mini_m2
-    max_build_duration: 60
-    environment:
-      flutter: stable
-      java: 17
-      groups:
-        - google_play      # Contains: GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        - android_signing  # Contains: FCI_KEYSTORE, FCI_KEYSTORE_PASSWORD, FCI_KEY_ALIAS, FCI_KEY_PASSWORD
-        - app_config       # Contains: SERVER_URL, REVENUECAT_GOOGLE_KEY, REVENUECAT_APPLE_KEY
-      vars:
-        PACKAGE_NAME: "com.hypr.hyprwise"
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: 'dev'
-          include: true
-          source: true
-      tag_patterns:
-        - pattern: 'v0.*'
-          include: true
-    scripts:
-      - name: Set up Android signing credentials
-        script: |
-          if [ -n "$FCI_KEYSTORE" ]; then
-            echo "Configuring release keystore from Codemagic environment..."
-            echo "$FCI_KEYSTORE" | base64 --decode > android/app/upload-keystore.jks
-            cat <<EOF > android/key.properties
-          storePassword=$FCI_KEYSTORE_PASSWORD
-          keyPassword=$FCI_KEY_PASSWORD
-          keyAlias=$FCI_KEY_ALIAS
-          storeFile=upload-keystore.jks
-          EOF
-          else
-            echo "Warning: Release signing not configured in environment; debug signing will be used."
-          fi
-      - name: Get Flutter dependencies
-        script: flutter pub get
-      - name: Configure environment variables (.env)
-        script: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
-          fi
-          if [ -n "$SERVER_URL" ]; then
-            sed -i "s|^SERVER_URL=.*|SERVER_URL=$SERVER_URL|" .env
-          fi
-          if [ -n "$REVENUECAT_GOOGLE_KEY" ]; then
-            sed -i "s|^REVENUECAT_GOOGLE_KEY=.*|REVENUECAT_GOOGLE_KEY=$REVENUECAT_GOOGLE_KEY|" .env
-          fi
-          if [ -n "$REVENUECAT_APPLE_KEY" ]; then
-            sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
-          fi
-      - name: Run Flutter Static Analysis
-        script: flutter analyze
-      - name: Run Flutter Unit & Integration Tests
-        script: flutter test --dart-define-from-file=.env
-      - name: Build Android App Bundle (.aab)
-        script: |
-          # Calculate monotonic build code
-          BUILD_CODE=${BUILD_NUMBER:-1}
-          flutter build appbundle --release \
-            --dart-define-from-file=.env \
-            --build-number=$BUILD_CODE
-          touch /tmp/BUILD_SUCCESS
-    artifacts:
-      - build/app/outputs/bundle/release/*.aab
-      - build/app/outputs/flutter-apk/*.apk
-    publishing:
-      scripts:
-        - name: Notify Hyprwise Server (Dispatches to Discord)
-          script: |
-            STATUS="failure"
-            if [ -f /tmp/BUILD_SUCCESS ]; then
-              STATUS="success"
-            fi
-            BUILD_URL="https://codemagic.io/app/$CM_PROJECT_ID/build/$CM_BUILD_ID"
-            NOTIFY_URL="${SERVER_URL:-https://api.hyprwise.app}/api/builds/notify"
-            curl -s -m 15 -X POST "$NOTIFY_URL" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "buildId": "'"$CM_BUILD_ID"'",
-                "buildNumber": "'"$BUILD_NUMBER"'",
-                "workflow": "'"$CM_WORKFLOW_NAME"'",
-                "branch": "'"$CM_BRANCH"'",
-                "commit": "'"$CM_COMMIT"'",
-                "status": "'"$STATUS"'",
-                "buildUrl": "'"$BUILD_URL"'",
-                "platform": "android"
-              }' || true
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
-        submit_as_draft: false
-      email:
-        recipients:
-          - dev@hyprwise.app
-        notify:
-          failure: true
-
-  # ----------------------------------------------------------------------------
-  # 2. Production Release Workflow (main branch, patch/* branches & v1.* tags)
-  # ----------------------------------------------------------------------------
-  production-release:
-    name: Hyprwise Production Release (Play Store)
-    instance_type: mac_mini_m2
-    max_build_duration: 60
-    environment:
-      flutter: stable
-      java: 17
-      groups:
-        - google_play      # Contains: GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        - android_signing  # Contains: FCI_KEYSTORE, FCI_KEYSTORE_PASSWORD, FCI_KEY_ALIAS, FCI_KEY_PASSWORD
-        - app_config       # Contains: SERVER_URL, REVENUECAT_GOOGLE_KEY, REVENUECAT_APPLE_KEY
-      vars:
-        PACKAGE_NAME: "com.hypr.hyprwise"
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: 'main'
-          include: true
-          source: true
-        - pattern: 'patch'
-          include: true
-          source: true
-      tag_patterns:
-        - pattern: 'v1.*'
-          include: true
-    scripts:
-      - name: Set up Android signing credentials
-        script: |
-          if [ -n "$FCI_KEYSTORE" ]; then
-            echo "Configuring release keystore..."
-            echo "$FCI_KEYSTORE" | base64 --decode > android/app/upload-keystore.jks
-            cat <<EOF > android/key.properties
-          storePassword=$FCI_KEYSTORE_PASSWORD
-          keyPassword=$FCI_KEY_PASSWORD
-          keyAlias=$FCI_KEY_ALIAS
-          storeFile=upload-keystore.jks
-          EOF
-          else
-            echo "Warning: FCI_KEYSTORE not detected; ensure signing is configured before uploading to Play Store."
-          fi
-      - name: Get Flutter dependencies
-        script: flutter pub get
-      - name: Configure environment variables (.env)
-        script: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
-          fi
-          if [ -n "$SERVER_URL" ]; then
-            sed -i "s|^SERVER_URL=.*|SERVER_URL=$SERVER_URL|" .env
-          fi
-          if [ -n "$REVENUECAT_GOOGLE_KEY" ]; then
-            sed -i "s|^REVENUECAT_GOOGLE_KEY=.*|REVENUECAT_GOOGLE_KEY=$REVENUECAT_GOOGLE_KEY|" .env
-          fi
-          if [ -n "$REVENUECAT_APPLE_KEY" ]; then
-            sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
-          fi
-      - name: Run Flutter Static Analysis
-        script: flutter analyze
-      - name: Run Flutter Tests
-        script: flutter test --dart-define-from-file=.env
-      - name: Build Production Android App Bundle (.aab)
-        script: |
-          # Production build codes reserve 100+ to ensure monotonicity
-          PROD_BUILD_CODE=$((100 + ${BUILD_NUMBER:-0}))
-          flutter build appbundle --release \
-            --dart-define-from-file=.env \
-            --build-number=$PROD_BUILD_CODE
-          touch /tmp/BUILD_SUCCESS
-    artifacts:
-      - build/app/outputs/bundle/release/*.aab
-      - build/app/outputs/mapping/release/mapping.txt
-    publishing:
-      scripts:
-        - name: Notify Hyprwise Server (Dispatches to Discord)
-          script: |
-            STATUS="failure"
-            if [ -f /tmp/BUILD_SUCCESS ]; then
-              STATUS="success"
-            fi
-            BUILD_URL="https://codemagic.io/app/$CM_PROJECT_ID/build/$CM_BUILD_ID"
-            NOTIFY_URL="${SERVER_URL:-https://api.hyprwise.app}/api/builds/notify"
-            curl -s -m 15 -X POST "$NOTIFY_URL" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "buildId": "'"$CM_BUILD_ID"'",
-                "buildNumber": "'"$PROD_BUILD_CODE"'",
-                "workflow": "'"$CM_WORKFLOW_NAME"'",
-                "branch": "'"$CM_BRANCH"'",
-                "commit": "'"$CM_COMMIT"'",
-                "status": "'"$STATUS"'",
-                "buildUrl": "'"$BUILD_URL"'",
-                "platform": "android"
-              }' || true
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: production
-        submit_as_draft: true
-      email:
-        recipients:
-          - dev@hyprwise.app
-        notify:
-          success: true
-          failure: true
-
-  # ----------------------------------------------------------------------------
-  # 3. iOS TestFlight Workflow (dev branch & v0.* tags)
-  # ----------------------------------------------------------------------------
-  ios-testflight:
-    name: Hyprwise TestFlight (App Store Connect)
+  ios-release:
+    name: Hyprwise iOS Release (App Store Connect & TestFlight)
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
@@ -234,25 +20,25 @@ workflows:
       xcode: latest
       cocoapods: default
       groups:
-        - app_store_credentials
-        - app_config
+        - app_store_credentials  # Contains: APP_STORE_CONNECT_PRIVATE_KEY, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID
+        - app_config             # Contains: SERVER_URL, REVENUECAT_APPLE_KEY
       vars:
         BUNDLE_ID: "com.hypr.hyprwise"
         XCODE_WORKSPACE: "ios/Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
     triggering:
       events:
-        - push
         - tag
+        - push
       branch_patterns:
-        - pattern: 'dev'
+        - pattern: 'main'
           include: true
           source: true
       tag_patterns:
-        - pattern: 'v0.*'
+        - pattern: 'v*.*.*'
           include: true
     scripts:
-      - name: Set up code signing settings on Xcode project
+      - name: Set up iOS code signing with App Store Connect API
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
@@ -271,14 +57,14 @@ workflows:
             cp .env.example .env
           fi
           if [ -n "$SERVER_URL" ]; then
-            sed -i "s|^SERVER_URL=.*|SERVER_URL=$SERVER_URL|" .env
+            sed -i '' "s|^SERVER_URL=.*|SERVER_URL=$SERVER_URL|" .env 2>/dev/null || sed -i "s|^SERVER_URL=.*|SERVER_URL=$SERVER_URL|" .env
           fi
           if [ -n "$REVENUECAT_APPLE_KEY" ]; then
-            sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
+            sed -i '' "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env 2>/dev/null || sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
           fi
       - name: Run Flutter Static Analysis
         script: flutter analyze
-      - name: Run Flutter Unit & Integration Tests
+      - name: Run Flutter Unit & Widget Tests
         script: flutter test --dart-define-from-file=.env
       - name: Build iOS App (.ipa)
         script: |
@@ -292,27 +78,6 @@ workflows:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:
-      scripts:
-        - name: Notify Hyprwise Server (Dispatches to Discord)
-          script: |
-            STATUS="failure"
-            if [ -f /tmp/BUILD_SUCCESS ]; then
-              STATUS="success"
-            fi
-            BUILD_URL="https://codemagic.io/app/$CM_PROJECT_ID/build/$CM_BUILD_ID"
-            NOTIFY_URL="${SERVER_URL:-https://api.hyprwise.app}/api/builds/notify"
-            curl -s -m 15 -X POST "$NOTIFY_URL" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "buildId": "'"$CM_BUILD_ID"'",
-                "buildNumber": "'"$BUILD_NUMBER"'",
-                "workflow": "'"$CM_WORKFLOW_NAME"'",
-                "branch": "'"$CM_BRANCH"'",
-                "commit": "'"$CM_COMMIT"'",
-                "status": "'"$STATUS"'",
-                "buildUrl": "'"$BUILD_URL"'",
-                "platform": "ios"
-              }' || true
       app_store_connect:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
@@ -322,164 +87,5 @@ workflows:
         recipients:
           - dev@hyprwise.app
         notify:
-          failure: true
-
-  # ----------------------------------------------------------------------------
-  # 4. iOS Production Release Workflow (main branch, patch/* & v1.* tags)
-  # ----------------------------------------------------------------------------
-  ios-production:
-    name: Hyprwise Production Release (App Store)
-    instance_type: mac_mini_m2
-    max_build_duration: 60
-    environment:
-      flutter: stable
-      xcode: latest
-      cocoapods: default
-      groups:
-        - app_store_credentials
-        - app_config
-      vars:
-        BUNDLE_ID: "com.hypr.hyprwise"
-        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
-        XCODE_SCHEME: "Runner"
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: 'main'
-          include: true
-          source: true
-        - pattern: 'patch'
-          include: true
-          source: true
-      tag_patterns:
-        - pattern: 'v1.*'
-          include: true
-    scripts:
-      - name: Set up code signing settings on Xcode project
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
-          keychain add-certificates
-          xcode-project use-profiles
-      - name: Get Flutter dependencies
-        script: flutter pub get
-      - name: Install CocoaPods dependencies
-        script: |
-          cd ios && pod install --repo-update && cd ..
-      - name: Configure environment variables (.env)
-        script: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
-          fi
-          if [ -n "$SERVER_URL" ]; then
-            sed -i "s|^SERVER_URL=.*|SERVER_URL=$SERVER_URL|" .env
-          fi
-          if [ -n "$REVENUECAT_APPLE_KEY" ]; then
-            sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
-          fi
-      - name: Run Flutter Static Analysis
-        script: flutter analyze
-      - name: Run Flutter Unit & Integration Tests
-        script: flutter test --dart-define-from-file=.env
-      - name: Build Production iOS App (.ipa)
-        script: |
-          PROD_BUILD_CODE=$((100 + ${BUILD_NUMBER:-0}))
-          flutter build ipa --release \
-            --dart-define-from-file=.env \
-            --build-number=$PROD_BUILD_CODE \
-            --export-options-plist=/Users/builder/export_options.plist
-          touch /tmp/BUILD_SUCCESS
-    artifacts:
-      - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
-    publishing:
-      scripts:
-        - name: Notify Hyprwise Server (Dispatches to Discord)
-          script: |
-            STATUS="failure"
-            if [ -f /tmp/BUILD_SUCCESS ]; then
-              STATUS="success"
-            fi
-            BUILD_URL="https://codemagic.io/app/$CM_PROJECT_ID/build/$CM_BUILD_ID"
-            NOTIFY_URL="${SERVER_URL:-https://api.hyprwise.app}/api/builds/notify"
-            curl -s -m 15 -X POST "$NOTIFY_URL" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "buildId": "'"$CM_BUILD_ID"'",
-                "buildNumber": "'"$PROD_BUILD_CODE"'",
-                "workflow": "'"$CM_WORKFLOW_NAME"'",
-                "branch": "'"$CM_BRANCH"'",
-                "commit": "'"$CM_COMMIT"'",
-                "status": "'"$STATUS"'",
-                "buildUrl": "'"$BUILD_URL"'",
-                "platform": "ios"
-              }' || true
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: false
-      email:
-        recipients:
-          - dev@hyprwise.app
-        notify:
           success: true
           failure: true
-
-  # ----------------------------------------------------------------------------
-  # 5. Pull Request Quality Gate (PRs to main or dev)
-  # ----------------------------------------------------------------------------
-  pr-verification:
-    name: PR Quality Gate & Verification
-    instance_type: mac_mini_m2
-    max_build_duration: 30
-    environment:
-      flutter: stable
-      java: 17
-      groups:
-        - app_config
-    triggering:
-      events:
-        - pull_request
-      branch_patterns:
-        - pattern: 'main'
-          include: true
-        - pattern: 'dev'
-          include: true
-    scripts:
-      - name: Install dependencies
-        script: flutter pub get
-      - name: Static Code Analysis
-        script: flutter analyze
-      - name: Unit & Widget Tests
-        script: flutter test
-      - name: Smoke Build (Debug AAB)
-        script: |
-          flutter build appbundle --debug
-          touch /tmp/BUILD_SUCCESS
-    publishing:
-      scripts:
-        - name: Notify Hyprwise Server (Dispatches to Discord)
-          script: |
-            STATUS="failure"
-            if [ -f /tmp/BUILD_SUCCESS ]; then
-              STATUS="success"
-            fi
-            BUILD_URL="https://codemagic.io/app/$CM_PROJECT_ID/build/$CM_BUILD_ID"
-            NOTIFY_URL="${SERVER_URL:-https://api.hyprwise.app}/api/builds/notify"
-            curl -s -m 15 -X POST "$NOTIFY_URL" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "buildId": "'"$CM_BUILD_ID"'",
-                "buildNumber": "'"$BUILD_NUMBER"'",
-                "workflow": "'"$CM_WORKFLOW_NAME"'",
-                "branch": "'"$CM_BRANCH"'",
-                "commit": "'"$CM_COMMIT"'",
-                "status": "'"$STATUS"'",
-                "buildUrl": "'"$BUILD_URL"'",
-                "platform": "pr-verification"
-              }' || true

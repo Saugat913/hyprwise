@@ -37,6 +37,7 @@ dependencies:
   flutter_markdown: ^0.7.7+1
   purchases_ui_flutter: ^11.0.0
   image_picker: ^1.2.4
+  firebase_app_check: ^0.4.9
 
 dev_dependencies:
   flutter_test:

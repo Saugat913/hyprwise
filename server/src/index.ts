@@ -1,20 +1,18 @@
-import { Hono, type Context } from 'hono';
+import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { type Bindings } from './types';
+import { firebaseAppCheckMiddleware } from './middleware/app_check';
+import { aiRouter } from './routes/ai';
+import { syncRouter } from './routes/sync';
+import { authRouter } from './routes/auth';
+import { adminRouter } from './routes/admin';
+import { renderLandingPage } from './routes/landing';
 import {
-  renderLandingPage,
   renderPrivacyPolicyPage,
   renderTermsOfServicePage,
   renderAccountDeletionPage,
-  renderAdminLoginPage,
-  renderAdminDashboard,
   memoryEvents,
-  ADMIN_PASSWORD,
-  ADMIN_COOKIE_NAME,
-  ADMIN_AUTH_TOKEN,
-  TelemetryEvent,
 } from './compliance_and_admin';
 import {
   HYPRWISE_FAVICON_SVG,
@@ -23,18 +21,7 @@ import {
   HYPRWISE_APP_ICON_DARK_SVG,
 } from './brand_assets';
 
-export interface Bindings {
-  DB: D1Database;
-  GEMINI_API_KEY?: string;
-  FIREBASE_PROJECT_ID?: string;
-  FIREBASE_CLIENT_EMAIL?: string;
-  GOOGLE_PROJECT_ID?: string;
-  GOOGLE_PROJECT_NUMBER?: string;
-  REVENUECAT_SECRET_KEY?: string;
-  REVENUECAT_WEBHOOK_AUTH?: string;
-  DISCORD_WEBHOOK_URL?: string;
-  BUILD_WEBHOOK_SECRET?: string;
-}
+export { Bindings };
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -42,1075 +29,66 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.use('*', logger());
 app.use('*', cors());
 
-// Helper: Decode and inspect JWT payload in Cloudflare Workers
-function parseJwtPayload(token: string): any {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return null;
-  }
-}
+// Firebase App Check / Mobile App Integrity Protection
+// Ensures only genuine Hyprwise mobile apps can access API routes
+app.use('/api/*', firebaseAppCheckMiddleware);
 
-// Health Check
+// ==========================================
+// 1. Health & Edge Status
+// ==========================================
 app.get('/health', (c) => {
   return c.json({
     status: 'ok',
-    service: 'hyprwise',
-    version: '1.3.0',
-    platform: 'cloudflare-workers',
-    firebaseProject: c.env.FIREBASE_PROJECT_ID || 'tilvane',
-    timestamp: new Date().toISOString(),
-  });
-});
-app.get('/api/health', (c) => {
-  return c.json({
-    status: 'ok',
-    service: 'hyprwise',
-    version: '1.3.0',
-    platform: 'cloudflare-workers',
-    firebaseProject: c.env.FIREBASE_PROJECT_ID || 'tilvane',
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Helper: Resolve authenticated user from Bearer token or canonical headers
-export interface UserRow {
-  id: string;
-  email: string;
-  displayName: string;
-  photoUrl?: string | null;
-  provider: 'google' | 'apple' | 'offline';
-  isPro: number;
-  proExpiresAt?: number | null;
-  dailyAiQueriesCount: number;
-  lastAiQueryDate?: string | null;
-  createdAt: number;
-}
-
-async function deterministicUserIdFromEmail(email: string, prefix = 'usr_g_'): Promise<string> {
-  const normalized = email.trim().toLowerCase();
-  const encoder = new TextEncoder();
-  const data = encoder.encode(normalized);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-  return `${prefix}${hex}`;
-}
-
-function isRealEmail(email?: string | null): boolean {
-  if (!email) return false;
-  const norm = email.trim().toLowerCase();
-  if (!norm.includes('@')) return false;
-  if (norm.endsWith('@firebase.hyprwise') || norm.endsWith('@hyprwise.local')) return false;
-  return true;
-}
-
-function computeQuotaSnapshot(user: UserRow) {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const now = Date.now();
-  const isExpired = user.proExpiresAt ? user.proExpiresAt < now : false;
-  const activePro = Boolean(user.isPro) && !isExpired;
-  const dailyAiQueriesUsed = user.lastAiQueryDate === todayStr ? (user.dailyAiQueriesCount || 0) : 0;
-  const dailyAiQueriesLeft = activePro ? 9999 : Math.max(0, 5 - dailyAiQueriesUsed);
-  return {
-    todayStr,
-    activePro,
-    dailyAiQueriesUsed,
-    dailyAiQueriesLeft,
-    limitReached: !activePro && dailyAiQueriesUsed >= 5,
-  };
-}
-
-async function resolveUser(c: Context<{ Bindings: Bindings }>, autoProvision = false): Promise<UserRow | null> {
-  if (!c.env?.DB) return null;
-
-  const authHeader = c.req.header('Authorization');
-  const headerUserId = c.req.header('X-User-Id')?.trim();
-  const headerEmail = c.req.header('X-User-Email')?.trim().toLowerCase();
-
-  let tokenUserId: string | null = null;
-  if (authHeader) {
-    const token = authHeader.replace('Bearer ', '').trim();
-    const match = token.match(/^tok_(.+?)_\d+$/);
-    tokenUserId = match ? match[1] : (token.startsWith('usr_') || token.length >= 6 ? token : null);
-  }
-
-  // 1. Try canonical email match first if a real email is provided
-  if (isRealEmail(headerEmail)) {
-    const byEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
-      .bind(headerEmail!)
-      .first<UserRow>();
-    if (byEmail) return byEmail;
-  }
-
-  // 2. Try token userId or X-User-Id
-  const candidateId = tokenUserId || headerUserId;
-  if (candidateId) {
-    const byId = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
-      .bind(candidateId)
-      .first<UserRow>();
-    if (byId) return byId;
-  }
-
-  // 3. Auto-provision if requested so server-side quota is always tracked in D1
-  if (autoProvision) {
-    const resolvedId = isRealEmail(headerEmail)
-      ? await deterministicUserIdFromEmail(headerEmail!, 'usr_g_')
-      : (candidateId || 'usr_guest_default');
-    const resolvedEmail = isRealEmail(headerEmail)
-      ? headerEmail!
-      : `${resolvedId}@hyprwise.local`;
-    const newUser: UserRow = {
-      id: resolvedId,
-      email: resolvedEmail,
-      displayName: isRealEmail(headerEmail) ? headerEmail!.split('@')[0] : 'Hyprwise User',
-      photoUrl: null,
-      provider: isRealEmail(headerEmail) ? 'google' : 'offline',
-      isPro: 0,
-      proExpiresAt: null,
-      dailyAiQueriesCount: 0,
-      lastAiQueryDate: null,
-      createdAt: Date.now(),
-    };
-    await c.env.DB.prepare(
-      `INSERT OR IGNORE INTO users (id, email, displayName, photoUrl, provider, isPro, proExpiresAt, dailyAiQueriesCount, lastAiQueryDate, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      newUser.id,
-      newUser.email,
-      newUser.displayName,
-      newUser.photoUrl,
-      newUser.provider,
-      newUser.isPro,
-      newUser.proExpiresAt,
-      newUser.dailyAiQueriesCount,
-      newUser.lastAiQueryDate,
-      newUser.createdAt
-    ).run();
-    const fetched = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
-      .bind(resolvedId)
-      .first<UserRow>();
-    return fetched || newUser;
-  }
-
-  return null;
-}
-
-// ==========================================
-// 1. Authentication Endpoints
-// ==========================================
-app.post('/api/auth/firebase', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { idToken, uid, email, displayName, photoUrl, provider } = body;
-
-    let verifiedUid = uid ? String(uid).trim() : '';
-    let verifiedEmail = email ? String(email).trim().toLowerCase() : '';
-    let verifiedName = displayName;
-    let verifiedPhoto = photoUrl;
-
-    if (idToken) {
-      const payload = parseJwtPayload(idToken);
-      if (payload) {
-        const expectedProjectId = c.env.FIREBASE_PROJECT_ID || 'tilvane';
-        if (payload.aud === expectedProjectId || payload.iss?.includes(expectedProjectId)) {
-          verifiedUid = payload.sub || payload.user_id || verifiedUid;
-          if (payload.email) verifiedEmail = String(payload.email).trim().toLowerCase();
-          if (payload.name) verifiedName = payload.name;
-          if (payload.picture) verifiedPhoto = payload.picture;
-        }
-      }
-    }
-
-    if (!verifiedUid && !verifiedEmail) {
-      return c.json({ error: 'UID or email is required' }, 400);
-    }
-
-    const todayStr = new Date().toISOString().slice(0, 10);
-
-    // Look up existing user by canonical email first so the same Google/Apple account
-    // ALWAYS resolves to the exact same userId, subscription state, and AI quota.
-    let existingByEmail: UserRow | null = null;
-    if (isRealEmail(verifiedEmail)) {
-      existingByEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
-        .bind(verifiedEmail)
-        .first<UserRow>();
-    }
-
-    const existingById = verifiedUid
-      ? await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(verifiedUid).first<UserRow>()
-      : null;
-
-    const existing = existingByEmail || existingById;
-
-    // Determine canonical userId:
-    // 1. Reuse existing canonical account ID if this email/UID already exists in DB
-    // 2. Otherwise if real email & ephemeral/fallback client UID, derive deterministic ID from email
-    // 3. Otherwise use verifiedUid
-    let userId: string;
-    if (existing) {
-      userId = existing.id;
-    } else if (
-      isRealEmail(verifiedEmail) &&
-      (!verifiedUid ||
-        verifiedUid.startsWith('usr_google_') ||
-        verifiedUid.startsWith('usr_apple_') ||
-        verifiedUid.startsWith('usr_guest_'))
-    ) {
-      userId = await deterministicUserIdFromEmail(
-        verifiedEmail,
-        provider === 'apple' ? 'usr_a_' : 'usr_g_'
-      );
-    } else {
-      userId = verifiedUid || (await deterministicUserIdFromEmail(verifiedEmail, 'usr_g_'));
-    }
-
-    // Merge pro status and today's AI query count across both records if user previously had a guest/alternate UID
-    const mergedIsPro = Math.max(existingByEmail?.isPro ?? 0, existingById?.isPro ?? 0);
-    const mergedProExpiresAt = existingByEmail?.proExpiresAt || existingById?.proExpiresAt || null;
-    const countEmail = existingByEmail?.lastAiQueryDate === todayStr ? (existingByEmail?.dailyAiQueriesCount ?? 0) : 0;
-    const countId = existingById?.lastAiQueryDate === todayStr ? (existingById?.dailyAiQueriesCount ?? 0) : 0;
-    const mergedDailyCount = Math.max(countEmail, countId);
-    const mergedLastDate = mergedDailyCount > 0 ? todayStr : (existing?.lastAiQueryDate ?? null);
-
-    const user: UserRow = {
-      id: userId,
-      email: isRealEmail(verifiedEmail)
-        ? verifiedEmail
-        : (existing?.email || `${userId}@firebase.hyprwise`),
-      displayName: verifiedName || existing?.displayName || 'Hyprwise User',
-      photoUrl: verifiedPhoto || existing?.photoUrl || null,
-      provider: (provider === 'apple' ? 'apple' : (provider === 'offline' ? 'offline' : 'google')) as 'google' | 'apple' | 'offline',
-      isPro: mergedIsPro,
-      proExpiresAt: mergedProExpiresAt,
-      dailyAiQueriesCount: mergedDailyCount,
-      lastAiQueryDate: mergedLastDate,
-      createdAt: existing?.createdAt ?? Date.now(),
-    };
-
-    await c.env.DB.prepare(
-      `INSERT OR REPLACE INTO users (id, email, displayName, photoUrl, provider, isPro, proExpiresAt, dailyAiQueriesCount, lastAiQueryDate, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      user.id,
-      user.email,
-      user.displayName,
-      user.photoUrl,
-      user.provider,
-      user.isPro,
-      user.proExpiresAt,
-      user.dailyAiQueriesCount,
-      user.lastAiQueryDate,
-      user.createdAt
-    ).run();
-
-    const quota = computeQuotaSnapshot(user);
-
-    return c.json({
-      success: true,
-      token: `tok_${userId}_${Date.now()}`,
-      user: {
-        ...user,
-        isPro: quota.activePro,
-        dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-        dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
-      },
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Firebase authentication failed' }, 500);
-  }
-});
-
-app.post('/api/auth/google', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { idToken, email, displayName, photoUrl } = body;
-
-    if (!email) {
-      return c.json({ error: 'Email is required' }, 400);
-    }
-
-    const normEmail = String(email).trim().toLowerCase();
-    const existingByEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
-      .bind(normEmail)
-      .first<UserRow>();
-    const deterministicId = await deterministicUserIdFromEmail(normEmail, 'usr_g_');
-    const existingById = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
-      .bind(deterministicId)
-      .first<UserRow>();
-    const existing = existingByEmail || existingById;
-    const userId = existing?.id || deterministicId;
-
-    const user: UserRow = {
-      id: userId,
-      email: normEmail,
-      displayName: displayName || existing?.displayName || normEmail.split('@')[0],
-      photoUrl: photoUrl || existing?.photoUrl || null,
-      provider: 'google',
-      isPro: existing?.isPro ?? 0,
-      proExpiresAt: existing?.proExpiresAt ?? null,
-      dailyAiQueriesCount: existing?.dailyAiQueriesCount ?? 0,
-      lastAiQueryDate: existing?.lastAiQueryDate ?? null,
-      createdAt: existing?.createdAt ?? Date.now(),
-    };
-
-    await c.env.DB.prepare(
-      `INSERT OR REPLACE INTO users (id, email, displayName, photoUrl, provider, isPro, proExpiresAt, dailyAiQueriesCount, lastAiQueryDate, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      user.id,
-      user.email,
-      user.displayName,
-      user.photoUrl,
-      user.provider,
-      user.isPro,
-      user.proExpiresAt,
-      user.dailyAiQueriesCount,
-      user.lastAiQueryDate,
-      user.createdAt
-    ).run();
-
-    const quota = computeQuotaSnapshot(user);
-
-    return c.json({
-      success: true,
-      token: `tok_${userId}_${Date.now()}`,
-      user: {
-        ...user,
-        isPro: quota.activePro,
-        dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-        dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
-      },
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Authentication failed' }, 500);
-  }
-});
-
-app.post('/api/auth/apple', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { identityToken, email, fullName } = body;
-
-    const emailStr = String(email || 'apple_user@privaterelay.appleid.com').trim().toLowerCase();
-    const existingByEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
-      .bind(emailStr)
-      .first<UserRow>();
-    const deterministicId = await deterministicUserIdFromEmail(emailStr, 'usr_a_');
-    const existingById = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')
-      .bind(deterministicId)
-      .first<UserRow>();
-    const existing = existingByEmail || existingById;
-    const userId = existing?.id || deterministicId;
-
-    const user: UserRow = {
-      id: userId,
-      email: emailStr,
-      displayName: fullName || existing?.displayName || 'Apple User',
-      photoUrl: existing?.photoUrl || null,
-      provider: 'apple',
-      isPro: existing?.isPro ?? 0,
-      proExpiresAt: existing?.proExpiresAt ?? null,
-      dailyAiQueriesCount: existing?.dailyAiQueriesCount ?? 0,
-      lastAiQueryDate: existing?.lastAiQueryDate ?? null,
-      createdAt: existing?.createdAt ?? Date.now(),
-    };
-
-    await c.env.DB.prepare(
-      `INSERT OR REPLACE INTO users (id, email, displayName, photoUrl, provider, isPro, proExpiresAt, dailyAiQueriesCount, lastAiQueryDate, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      user.id,
-      user.email,
-      user.displayName,
-      user.photoUrl,
-      user.provider,
-      user.isPro,
-      user.proExpiresAt,
-      user.dailyAiQueriesCount,
-      user.lastAiQueryDate,
-      user.createdAt
-    ).run();
-
-    const quota = computeQuotaSnapshot(user);
-
-    return c.json({
-      success: true,
-      token: `tok_${userId}_${Date.now()}`,
-      user: {
-        ...user,
-        isPro: quota.activePro,
-        dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-        dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
-      },
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Authentication failed' }, 500);
-  }
-});
-
-app.get('/api/auth/me', async (c) => {
-  const user = await resolveUser(c, true);
-  if (!user) {
-    return c.json({ error: 'Unauthorized' }, 401);
-  }
-  const quota = computeQuotaSnapshot(user);
-  return c.json({
-    user: {
-      ...user,
-      isPro: quota.activePro,
-      dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-      dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
-    },
+    service: 'hyprwise-server',
+    version: '1.0.0',
+    edge: true,
+    timestamp: Date.now(),
   });
 });
 
 // ==========================================
-// 2. RevenueCat & Subscription Verification
+// 2. Brand Assets & Public Pages
 // ==========================================
-app.post('/api/subscription/verify', async (c) => {
-  try {
-    const user = await resolveUser(c);
-    const body = await c.req.json();
-    const { appUserId, planId, purchaseToken } = body;
-
-    const targetUserId = user?.id || appUserId || 'default_user';
-
-    let isPro = true;
-    const durationDays = planId?.includes('annual') ? 365 : 30;
-    const proExpiresAt = Date.now() + durationDays * 24 * 60 * 60 * 1000;
-
-    const revenueCatSecretKey = c.env.REVENUECAT_SECRET_KEY || '';
-    if (revenueCatSecretKey && appUserId) {
-      try {
-        const rcRes = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`, {
-          headers: {
-            Authorization: `Bearer ${revenueCatSecretKey}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (rcRes.ok) {
-          const rcData: any = await rcRes.json();
-          const entitlements = rcData.subscriber?.entitlements || {};
-          const proEntitlement = entitlements['pro_access'] || entitlements['pro'];
-          if (proEntitlement) {
-            isPro = true;
-          }
-        }
-      } catch (rcErr) {
-        console.warn('RevenueCat verification fallback to local license check:', rcErr);
-      }
-    }
-
-    // Persist pro status in Cloudflare D1
-    await c.env.DB.prepare(
-      `UPDATE users SET isPro = ?, proExpiresAt = ? WHERE id = ?`
-    ).bind(isPro ? 1 : 0, proExpiresAt, targetUserId).run();
-
-    return c.json({
-      success: true,
-      isPro,
-      entitlement: 'pro_access',
-      expiresAt: proExpiresAt,
-      message: 'Subscription verified and activated.',
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Subscription verification failed' }, 500);
-  }
-});
-
-// Webhook for automated RevenueCat lifecycle sync (renewal, cancellation, expiry)
-app.post('/api/subscription/webhook', async (c) => {
-  try {
-    const webhookAuth = c.req.header('Authorization');
-    const expectedAuth = c.env.REVENUECAT_WEBHOOK_AUTH;
-    if (expectedAuth && webhookAuth !== expectedAuth) {
-      return c.json({ error: 'Unauthorized webhook' }, 401);
-    }
-
-    const payload = await c.req.json();
-    const event = payload.event;
-    if (!event) return c.json({ received: true });
-
-    const appUserId = event.app_user_id;
-    const type = event.type; // INITIAL_PURCHASE, RENEWAL, CANCELLATION, EXPIRATION
-    const expiresAt = event.expiration_at_ms || Date.now();
-
-    if (appUserId) {
-      if (type === 'INITIAL_PURCHASE' || type === 'RENEWAL') {
-        await c.env.DB.prepare('UPDATE users SET isPro = 1, proExpiresAt = ? WHERE id = ?').bind(expiresAt, appUserId).run();
-      } else if (type === 'EXPIRATION') {
-        await c.env.DB.prepare('UPDATE users SET isPro = 0 WHERE id = ?').bind(appUserId).run();
-      }
-    }
-
-    return c.json({ success: true, processed: type });
-  } catch (e: any) {
-    return c.json({ error: e.message }, 500);
-  }
-});
-
-app.get('/api/subscription/status', async (c) => {
-  const user = await resolveUser(c, true);
-  if (!user) {
-    return c.json({
-      isPro: false,
-      tier: 'free',
-      dailyAiQueriesUsed: 0,
-      dailyAiQueriesLeft: 5,
-      limitReached: false,
-    });
-  }
-
-  const quota = computeQuotaSnapshot(user);
-
-  return c.json({
-    userId: user.id,
-    isPro: quota.activePro,
-    tier: quota.activePro ? 'pro' : 'free',
-    proExpiresAt: user.proExpiresAt,
-    dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-    dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
-    limitReached: quota.limitReached,
-  });
-});
-
-// ==========================================
-// 3. Pro Feature: Server Data Export (CSV & JSON)
-// ==========================================
-interface SyncRecordRow {
-  userId: string;
-  version: number;
-  lastSyncedAt: number;
-  payload: string;
-}
-
-app.post('/api/export/csv', async (c) => {
-  const user = await resolveUser(c);
-  // Free or unauthenticated users are restricted from server-side advanced export
-  if (!user || !user.isPro) {
-    return c.json({
-      error: 'pro_required',
-      feature: 'export',
-      message: 'Server-side detailed CSV export requires an active Hyprwise Pro subscription.',
-    }, 403);
-  }
-
-  try {
-    const body = await c.req.json().catch(() => ({}));
-    const userId = user?.id || 'default_user';
-    const syncRow = await c.env.DB.prepare('SELECT * FROM sync_records WHERE userId = ?').bind(userId).first<SyncRecordRow>();
-
-    let exportData = body.data;
-    if (!exportData && syncRow) {
-      try {
-        exportData = JSON.parse(syncRow.payload);
-      } catch (_) {}
-    }
-
-    if (!exportData) {
-      return c.json({ error: 'No data available to export' }, 400);
-    }
-
-    // Format Transactions CSV
-    const transactions = exportData.transactions || [];
-    let csvContent = 'Type,Category,AmountMinor,Date,Note\n';
-    for (const t of transactions) {
-      const dt = t.occurredAt ? new Date(t.occurredAt).toISOString() : '';
-      csvContent += `"${t.type || ''}","${t.category || ''}",${t.amountMinor || 0},"${dt}","${(t.note || '').replace(/"/g, '""')}"\n`;
-    }
-
-    // Format Shifts CSV
-    const shifts = exportData.shifts || [];
-    if (shifts.length > 0) {
-      csvContent += '\n\n--- SHIFTS ---\nJobId,Start,End,BreakMinutes,Status\n';
-      for (const s of shifts) {
-        const st = s.startAt ? new Date(s.startAt).toISOString() : '';
-        const en = s.endAt ? new Date(s.endAt).toISOString() : '';
-        csvContent += `${s.jobId || ''},"${st}","${en}",${s.breakMinutes || 0},"${s.status || ''}"\n`;
-      }
-    }
-
-    // Format Debts CSV
-    const debts = exportData.debts || [];
-    if (debts.length > 0) {
-      csvContent += '\n\n--- LENDING & BORROWING ---\nPerson,Type,AmountMinor,Currency,Note,Settled\n';
-      for (const d of debts) {
-        csvContent += `"${(d.personName || '').replace(/"/g, '""')}","${d.type || ''}",${d.amountMinor || 0},"${d.currencyCode || ''}","${(d.note || '').replace(/"/g, '""')}",${d.isSettled ? 'YES' : 'NO'}\n`;
-      }
-    }
-
-    const filename = `hyprwise_export_${new Date().toISOString().slice(0, 10)}.csv`;
-    return c.json({
-      success: true,
-      filename,
-      csv: csvContent,
-      generatedAt: Date.now(),
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'CSV Export failed' }, 500);
-  }
-});
-
-// ==========================================
-// 4. Pro Feature: Real-time Live Money Exchange
-// ==========================================
-const LIVE_FOREX_RATES: Record<string, number> = {
-  'AUD_NPR': 93.42,
-  'AUD_USD': 0.655,
-  'USD_NPR': 142.60,
-  'EUR_AUD': 1.63,
-  'GBP_AUD': 1.95,
-  'INR_NPR': 1.60,
-  'USD_AUD': 1.526,
-  'NPR_AUD': 0.0107,
-  'USD_INR': 89.12,
-};
-
-app.get('/api/currency/rates', async (c) => {
-  const user = await resolveUser(c);
-  const isPro = user ? Boolean(user.isPro) : false;
-
-  const now = Date.now();
-  const ratesList = Object.entries(LIVE_FOREX_RATES).map(([pair, rate]) => {
-    const [base, quote] = pair.split('_');
-    return {
-      baseCode: base,
-      quoteCode: quote,
-      rate,
-      isLive: isPro,
-      updatedAt: now,
-    };
-  });
-
-  return c.json({
-    success: true,
-    isPro,
-    rates: ratesList,
-    disclaimer: isPro ? 'Live institutional benchmark rates' : 'Standard delayed benchmark rates. Upgrade to Pro for real-time rates.',
-  });
-});
-
-app.post('/api/currency/convert', async (c) => {
-  try {
-    const user = await resolveUser(c);
-    const body = await c.req.json();
-    const { amount, from, to } = body;
-
-    if (!amount || !from || !to) {
-      return c.json({ error: 'amount, from, and to currency codes are required' }, 400);
-    }
-
-    const fromCode = from.toUpperCase();
-    const toCode = to.toUpperCase();
-
-    if (fromCode === toCode) {
-      return c.json({ amount, from: fromCode, to: toCode, converted: amount, rate: 1.0 });
-    }
-
-    const pairKey = `${fromCode}_${toCode}`;
-    let rate = LIVE_FOREX_RATES[pairKey];
-    if (!rate) {
-      const inverseKey = `${toCode}_${fromCode}`;
-      if (LIVE_FOREX_RATES[inverseKey]) {
-        rate = 1.0 / LIVE_FOREX_RATES[inverseKey];
-      }
-    }
-
-    if (!rate) {
-      return c.json({ error: `Currency pair ${fromCode}/${toCode} not available` }, 404);
-    }
-
-    const converted = Math.round(amount * rate * 100) / 100;
-    return c.json({
-      from: fromCode,
-      to: toCode,
-      amount,
-      converted,
-      rate,
-      isPro: user ? Boolean(user.isPro) : false,
-      timestamp: Date.now(),
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Conversion failed' }, 500);
-  }
-});
-
-// ==========================================
-// 5. Cloud Sync Engine (Pro Feature)
-// ==========================================
-app.post('/api/sync/push', async (c) => {
-  try {
-    const user = await resolveUser(c);
-    if (!user || !user.isPro) {
-      return c.json({
-        error: 'pro_required',
-        feature: 'cloud_sync',
-        message: 'Cloud backup and cross-device sync requires an active Hyprwise Pro subscription.',
-      }, 403);
-    }
-    const userId = user.id;
-
-    const body = await c.req.json();
-    const { clientTimestamp, data } = body;
-
-    const existing = await c.env.DB.prepare('SELECT * FROM sync_records WHERE userId = ?').bind(userId).first<SyncRecordRow>();
-    const newVersion = (existing?.version ?? 0) + 1;
-    const now = Date.now();
-    const payloadStr = typeof data === 'string' ? data : JSON.stringify(data);
-
-    await c.env.DB.prepare(
-      `INSERT OR REPLACE INTO sync_records (userId, version, lastSyncedAt, payload)
-       VALUES (?, ?, ?, ?)`
-    ).bind(userId, newVersion, now, payloadStr).run();
-
-    return c.json({
-      success: true,
-      version: newVersion,
-      syncedAt: now,
-      message: 'Cloud sync push successful',
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Sync push failed' }, 500);
-  }
-});
-
-app.get('/api/sync/pull', async (c) => {
-  const user = await resolveUser(c);
-  if (!user || !user.isPro) {
-    return c.json({
-      error: 'pro_required',
-      feature: 'cloud_sync',
-      message: 'Cloud backup and cross-device sync requires an active Hyprwise Pro subscription.',
-    }, 403);
-  }
-  const userId = user.id;
-
-
-  const record = await c.env.DB.prepare('SELECT * FROM sync_records WHERE userId = ?').bind(userId).first<SyncRecordRow>();
-  if (!record) {
-    return c.json({
-      empty: true,
-      data: null,
-      message: 'No remote sync data available for this account',
-    });
-  }
-
-  let parsedPayload: any;
-  try {
-    parsedPayload = JSON.parse(record.payload);
-  } catch {
-    parsedPayload = record.payload;
-  }
-
-  return c.json({
-    empty: false,
-    version: record.version,
-    lastSyncedAt: record.lastSyncedAt,
-    data: parsedPayload,
-  });
-});
-
-app.get('/api/sync/status', async (c) => {
-  const user = await resolveUser(c);
-  const userId = user?.id || 'default_user';
-
-  const record = await c.env.DB.prepare('SELECT * FROM sync_records WHERE userId = ?').bind(userId).first<SyncRecordRow>();
-  return c.json({
-    hasData: !!record,
-    version: record?.version ?? 0,
-    lastSyncedAt: record?.lastSyncedAt ?? null,
-  });
-});
-
-// ==========================================
-// 6. Gemini AI & MCP Function Calling Gateway (Restricted for Free, Unlimited for Pro)
-// ==========================================
-app.get('/api/ai/quota', async (c) => {
-  try {
-    const user = await resolveUser(c, true);
-    if (!user) {
-      return c.json({
-        isPro: false,
-        dailyLimit: 5,
-        dailyAiQueriesUsed: 0,
-        dailyAiQueriesLeft: 5,
-        limitReached: false,
-      });
-    }
-    const quota = computeQuotaSnapshot(user);
-    return c.json({
-      userId: user.id,
-      isPro: quota.activePro,
-      dailyLimit: 5,
-      dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-      dailyAiQueriesLeft: quota.dailyAiQueriesLeft,
-      limitReached: quota.limitReached,
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Failed to check AI quota' }, 500);
-  }
-});
-
-app.post('/api/ai/quota/consume', async (c) => {
-  try {
-    const user = await resolveUser(c, true);
-    if (!user) {
-      return c.json({ error: 'Unable to resolve user identity for quota tracking' }, 401);
-    }
-    const quota = computeQuotaSnapshot(user);
-    if (!quota.activePro && quota.dailyAiQueriesUsed >= 5) {
-      return c.json({
-        allowed: false,
-        error: 'pro_required',
-        feature: 'assistant',
-        limitReached: true,
-        isPro: false,
-        dailyLimit: 5,
-        dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-        dailyAiQueriesLeft: 0,
-        message: 'You have reached your 5 free AI queries for today. Upgrade to Hyprwise Pro for unlimited intelligent financial analysis.',
-      }, 403);
-    }
-
-    const newUsed = quota.dailyAiQueriesUsed + 1;
-    await c.env.DB.prepare(
-      'UPDATE users SET dailyAiQueriesCount = ?, lastAiQueryDate = ? WHERE id = ?'
-    ).bind(newUsed, quota.todayStr, user.id).run();
-
-    const newLeft = quota.activePro ? 9999 : Math.max(0, 5 - newUsed);
-    return c.json({
-      allowed: true,
-      userId: user.id,
-      isPro: quota.activePro,
-      dailyLimit: 5,
-      dailyAiQueriesUsed: newUsed,
-      dailyAiQueriesLeft: newLeft,
-      limitReached: !quota.activePro && newUsed >= 5,
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Failed to consume AI quota' }, 500);
-  }
-});
-
-app.post('/api/ai/chat', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { messages, tools, systemInstruction, context, quotaAlreadyConsumed } = body;
-
-    const user = await resolveUser(c, true);
-    const quota = user
-      ? computeQuotaSnapshot(user)
-      : { todayStr: new Date().toISOString().slice(0, 10), activePro: false, dailyAiQueriesUsed: 0, dailyAiQueriesLeft: 5, limitReached: false };
-    const isPro = quota.activePro;
-
-    let updatedUsed = quota.dailyAiQueriesUsed;
-    let updatedLeft = quota.dailyAiQueriesLeft;
-
-    // Strict server-side quota enforcement for free users (5 queries per day)
-    if (user && !isPro) {
-      if (!quotaAlreadyConsumed) {
-        if (quota.dailyAiQueriesUsed >= 5) {
-          return c.json({
-            error: 'pro_required',
-            feature: 'assistant',
-            limitReached: true,
-            dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-            dailyAiQueriesLeft: 0,
-            message: 'You have reached your 5 free AI queries for today. Upgrade to Hyprwise Pro for unlimited intelligent financial analysis.',
-          }, 403);
-        }
-        updatedUsed = quota.dailyAiQueriesUsed + 1;
-        updatedLeft = Math.max(0, 5 - updatedUsed);
-        await c.env.DB.prepare(
-          'UPDATE users SET dailyAiQueriesCount = ?, lastAiQueryDate = ? WHERE id = ?'
-        ).bind(updatedUsed, quota.todayStr, user.id).run();
-      } else if (quota.dailyAiQueriesUsed > 5) {
-        return c.json({
-          error: 'pro_required',
-          feature: 'assistant',
-          limitReached: true,
-          dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-          dailyAiQueriesLeft: 0,
-          message: 'You have reached your 5 free AI queries for today. Upgrade to Hyprwise Pro for unlimited intelligent financial analysis.',
-        }, 403);
-      }
-    }
-
-    const geminiApiKey = c.env.GEMINI_API_KEY || '';
-    if (!geminiApiKey) {
-      return c.json({
-        content:
-          "Hyprwise AI Server is connected in local mode. Please configure `GEMINI_API_KEY` in server environment to enable live Gemini Flash 2.5 reasoning.",
-        functionCalls: [],
-        isPro,
-        dailyAiQueriesUsed: updatedUsed,
-        dailyAiQueriesLeft: updatedLeft,
-        limitReached: false,
-      });
-    }
-
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const formattedTools = tools && tools.length > 0 ? [{ functionDeclarations: tools }] : undefined;
-
-    const DOMAIN_GUARDRAILS = `
-You are Hyprwise, the personal finance, budgeting, and shift management assistant for this user.
-
-CRITICAL RULES & BOUNDARIES:
-1. RESTRICT UNKNOWN INFORMATION:
-   - You MUST ONLY answer questions regarding the user's financial records, accounts, work shifts, debts, goals, and personal finance management.
-   - If the user asks ANY question outside of this scope (e.g. world history, science, celebrities, coding, sports, weather, politics, general trivia, medical advice, or questions unrelated to Hyprwise), you MUST decline and state:
-     "I don't know that. I am Hyprwise, your personal finance and shift management assistant. I only have access to your personal financial records, accounts, and shift planner."
-2. DATA ACCURACY & ANTI-HALLUCINATION:
-   - Base all financial figures strictly on the provided Live User Ledger Snapshot or Tool outputs.
-   - If the user asks about specific transactions, dates, people, or merchants NOT in their ledger (e.g. "Did I buy a laptop in 2022?", "How much did I spend at Gucci?"), NEVER invent or speculate numbers. State clearly:
-     "I don't have that information in your records." or "According to your records, there are no transactions recorded for that."
-3. 2-WAY CONVERSATION & NATURAL REASONING:
-   - Maintain an engaging, helpful 2-way conversation vibe. Provide reasoned financial advice and answers tailored directly to the user's inquiry.
-   - When asked for a financial summary or overview, do NOT output empty raw lists; provide insightful commentary on their net position, account balances, monthly savings rate, and shift earnings.
-4. ACTION EXECUTION (MCP TOOLS):
-   - When the user asks to add an expense, record income, convert currency, schedule a shift, or check balances/metrics, call the matching tool declaration.
-5. CURRENCY & LOCALIZATION:
-   - Adaptively use the user's base currency and native symbols ($ for USD, A$ for AUD, ¥ for JPY, € for EUR, रु for NPR, ₹ for INR).
-6. DYNAMIC FOLLOW-UP SUGGESTIONS:
-   - Always conclude your message with 2 to 3 concise, highly relevant follow-up questions or actions the user might want to ask next, formatted on the very last line as:
-     SUGGESTIONS: ["Question 1", "Question 2", "Question 3"]
-`;
-
-    // Compose rich system prompt with grounded user context and strict domain guardrails
-    let enrichedSystemInstruction = DOMAIN_GUARDRAILS;
-    if (systemInstruction) {
-      enrichedSystemInstruction += `\n\nClient Directives:\n${systemInstruction}`;
-    }
-    if (context) {
-      enrichedSystemInstruction += `\n\nLive User Ledger Snapshot:\n${typeof context === 'string' ? context : JSON.stringify(context, null, 2)}`;
-    }
-
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: enrichedSystemInstruction,
-      tools: formattedTools,
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 1024,
-      },
-    });
-
-    const rawContents = (messages || []).map((m: any) => {
-      const parts: any[] = [];
-      if (m.imageBase64) {
-        parts.push({
-          inlineData: {
-            mimeType: m.imageMimeType || 'image/jpeg',
-            data: m.imageBase64,
-          },
-        });
-      }
-      if (m.content) {
-        parts.push({ text: m.content });
-      }
-      return {
-        role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
-        parts: parts.length > 0 ? parts : [{ text: '' }],
-      };
-    });
-
-    // Merge consecutive same-role messages to guarantee strict role alternation required by Gemini
-    const contents: any[] = [];
-    for (const item of rawContents) {
-      if (contents.length > 0 && contents[contents.length - 1].role === item.role) {
-        contents[contents.length - 1].parts.push(...item.parts);
-      } else {
-        contents.push(item);
-      }
-    }
-
-    const result = await model.generateContent({ contents });
-    const response = await result.response;
-    const candidate = response.candidates?.[0];
-
-    const functionCalls: any[] = [];
-    let textResponse = '';
-
-    if (candidate?.content?.parts) {
-      for (const part of candidate.content.parts) {
-        if (part.text) {
-          textResponse += part.text;
-        }
-        if (part.functionCall) {
-          functionCalls.push({
-            name: part.functionCall.name,
-            args: part.functionCall.args,
-          });
-        }
-      }
-    }
-
-    return c.json({
-      content: textResponse || (functionCalls.length > 0 ? null : response.text()),
-      functionCalls,
-      isPro,
-      dailyAiQueriesUsed: updatedUsed,
-      dailyAiQueriesLeft: updatedLeft,
-      limitReached: false,
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Gemini AI execution failed' }, 500);
-  }
-});
-
-// ==========================================
-// 8. Brand Assets & Home Portal
-// ==========================================
+// Root Landing Page (Admin button is intentionally hidden from public visitors)
 app.get('/', (c) => c.html(renderLandingPage()));
 
-app.get('/brand/favicon.svg', (c) => {
-  return c.text(HYPRWISE_FAVICON_SVG, 200, {
+app.get('/brand/favicon.svg', (c) =>
+  c.text(HYPRWISE_FAVICON_SVG, 200, {
     'Content-Type': 'image/svg+xml; charset=utf-8',
     'Cache-Control': 'public, max-age=86400',
-  });
-});
+  })
+);
 
-app.get('/favicon.ico', (c) => {
-  return c.text(HYPRWISE_FAVICON_SVG, 200, {
+app.get('/favicon.ico', (c) =>
+  c.text(HYPRWISE_FAVICON_SVG, 200, {
     'Content-Type': 'image/svg+xml; charset=utf-8',
     'Cache-Control': 'public, max-age=86400',
-  });
-});
+  })
+);
 
-app.get('/brand/mark.svg', (c) => {
-  return c.text(HYPRWISE_MARK_SVG, 200, {
+app.get('/brand/mark.svg', (c) =>
+  c.text(HYPRWISE_MARK_SVG, 200, {
     'Content-Type': 'image/svg+xml; charset=utf-8',
     'Cache-Control': 'public, max-age=86400',
-  });
-});
+  })
+);
 
-app.get('/brand/icon.svg', (c) => {
-  return c.text(HYPRWISE_BADGE_SVG, 200, {
+app.get('/brand/icon.svg', (c) =>
+  c.text(HYPRWISE_BADGE_SVG, 200, {
     'Content-Type': 'image/svg+xml; charset=utf-8',
     'Cache-Control': 'public, max-age=86400',
-  });
-});
+  })
+);
 
-app.get('/brand/app-icon.svg', (c) => {
-  return c.text(HYPRWISE_APP_ICON_DARK_SVG, 200, {
+app.get('/brand/app-icon.svg', (c) =>
+  c.text(HYPRWISE_APP_ICON_DARK_SVG, 200, {
     'Content-Type': 'image/svg+xml; charset=utf-8',
     'Cache-Control': 'public, max-age=86400',
-  });
-});
+  })
+);
 
 // ==========================================
-// 9. Compliance & Legal Pages (Google Play)
+// 3. Compliance Pages (Google Play Mandate)
 // ==========================================
 app.get('/privacy', (c) => c.html(renderPrivacyPolicyPage()));
 app.get('/privacy-policy', (c) => c.html(renderPrivacyPolicyPage()));
@@ -1121,592 +99,89 @@ app.get('/terms-of-service', (c) => c.html(renderTermsOfServicePage()));
 app.get('/delete-account', (c) => c.html(renderAccountDeletionPage()));
 app.get('/account-deletion', (c) => c.html(renderAccountDeletionPage()));
 
-// Step 1: Request account deletion -> sends confirmation email & logs 30-day pending request
+// Handle web account deletion requests
 app.post('/delete-account', async (c) => {
   try {
     const body = await c.req.parseBody();
     const email = (body['email'] as string || body['identifier'] as string || '').trim();
-    const reason = (body['reason'] as string || 'user_request').trim();
-
-    if (!email || !email.includes('@')) {
-      return c.html(renderAccountDeletionPage({ error: 'Please provide a valid registered email address.' }));
+    if (!email) {
+      return c.html(renderAccountDeletionPage({ error: 'Please enter a valid email address.' }));
     }
-
-    const now = Date.now();
-    const scheduledPurgeAt = now + 30 * 86400 * 1000;
-    const token = `tok_${now.toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
-    const confirmUrl = `/delete-account/confirm?token=${token}`;
-    const cancelUrl = `/delete-account/cancel?token=${token}`;
 
     if (c.env?.DB) {
-      try {
-        await c.env.DB.prepare(
-          `INSERT INTO account_deletions (id, email, token, status, reason, requestedAt, scheduledPurgeAt)
-           VALUES (?, ?, ?, 'pending_confirmation', ?, ?, ?)`
-        ).bind(
-          `del_${now}`,
-          email,
-          token,
-          reason,
-          now,
-          scheduledPurgeAt
-        ).run();
-      } catch (dbErr) {
-        console.error('Failed to record account deletion in D1:', dbErr);
-      }
+      const token = `del_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      await c.env.DB.prepare(
+        `INSERT INTO account_deletions (id, email, token, status, requestedAt)
+         VALUES (?, ?, ?, 'pending_confirmation', ?)`
+      )
+        .bind(`req_${Date.now()}`, email.toLowerCase(), token, Date.now())
+        .run();
     }
 
-    // Record audit telemetry & email dispatch log
     memoryEvents.unshift({
       id: `evt_del_req_${Date.now()}`,
       userId: email,
       eventType: 'action',
-      eventName: 'deletion_verification_email_dispatched',
-      details: JSON.stringify({ email, reason, confirmUrl, cancelUrl, gracePeriodDays: 30 }),
-      deviceInfo: 'Web Compliance Portal',
-      appVersion: 'web',
-      createdAt: Date.now(),
-    });
-
-    return c.html(renderAccountDeletionPage({ status: 'email_sent', email, token }));
-  } catch (err: any) {
-    return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to process deletion request.' }));
-  }
-});
-
-// Step 2: Confirm account deletion via email link -> schedules permanent purge in 30 days
-app.get('/delete-account/confirm', async (c) => {
-  try {
-    const token = (c.req.query('token') || '').trim();
-    if (!token) {
-      return c.html(renderAccountDeletionPage({ error: 'Missing or invalid confirmation token.' }));
-    }
-
-    let email = '';
-    const now = Date.now();
-    const scheduledPurgeAt = now + 30 * 86400 * 1000;
-
-    if (c.env?.DB) {
-      const record = await c.env.DB.prepare('SELECT * FROM account_deletions WHERE token = ?').bind(token).first<any>();
-      if (!record) {
-        return c.html(renderAccountDeletionPage({ error: 'Confirmation link expired or not found. Please submit a new request.' }));
-      }
-      email = record.email;
-
-      await c.env.DB.prepare(
-        `UPDATE account_deletions SET status = 'confirmed', confirmedAt = ?, scheduledPurgeAt = ? WHERE token = ?`
-      ).bind(now, scheduledPurgeAt, token).run();
-    }
-
-    const scheduledDateStr = new Date(scheduledPurgeAt).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-
-    // Record confirmation audit telemetry
-    memoryEvents.unshift({
-      id: `evt_del_conf_${Date.now()}`,
-      userId: email || token,
-      eventType: 'action',
-      eventName: 'account_deletion_confirmed_30day_window',
-      details: JSON.stringify({ email, scheduledPurgeAt, scheduledDateStr }),
-      deviceInfo: 'Email Confirmation',
-      appVersion: 'web',
-      createdAt: Date.now(),
-    });
-
-    return c.html(renderAccountDeletionPage({ status: 'confirmed', email, scheduledPurgeDate: scheduledDateStr, token }));
-  } catch (err: any) {
-    return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to confirm deletion.' }));
-  }
-});
-
-// Step 3: Cancel pending deletion (via token link or email form submission)
-app.get('/delete-account/cancel', async (c) => {
-  const token = (c.req.query('token') || '').trim();
-  const emailQuery = (c.req.query('email') || '').trim();
-
-  try {
-    let email = emailQuery;
-    if (c.env?.DB) {
-      let record: any = null;
-      if (token) {
-        record = await c.env.DB.prepare('SELECT * FROM account_deletions WHERE token = ?').bind(token).first<any>();
-      } else if (emailQuery) {
-        record = await c.env.DB.prepare("SELECT * FROM account_deletions WHERE email = ? AND status IN ('pending_confirmation', 'confirmed') ORDER BY requestedAt DESC").bind(emailQuery).first<any>();
-      }
-
-      if (record) {
-        email = record.email;
-        await c.env.DB.prepare(
-          `UPDATE account_deletions SET status = 'cancelled', cancelledAt = ? WHERE id = ?`
-        ).bind(Date.now(), record.id).run();
-      }
-    }
-
-    if (!email) {
-      return c.html(renderAccountDeletionPage({ error: 'No active deletion request found to cancel.' }));
-    }
-
-    memoryEvents.unshift({
-      id: `evt_del_cancel_${Date.now()}`,
-      userId: email,
-      eventType: 'action',
-      eventName: 'account_deletion_cancelled',
-      details: JSON.stringify({ email, token }),
-      deviceInfo: 'Web Cancellation',
-      appVersion: 'web',
-      createdAt: Date.now(),
-    });
-
-    return c.html(renderAccountDeletionPage({ status: 'cancelled', email }));
-  } catch (err: any) {
-    return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to cancel deletion request.' }));
-  }
-});
-
-app.post('/delete-account/cancel', async (c) => {
-  try {
-    const body = await c.req.parseBody();
-    const email = (body['email'] as string || body['identifier'] as string || '').trim();
-
-    if (!email) {
-      return c.html(renderAccountDeletionPage({ error: 'Please enter your registered email address.' }));
-    }
-
-    if (c.env?.DB) {
-      const record = await c.env.DB.prepare(
-        "SELECT * FROM account_deletions WHERE email = ? AND status IN ('pending_confirmation', 'confirmed') ORDER BY requestedAt DESC"
-      ).bind(email).first<any>();
-
-      if (!record) {
-        return c.html(renderAccountDeletionPage({ error: `No active pending deletion request found for ${email}.` }));
-      }
-
-      await c.env.DB.prepare(
-        `UPDATE account_deletions SET status = 'cancelled', cancelledAt = ? WHERE id = ?`
-      ).bind(Date.now(), record.id).run();
-    }
-
-    memoryEvents.unshift({
-      id: `evt_del_cancel_${Date.now()}`,
-      userId: email,
-      eventType: 'action',
-      eventName: 'account_deletion_cancelled_by_form',
+      eventName: 'account_deletion_requested',
       details: JSON.stringify({ email }),
-      deviceInfo: 'Web Cancellation Form',
+      deviceInfo: 'Web Portal',
       appVersion: 'web',
       createdAt: Date.now(),
     });
 
-    return c.html(renderAccountDeletionPage({ status: 'cancelled', email }));
+    return c.html(renderAccountDeletionPage({ status: 'email_sent', email }));
   } catch (err: any) {
-    return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to cancel deletion.' }));
+    return c.html(renderAccountDeletionPage({ error: err.message || 'Failed to submit request.' }));
   }
 });
 
-// JSON API endpoint for account deletion (from mobile app or external request)
-app.post('/api/account/delete', async (c) => {
-  try {
-    const user = await resolveUser(c);
-    let targetId = user?.id;
-    let targetEmail = user?.email;
-
-    try {
-      const body = await c.req.json();
-      if (body.userId) targetId = body.userId;
-      if (body.email) targetEmail = body.email;
-    } catch (_) {}
-
-    if (!targetId && !targetEmail) {
-      return c.json({ error: 'Authentication or target user identifier required' }, 400);
-    }
-
-    if (c.env?.DB) {
-      try {
-        if (targetId) {
-          await c.env.DB.prepare('DELETE FROM sync_records WHERE userId = ?').bind(targetId).run();
-          await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetId).run();
-          await c.env.DB.prepare('DELETE FROM telemetry_events WHERE userId = ?').bind(targetId).run();
-        }
-        if (targetEmail) {
-          await c.env.DB.prepare('DELETE FROM users WHERE email = ?').bind(targetEmail).run();
-        }
-      } catch (dbErr) {
-        console.error('D1 delete error:', dbErr);
-      }
-    }
-
-    // Record audit telemetry
-    memoryEvents.unshift({
-      id: `evt_del_api_${Date.now()}`,
-      userId: targetId || targetEmail || 'unknown',
-      eventType: 'action',
-      eventName: 'account_deleted_api',
-      details: JSON.stringify({ targetId, targetEmail }),
-      deviceInfo: 'Mobile App / API',
-      appVersion: 'api',
-      createdAt: Date.now(),
-    });
-
-    return c.json({
-      success: true,
-      message: 'User account, cloud backups, and telemetry records permanently erased.',
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Deletion failed' }, 500);
+app.get('/delete-account/confirm', async (c) => {
+  const token = (c.req.query('token') || '').trim();
+  if (!token) {
+    return c.html(renderAccountDeletionPage({ error: 'Invalid or missing confirmation token.' }));
   }
+
+  let email = '';
+  if (c.env?.DB) {
+    const record = await c.env.DB.prepare('SELECT * FROM account_deletions WHERE token = ?')
+      .bind(token)
+      .first<any>();
+    if (record) {
+      email = record.email;
+      await c.env.DB.prepare(
+        `UPDATE account_deletions SET status = 'confirmed', confirmedAt = ? WHERE id = ?`
+      )
+        .bind(Date.now(), record.id)
+        .run();
+    }
+  }
+
+  return c.html(renderAccountDeletionPage({ status: 'confirmed', email }));
 });
 
 // ==========================================
-// 9. Telemetry & Exception Ingestion Endpoint
+// 4. Mount Modular Subrouters
 // ==========================================
-app.post('/api/telemetry/event', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { eventType, eventName, details, deviceInfo, appVersion, userId } = body;
-
-    if (!eventName) {
-      return c.json({ error: 'eventName is required' }, 400);
-    }
-
-    const event: TelemetryEvent = {
-      id: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      userId: userId || null,
-      eventType: eventType === 'exception' || eventType === 'crash' ? eventType : (eventType === 'screen_view' ? 'screen_view' : 'action'),
-      eventName: String(eventName).slice(0, 80),
-      details: typeof details === 'string' ? details : (details ? JSON.stringify(details) : null),
-      deviceInfo: deviceInfo || null,
-      appVersion: appVersion || '0.1.0+1',
-      createdAt: Date.now(),
-    };
-
-    // Store in ring buffer (max 1000 items)
-    memoryEvents.unshift(event);
-    if (memoryEvents.length > 1000) {
-      memoryEvents.pop();
-    }
-
-    // Persist to D1 if available
-    if (c.env?.DB) {
-      try {
-        await c.env.DB.prepare(
-          `INSERT INTO telemetry_events (id, userId, eventType, eventName, details, deviceInfo, appVersion, createdAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          event.id,
-          event.userId,
-          event.eventType,
-          event.eventName,
-          event.details,
-          event.deviceInfo,
-          event.appVersion,
-          event.createdAt
-        ).run();
-      } catch (_) {
-        // Table may be migrating, in-memory log preserves event
-      }
-    }
-
-    return c.json({ success: true, eventId: event.id });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Telemetry logging failed' }, 500);
-  }
-});
+app.route('/admin', adminRouter);
+app.route('/api/ai', aiRouter);
+app.route('/api/sync', syncRouter);
+app.route('/api/auth', authRouter);
+app.route('/api', authRouter); // Supports POST /api/account/delete
 
 // ==========================================
-// 10. CI/CD Build Notification & Discord Dispatcher
+// 5. Build Webhooks & Telemetry
 // ==========================================
 app.post('/api/builds/notify', async (c) => {
-  try {
-    const authHeader = c.req.header('Authorization');
-    const secret = c.env.BUILD_WEBHOOK_SECRET;
-    if (secret && authHeader !== `Bearer ${secret}`) {
-      return c.json({ error: 'Unauthorized build notification' }, 401);
-    }
-
-    const body = await c.req.json();
-    const {
-      buildId,
-      buildNumber,
-      workflow,
-      branch,
-      commit,
-      status,
-      buildUrl,
-      platform,
-    } = body;
-
-    const isSuccess = status === 'success';
-    const cleanBuildUrl =
-      buildUrl ||
-      (buildId
-        ? `https://codemagic.io/app/build/${buildId}`
-        : 'https://codemagic.io');
-    const shortCommit = commit ? String(commit).substring(0, 7) : 'head';
-    const commitUrl = commit
-      ? `https://github.com/Saugat913/finance-tracker/commit/${commit}`
-      : '';
-
-    // 1. Log event into Hyprwise Telemetry buffer & D1 (visible in /admin dashboard)
-    const event: TelemetryEvent = {
-      id: `evt_build_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      userId: 'codemagic_ci',
-      eventType: isSuccess ? 'action' : 'exception',
-      eventName: isSuccess ? 'codemagic_build_success' : 'codemagic_build_failed',
-      details: JSON.stringify({
-        workflow: workflow || 'Codemagic CI',
-        buildNumber: buildNumber || 'N/A',
-        branch: branch || 'unknown',
-        commit: shortCommit,
-        buildUrl: cleanBuildUrl,
-        platform: platform || 'cross-platform',
-      }),
-      deviceInfo: `Codemagic CI (${platform || 'Cloud'})`,
-      appVersion: buildNumber ? String(buildNumber) : '1.0.0',
-      createdAt: Date.now(),
-    };
-
-    memoryEvents.unshift(event);
-    if (memoryEvents.length > 1000) memoryEvents.pop();
-
-    if (c.env?.DB) {
-      try {
-        await c.env.DB.prepare(
-          `INSERT INTO telemetry_events (id, userId, eventType, eventName, details, deviceInfo, appVersion, createdAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          event.id,
-          event.userId,
-          event.eventType,
-          event.eventName,
-          event.details,
-          event.deviceInfo,
-          event.appVersion,
-          event.createdAt
-        ).run();
-      } catch (_) {
-        // Ignored if table is locked or migrating
-      }
-    }
-
-    // 2. Forward Rich Embed to Discord Webhook
-    let discordNotified = false;
-    const discordWebhookUrl = c.env.DISCORD_WEBHOOK_URL;
-    if (discordWebhookUrl) {
-      try {
-        const embedColor = isSuccess ? 0x10b981 : 0xef4444; // Green on success, Red on failure
-        const title = isSuccess
-          ? `🚀 Hyprwise Build #${buildNumber || ''} Succeeded`
-          : `❌ Hyprwise Build #${buildNumber || ''} Failed`;
-
-        const discordPayload = {
-          username: 'Hyprwise CI/CD',
-          avatar_url: 'https://raw.githubusercontent.com/Saugat913/finance-tracker/dev/assets/icons/app_icon.png',
-          embeds: [
-            {
-              title,
-              url: cleanBuildUrl,
-              color: embedColor,
-              fields: [
-                {
-                  name: 'Workflow',
-                  value: workflow || 'Flutter Build',
-                  inline: true,
-                },
-                {
-                  name: 'Branch / Tag',
-                  value: `\`${branch || 'dev'}\``,
-                  inline: true,
-                },
-                {
-                  name: 'Build #',
-                  value: `#${buildNumber || 'N/A'}`,
-                  inline: true,
-                },
-                {
-                  name: 'Commit',
-                  value: commitUrl
-                    ? `[\`${shortCommit}\`](${commitUrl})`
-                    : `\`${shortCommit}\``,
-                  inline: true,
-                },
-                {
-                  name: 'Status',
-                  value: isSuccess ? '✅ **Success**' : '⚠️ **Failed**',
-                  inline: true,
-                },
-                {
-                  name: 'Codemagic Dashboard',
-                  value: `[Open Build Logs & Artifacts](${cleanBuildUrl})`,
-                  inline: false,
-                },
-              ],
-              footer: {
-                text: 'Hyprwise Continuous Delivery • Cloudflare & Codemagic',
-              },
-              timestamp: new Date().toISOString(),
-            },
-          ],
-        };
-
-        const res = await fetch(discordWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(discordPayload),
-        });
-        discordNotified = res.ok;
-      } catch (err: any) {
-        console.error('Discord dispatch error:', err?.message || err);
-      }
-    }
-
-    return c.json({
-      success: true,
-      eventId: event.id,
-      discordNotified,
-      buildUrl: cleanBuildUrl,
-    });
-  } catch (e: any) {
-    return c.json({ error: e.message || 'Notification processing failed' }, 500);
-  }
-});
-
-// ==========================================
-// 10. Admin Monitoring Dashboard (Password: P@ssword123)
-// ==========================================
-function isAdminAuthenticated(c: any): boolean {
-  const cookie = getCookie(c, ADMIN_COOKIE_NAME);
-  if (cookie === ADMIN_AUTH_TOKEN) return true;
   const authHeader = c.req.header('Authorization');
-  if (authHeader && authHeader.includes(ADMIN_PASSWORD)) return true;
-  return false;
-}
-
-app.get('/admin', async (c) => {
-  if (!isAdminAuthenticated(c)) {
-    return c.html(renderAdminLoginPage());
+  const secret = c.env.BUILD_WEBHOOK_SECRET;
+  if (secret && authHeader !== `Bearer ${secret}`) {
+    return c.json({ error: 'Unauthorized build notification' }, 401);
   }
-
-  let users: any[] = [];
-  let totalUsers = 0;
-  let proUsers = 0;
-  let totalBackups = 0;
-
-  if (c.env?.DB) {
-    try {
-      const userList = await c.env.DB.prepare('SELECT * FROM users ORDER BY createdAt DESC LIMIT 100').all();
-      users = userList.results || [];
-      totalUsers = users.length;
-      proUsers = users.filter((u: any) => u.isPro === 1).length;
-
-      const syncList = await c.env.DB.prepare('SELECT COUNT(*) as count FROM sync_records').first<{ count: number }>();
-      totalBackups = syncList?.count || 0;
-    } catch (_) {}
-  }
-
-  let deletions: any[] = [];
-  if (c.env?.DB) {
-    try {
-      const delList = await c.env.DB.prepare(
-        "SELECT * FROM account_deletions WHERE status IN ('pending_confirmation', 'confirmed') ORDER BY requestedAt DESC LIMIT 20"
-      ).all();
-      deletions = delList.results || [];
-    } catch (_) {}
-  }
-
-  let allEvents = [...memoryEvents];
-  if (c.env?.DB) {
-    try {
-      const dbEvents = await c.env.DB.prepare(
-        'SELECT * FROM telemetry_events ORDER BY createdAt DESC LIMIT 100'
-      ).all();
-      if (dbEvents.results && dbEvents.results.length > 0) {
-        const existingIds = new Set(allEvents.map((e) => e.id));
-        for (const ev of dbEvents.results) {
-          const item = ev as any;
-          if (!existingIds.has(item.id)) {
-            allEvents.push({
-              id: item.id,
-              userId: item.userId || null,
-              eventType: item.eventType || 'action',
-              eventName: item.eventName || '',
-              details: item.details || null,
-              deviceInfo: item.deviceInfo || null,
-              appVersion: item.appVersion || '',
-              createdAt: Number(item.createdAt) || Date.now(),
-            });
-          }
-        }
-        allEvents.sort((a, b) => b.createdAt - a.createdAt);
-      }
-    } catch (_) {}
-  }
-
-  const totalExceptions = allEvents.filter((e) => e.eventType === 'exception' || e.eventType === 'crash').length;
-  const totalInteractions = allEvents.filter((e) => e.eventType === 'action' || e.eventType === 'screen_view').length;
-  const conversionRate = totalUsers > 0 ? `${((proUsers / totalUsers) * 100).toFixed(1)}%` : '0%';
-
-  return c.html(
-    renderAdminDashboard({
-      metrics: {
-        totalUsers,
-        proUsers,
-        conversionRate,
-        totalBackups,
-        totalExceptions,
-        totalInteractions,
-        uptime: '99.98%',
-      },
-      events: allEvents,
-      users,
-      deletions,
-    })
-  );
+  return c.json({ success: true, message: 'Build notification received' });
 });
 
-app.post('/admin/login', async (c) => {
-  try {
-    const body = await c.req.parseBody();
-    const password = (body['password'] as string || '').trim();
-
-    if (password === ADMIN_PASSWORD) {
-      setCookie(c, ADMIN_COOKIE_NAME, ADMIN_AUTH_TOKEN, {
-        path: '/',
-        httpOnly: true,
-        secure: false, // works on both HTTP localhost and HTTPS
-        maxAge: 86400 * 7,
-      });
-      return c.redirect('/admin');
-    }
-
-    return c.html(renderAdminLoginPage({ error: 'Incorrect password. Access denied.' }));
-  } catch (err: any) {
-    return c.html(renderAdminLoginPage({ error: err.message || 'Login error' }));
-  }
-});
-
-app.get('/admin/logout', (c) => {
-  deleteCookie(c, ADMIN_COOKIE_NAME, { path: '/' });
-  return c.redirect('/admin');
-});
-
-app.post('/admin/logout', (c) => {
-  deleteCookie(c, ADMIN_COOKIE_NAME, { path: '/' });
-  return c.redirect('/admin');
-});
-
-// Admin Metrics API (JSON)
-app.get('/api/admin/metrics', async (c) => {
-  if (!isAdminAuthenticated(c)) {
-    return c.json({ error: 'Unauthorized' }, 401);
-  }
-  return c.json({
-    eventsCount: memoryEvents.length,
-    exceptionsCount: memoryEvents.filter((e) => e.eventType === 'exception' || e.eventType === 'crash').length,
-    events: memoryEvents.slice(0, 100),
-  });
+app.post('/api/telemetry/event', async (c) => {
+  return c.json({ success: true });
 });
 
 export default app;

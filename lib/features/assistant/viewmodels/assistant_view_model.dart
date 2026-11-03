@@ -973,6 +973,8 @@ User Financial Snapshot (Live On-Device Ledger):
           text,
           messageHistory: history,
           systemInstruction: systemPrompt,
+          preferredLanguage: financeStore.settingsRepo.localeCode,
+          context: financeStore.snapshot,
           tools: mcpTools.declarations,
           quotaAlreadyConsumed: quotaAlreadyConsumed,
         );
@@ -1014,6 +1016,7 @@ User Financial Snapshot (Live On-Device Ledger):
                   {'role': 'user', 'content': toolFollowUp},
                 ],
                 systemInstruction: systemPrompt,
+                preferredLanguage: financeStore.settingsRepo.localeCode,
                 quotaAlreadyConsumed: true,
               );
 

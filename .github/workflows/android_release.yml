@@ -1,4 +1,4 @@
-name: Play Store Release Pipeline
+name: Android Release Pipeline (Google Play Internal)
 
 on:
   push:
@@ -27,7 +27,7 @@ on:
 
 jobs:
   build-and-release:
-    name: Build & Release App Bundle
+    name: Build Android AAB & Publish Internal
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -62,15 +62,15 @@ jobs:
       - name: Determine Version & Track
         id: versioning
         run: |
-          # 1. Determine Track
+          # 1. Determine Track (Default: internal for automated CI)
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TRACK="${{ github.event.inputs.track }}"
           else
             TAG_NAME="${{ github.ref_name }}"
-            if [[ "$TAG_NAME" =~ ^v0\. ]]; then
-              TRACK="internal"
-            else
+            if [[ "$TAG_NAME" =~ ^v1\. ]]; then
               TRACK="production"
+            else
+              TRACK="internal"
             fi
           fi
           echo "track=$TRACK" >> $GITHUB_OUTPUT
@@ -89,10 +89,8 @@ jobs:
           if [ -n "${{ github.event.inputs.build_number }}" ]; then
             VERSION_CODE="${{ github.event.inputs.build_number }}"
           elif [[ "$VERSION_NAME" =~ ^0\. ]]; then
-            # Internal test baseline: uses run number (1, 2, 3...)
             VERSION_CODE="${{ github.run_number }}"
           else
-            # Production builds reserve 100+ for version codes
             VERSION_CODE=$((100 + ${{ github.run_number }}))
           fi
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT

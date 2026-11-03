@@ -421,7 +421,7 @@ function wrapHtml({
         <a href="/privacy" class="nav-link ${activeNav === 'privacy' ? 'active' : ''}">Privacy</a>
         <a href="/terms" class="nav-link ${activeNav === 'terms' ? 'active' : ''}">Terms</a>
         <a href="/delete-account" class="nav-link ${activeNav === 'delete' ? 'active' : ''}">Delete Account</a>
-        <a href="/admin" class="nav-link ${activeNav === 'admin' ? 'active' : ''}">Admin</a>
+        ${activeNav === 'admin' ? '<a href="/admin" class="nav-link active">Admin</a>' : ''}
       </div>
     </div>
   </header>
@@ -481,14 +481,6 @@ export function renderLandingPage(): string {
         <h2 style="font-size: 1.2rem; margin: 0 0 6px; color: var(--text);">Delete Account &rarr;</h2>
         <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">
           Email verification required. 30-day protected grace period before permanent purge, with instant cancellation option.
-        </p>
-      </a>
-
-      <a href="/admin" class="content-card" style="text-decoration: none; display: block; transition: border-color 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-        <span class="section-eyebrow">Operations</span>
-        <h2 style="font-size: 1.2rem; margin: 0 0 6px; color: var(--text);">Admin Portal &rarr;</h2>
-        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">
-          Live telemetry stream, exception monitor, cloud backup health, and performance telemetry.
         </p>
       </a>
     </div>
@@ -841,6 +833,7 @@ export function renderAdminDashboard({
   events,
   users,
   deletions = [],
+  analyticsHtml = '',
 }: {
   metrics: {
     totalUsers: number;
@@ -854,6 +847,7 @@ export function renderAdminDashboard({
   events: TelemetryEvent[];
   users: any[];
   deletions?: any[];
+  analyticsHtml?: string;
 }): string {
   const exceptions = events.filter((e) => e.eventType === 'exception' || e.eventType === 'crash');
   const interactions = events.filter((e) => e.eventType === 'action' || e.eventType === 'screen_view');
@@ -875,6 +869,9 @@ export function renderAdminDashboard({
           <a href="/admin/logout" class="btn btn-outline" style="font-size: 0.825rem; padding: 7px 12px; color: var(--accent-red);">Logout</a>
         </div>
       </div>
+
+      <!-- Firebase Analytics Graphs & Charts -->
+      ${analyticsHtml}
 
       <!-- Metrics Grid -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 24px;">

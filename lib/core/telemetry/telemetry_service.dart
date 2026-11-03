@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -54,6 +55,25 @@ class TelemetryService {
       // Analytics collection enabled by default
       await _analytics?.setAnalyticsCollectionEnabled(true);
       _initialized = true;
+
+      // Initialize Firebase App Check / Play Integrity to protect backend from external scrapers
+      try {
+        await FirebaseAppCheck.instance.activate(
+          providerAndroid: kDebugMode
+              ? const AndroidDebugProvider()
+              : const AndroidPlayIntegrityProvider(),
+          providerApple: kDebugMode
+              ? const AppleDebugProvider()
+              : const AppleDeviceCheckProvider(),
+        );
+        if (kDebugMode) {
+          debugPrint('[AppCheck] Firebase App Check activated successfully.');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[AppCheck] App Check init notice: $e');
+        }
+      }
 
       if (kDebugMode) {
         debugPrint('[Telemetry] Firebase Analytics initialized successfully.');

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:http/http.dart' as http;
 import 'package:finance_tracker/core/config/app_config.dart';
 
@@ -77,6 +79,18 @@ class ApiClient {
     _authToken = null;
     _userId = null;
     _userEmail = null;
+    _cachedAppCheckToken = null;
+  }
+
+  String? _cachedAppCheckToken;
+
+  /// Fetches latest App Check token to authenticate genuine mobile client requests
+  Future<void> refreshAppCheckToken() async {
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        _cachedAppCheckToken = await FirebaseAppCheck.instance.getToken();
+      }
+    } catch (_) {}
   }
 
   Map<String, String> get _headers => {
@@ -84,6 +98,8 @@ class ApiClient {
         if (_authToken != null && _authToken!.isNotEmpty) 'Authorization': 'Bearer $_authToken',
         if (_userId != null && _userId!.isNotEmpty) 'X-User-Id': _userId!,
         if (_userEmail != null && _userEmail!.isNotEmpty) 'X-User-Email': _userEmail!,
+        if (_cachedAppCheckToken != null && _cachedAppCheckToken!.isNotEmpty)
+          'X-Firebase-AppCheck': _cachedAppCheckToken!,
       };
 
   /// Discovers the active server URL by pinging /health
@@ -367,6 +383,8 @@ class ApiClient {
     String message, {
     List<Map<String, dynamic>>? messageHistory,
     String? systemInstruction,
+    String? preferredLanguage,
+    String? clientDirective,
     List<Map<String, dynamic>>? tools,
     dynamic context,
     String? imageBase64,
@@ -394,6 +412,8 @@ class ApiClient {
             headers: _headers,
             body: jsonEncode({
               'messages': messagesPayload,
+              if (preferredLanguage != null) 'preferredLanguage': preferredLanguage,
+              if (clientDirective != null) 'clientDirective': clientDirective,
               if (systemInstruction != null) 'systemInstruction': systemInstruction,
               if (tools != null) 'tools': tools,
               if (context != null) 'context': context,
