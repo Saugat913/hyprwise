@@ -43,10 +43,10 @@ class TelemetryService {
         effectiveOptions = null;
       }
       if (Firebase.apps.isEmpty) {
-        if (effectiveOptions != null) {
+        if (effectiveOptions != null && effectiveOptions.apiKey.isNotEmpty) {
           await Firebase.initializeApp(options: effectiveOptions);
         } else {
-          // Attempt platform default initialization (e.g. from google-services.json)
+          // Attempt platform default initialization (e.g. from native google-services.json / GoogleService-Info.plist)
           await Firebase.initializeApp();
         }
       }

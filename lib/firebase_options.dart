@@ -53,6 +53,7 @@ class DefaultFirebaseOptions {
     projectId: 'tilvane',
     storageBucket: 'tilvane.firebasestorage.app',
   );
+
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: String.fromEnvironment('FIREBASE_IOS_API_KEY'),
     appId: '1:534651621591:ios:6feb492286462673942092',
@@ -63,6 +64,7 @@ class DefaultFirebaseOptions {
     iosClientId: '534651621591-7v4e8ni800a1260tnh6fi5brsr3er4no.apps.googleusercontent.com',
     iosBundleId: 'com.hypr.hyprwise',
   );
+
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: String.fromEnvironment('FIREBASE_WEB_API_KEY'),
     appId: '1:534651621591:web:cd445a340eb214a6942092',

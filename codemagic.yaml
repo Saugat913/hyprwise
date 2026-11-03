@@ -62,6 +62,9 @@ workflows:
           if [ -n "$REVENUECAT_APPLE_KEY" ]; then
             sed -i '' "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env 2>/dev/null || sed -i "s|^REVENUECAT_APPLE_KEY=.*|REVENUECAT_APPLE_KEY=$REVENUECAT_APPLE_KEY|" .env
           fi
+          if [ -n "$FIREBASE_IOS_API_KEY" ]; then
+            sed -i '' "s|^FIREBASE_IOS_API_KEY=.*|FIREBASE_IOS_API_KEY=$FIREBASE_IOS_API_KEY|" .env 2>/dev/null || sed -i "s|^FIREBASE_IOS_API_KEY=.*|FIREBASE_IOS_API_KEY=$FIREBASE_IOS_API_KEY|" .env
+          fi
       - name: Run Flutter Static Analysis
         script: flutter analyze
       - name: Run Flutter Unit & Widget Tests

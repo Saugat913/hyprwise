@@ -131,10 +131,13 @@ jobs:
           fi
 
       - name: Build Android App Bundle (.aab)
+        env:
+          FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
         run: |
           flutter build appbundle --release \
             --build-name="${{ steps.versioning.outputs.version_name }}" \
-            --build-number="${{ steps.versioning.outputs.version_code }}"
+            --build-number="${{ steps.versioning.outputs.version_code }}" \
+            --dart-define="FIREBASE_ANDROID_API_KEY=${FIREBASE_ANDROID_API_KEY}"
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
