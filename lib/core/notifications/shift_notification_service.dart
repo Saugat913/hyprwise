@@ -36,6 +36,7 @@ class ShiftNotificationService {
     presentAlert: true,
     presentBadge: true,
     presentSound: true,
+    interruptionLevel: InterruptionLevel.active,
   );
 
   bool get _isNepali {
@@ -171,6 +172,26 @@ class ShiftNotificationService {
           AndroidFlutterLocalNotificationsPlugin>();
       if (android != null) {
         final granted = await android.requestNotificationsPermission();
+        return granted ?? false;
+      }
+      final ios = _notifications.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      if (ios != null) {
+        final granted = await ios.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        return granted ?? false;
+      }
+      final mac = _notifications.resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin>();
+      if (mac != null) {
+        final granted = await mac.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
         return granted ?? false;
       }
     } catch (e) {

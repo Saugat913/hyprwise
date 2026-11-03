@@ -107,6 +107,77 @@ void main() {
     expect(viewModel.netBalanceMinor, 0);
   });
 
+  test('Partial repayment tracks original amount, paid amount and remaining balance', () async {
+    // Borrow 200.00 from Bob
+    final debtId = await viewModel.addDebt(
+      personName: 'Bob',
+      type: DebtType.borrowed,
+      amountMinor: 20000,
+      currencyCode: 'USD',
+      note: 'Emergency cash',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    var debt = viewModel.debts.firstWhere((d) => d.id == debtId);
+    expect(debt.originalAmountMinor, 20000);
+    expect(debt.paidAmountMinor, 0);
+    expect(debt.remainingAmountMinor, 20000);
+    expect(debt.repaymentProgress, 0.0);
+
+    // Repay 100.00
+    await viewModel.recordPayment(debt: debt, paymentMinor: 10000);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    debt = viewModel.debts.firstWhere((d) => d.id == debtId);
+    expect(debt.originalAmountMinor, 20000);
+    expect(debt.paidAmountMinor, 10000);
+    expect(debt.remainingAmountMinor, 10000);
+    expect(debt.repaymentProgress, 0.5);
+    expect(debt.isSettled, false);
+
+    // Overpayment test: attempt to pay 300.00 when remaining is 100.00 -> should clamp and settle
+    await viewModel.recordPayment(debt: debt, paymentMinor: 30000);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    debt = viewModel.debts.firstWhere((d) => d.id == debtId);
+    expect(debt.originalAmountMinor, 20000);
+    expect(debt.paidAmountMinor, 20000);
+    expect(debt.remainingAmountMinor, 0);
+    expect(debt.isSettled, true);
+  });
+
+  test('Party summary groups multiple transactions by party and calculates net position', () async {
+    // Lent 500 to Alice yesterday
+    await viewModel.addDebt(
+      personName: 'Alice',
+      type: DebtType.lent,
+      amountMinor: 50000,
+      currencyCode: 'USD',
+      note: 'Concert ticket',
+    );
+
+    // Lent 400 to Alice today
+    await viewModel.addDebt(
+      personName: 'Alice',
+      type: DebtType.lent,
+      amountMinor: 40000,
+      currencyCode: 'USD',
+      note: 'Dinner',
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    final parties = viewModel.partiesSummary;
+    expect(parties.any((p) => p.personName.toLowerCase() == 'alice'), true);
+
+    final alice = parties.firstWhere((p) => p.personName.toLowerCase() == 'alice');
+    expect(alice.debts.length, 2);
+    expect(alice.totalLentMinor, 90000);
+    expect(alice.totalBorrowedMinor, 0);
+    expect(alice.netBalanceMinor, 90000);
+    expect(alice.isNetReceivable, true);
+  });
+
   test('AnalyticsViewModel integrates debts, net position and parties correctly', () async {
     final analyticsVm = AnalyticsViewModel(financeStore: store);
 

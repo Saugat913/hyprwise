@@ -293,6 +293,33 @@ class GoalViewModel extends ChangeNotifier {
     return goalId;
   }
 
+  Future<void> updateGoal({
+    required int id,
+    required String name,
+    required int targetAmountMinor,
+    DateTime? targetDate,
+    int? accountId,
+    GoalPriority priority = GoalPriority.normal,
+    String? note,
+  }) async {
+    await goalRepo.update(
+      id,
+      name: name,
+      targetAmountMinor: targetAmountMinor,
+      currencyCode: baseCurrency,
+      targetDate: targetDate,
+      accountId: accountId,
+      priority: priority,
+      note: note,
+    );
+    notifyListeners();
+  }
+
+  Future<void> deleteGoal(int id) async {
+    await goalRepo.delete(id);
+    notifyListeners();
+  }
+
   /// Adds a specific savings amount to fund a goal, either via transfer from
   /// an existing account or direct deposit into the goal's savings account.
   Future<void> addSavingsToGoal({

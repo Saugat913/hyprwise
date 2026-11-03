@@ -285,6 +285,13 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: rootNavigatorKey,
       path: AppRoutes.addDebt,
       builder: (context, state) {
+        if (state.extra is Map<String, dynamic>) {
+          final map = state.extra as Map<String, dynamic>;
+          return AddDebtWizard(
+            initialType: map['type'] as DebtType? ?? DebtType.lent,
+            initialPersonName: map['personName'] as String?,
+          );
+        }
         final initialType = state.extra is DebtType ? state.extra as DebtType : DebtType.lent;
         return AddDebtWizard(initialType: initialType);
       },

@@ -365,6 +365,7 @@ class ApiClient {
   /// Send query to Gemini AI chat gateway with full MCP function calling support
   Future<AiChatResult?> chatWithAiDetailed(
     String message, {
+    List<Map<String, dynamic>>? messageHistory,
     String? systemInstruction,
     List<Map<String, dynamic>>? tools,
     dynamic context,
@@ -376,19 +377,23 @@ class ApiClient {
       final host = await getBaseUrl();
       if (host == null) return null;
 
+      final messagesPayload = messageHistory != null && messageHistory.isNotEmpty
+          ? messageHistory
+          : [
+              {
+                'role': 'user',
+                'content': message,
+                if (imageBase64 != null) 'imageBase64': imageBase64,
+                if (imageMimeType != null) 'imageMimeType': imageMimeType,
+              }
+            ];
+
       final res = await http
           .post(
             Uri.parse('$host/api/ai/chat'),
             headers: _headers,
             body: jsonEncode({
-              'messages': [
-                {
-                  'role': 'user',
-                  'content': message,
-                  if (imageBase64 != null) 'imageBase64': imageBase64,
-                  if (imageMimeType != null) 'imageMimeType': imageMimeType,
-                }
-              ],
+              'messages': messagesPayload,
               if (systemInstruction != null) 'systemInstruction': systemInstruction,
               if (tools != null) 'tools': tools,
               if (context != null) 'context': context,

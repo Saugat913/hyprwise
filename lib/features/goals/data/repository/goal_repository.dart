@@ -102,6 +102,10 @@ class GoalRepository {
   Future<void> deleteContribution(int id) =>
       (_db.delete(_db.goalContributions)..where((c) => c.id.equals(id))).go();
 
+  Future<void> delete(int id) async {
+    await (_db.delete(_db.goals)..where((g) => g.id.equals(id))).go();
+  }
+
   void _validate(String name, int targetAmountMinor) {
     if (name.trim().isEmpty) throw ArgumentError('Name is required.');
     if (targetAmountMinor <= 0) {

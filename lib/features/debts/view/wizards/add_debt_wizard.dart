@@ -15,9 +15,14 @@ import 'package:finance_tracker/features/subscription/data/subscription_service.
 import 'package:finance_tracker/core/network/api_client.dart';
 
 class AddDebtWizard extends StatefulWidget {
-  const AddDebtWizard({super.key, this.initialType = DebtType.lent});
+  const AddDebtWizard({
+    super.key,
+    this.initialType = DebtType.lent,
+    this.initialPersonName,
+  });
 
   final DebtType initialType;
+  final String? initialPersonName;
 
   @override
   State<AddDebtWizard> createState() => _AddDebtWizardState();
@@ -43,6 +48,9 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
   void initState() {
     super.initState();
     _type = widget.initialType;
+    if (widget.initialPersonName != null && widget.initialPersonName!.trim().isNotEmpty) {
+      _partyController.text = widget.initialPersonName!.trim();
+    }
   }
 
   @override

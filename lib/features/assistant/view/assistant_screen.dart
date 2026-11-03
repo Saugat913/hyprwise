@@ -250,105 +250,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
             final isPro = subService.isPro;
             return Scaffold(
               appBar: AppTopBar(
-                titleWidget: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: scheme.primary.withValues(alpha: 0.25),
-                          width: 1.2,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(6),
-                      child: SvgPicture.asset(
-                        isDark
-                            ? 'assets/brandings/hyprwise_logo_white.svg'
-                            : 'assets/brandings/hyprwise_logo.svg',
-                      ),
-                    ),
-                    const SizedBox(width: AppSpace.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Hyprwise AI',
-                                style: text.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 1.5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isPro
-                                      ? colors.brand.withValues(alpha: 0.15)
-                                      : scheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  isPro ? 'PRO' : 'FREE',
-                                  style: text.labelSmall?.copyWith(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: isPro
-                                        ? colors.brand
-                                        : scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            isPro
-                                ? tr.unlimitedAiPro
-                                : (_viewModel.remainingFreeQueries > 0
-                                    ? tr.t(
-                                        '${_viewModel.remainingFreeQueries} free queries left today',
-                                        ne: 'आज ${_viewModel.remainingFreeQueries} प्रश्न बाँकी',
-                                        hi: 'आज ${_viewModel.remainingFreeQueries} प्रश्न शेष',
-                                        es: '${_viewModel.remainingFreeQueries} consultas gratis hoy',
-                                        fr: '${_viewModel.remainingFreeQueries} requêtes gratuites aujourd\'hui',
-                                        de: '${_viewModel.remainingFreeQueries} kostenlose Anfragen heute',
-                                        ja: '本日残り${_viewModel.remainingFreeQueries}回無料',
-                                        zh: '今日剩余 ${_viewModel.remainingFreeQueries} 次免费提问',
-                                        it: '${_viewModel.remainingFreeQueries} richieste gratuite oggi',
-                                      )
-                                    : tr.t(
-                                        'Daily limit reached · Upgrade to Pro',
-                                        ne: 'दैनिक सीमा सकियो · प्रो मा जानुहोस्',
-                                        hi: 'दैनिक सीमा समाप्त · प्रो लें',
-                                        es: 'Límite alcanzado · Mejora a Pro',
-                                        fr: 'Limite atteinte · Passer à Pro',
-                                        de: 'Limit erreicht · Auf Pro upgraden',
-                                        ja: '上限到達 · Proへアップグレード',
-                                        zh: '已达上限 · 升级到专业版',
-                                        it: 'Limite raggiunto · Passa a Pro',
-                                      )),
-                            style: text.labelSmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              fontSize: 11,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                title: '',
                 actions: [
                   if (!isPro)
                     IconButton(
@@ -362,11 +264,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
                             featureHighlight: 'ai',
                           ),
                     ),
-                  TopBarAction(
-                    HugeIcons.strokeRoundedCamera01,
-                    tooltip: tr.scanBillTooltip,
-                    onPressed: () => _pickBillImage(context),
-                  ),
                   TopBarAction(
                     HugeIcons.strokeRoundedDelete02,
                     tooltip: tr.t(

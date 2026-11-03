@@ -126,6 +126,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                         () => AnalyticsPdfService.showPdfExportSheet(
                           context,
                           viewModel,
+                          activeTabIndex: _tabs.index,
                         ),
                   ),
                 ),
@@ -260,17 +261,23 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                     crossAxisAlignment: CrossAxisAlignment.baseline,
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
-                                      Text(
-                                        MoneyFormatter.format(
-                                          viewModel.netMinor,
-                                          viewModel.baseCurrency,
-                                          signed: true,
-                                        ),
-                                        style: text.displaySmall?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: viewModel.netMinor >= 0
-                                              ? colors.income
-                                              : colors.expense,
+                                      Flexible(
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            MoneyFormatter.format(
+                                              viewModel.netMinor,
+                                              viewModel.baseCurrency,
+                                              signed: true,
+                                            ),
+                                            style: text.displaySmall?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: viewModel.netMinor >= 0
+                                                  ? colors.income
+                                                  : colors.expense,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: AppSpace.xs),
@@ -1363,13 +1370,19 @@ class _DualBarChartState extends State<_DualBarChart> {
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        '+${MoneyFormatter.format(income.round(), widget.currency)}',
-                        style: text.labelSmall?.copyWith(
-                          color: colors.income,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'RedditMono',
-                          fontSize: 11,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '+${MoneyFormatter.format(income.round(), widget.currency)}',
+                            style: text.labelSmall?.copyWith(
+                              color: colors.income,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'RedditMono',
+                              fontSize: 11,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -1409,13 +1422,19 @@ class _DualBarChartState extends State<_DualBarChart> {
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        '-${MoneyFormatter.format(expense.round(), widget.currency)}',
-                        style: text.labelSmall?.copyWith(
-                          color: colors.expense,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'RedditMono',
-                          fontSize: 11,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '-${MoneyFormatter.format(expense.round(), widget.currency)}',
+                            style: text.labelSmall?.copyWith(
+                              color: colors.expense,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'RedditMono',
+                              fontSize: 11,
+                            ),
+                          ),
                         ),
                       ),
                     ],

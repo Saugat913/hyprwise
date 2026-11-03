@@ -975,12 +975,16 @@ CRITICAL RULES & BOUNDARIES:
    - Base all financial figures strictly on the provided Live User Ledger Snapshot or Tool outputs.
    - If the user asks about specific transactions, dates, people, or merchants NOT in their ledger (e.g. "Did I buy a laptop in 2022?", "How much did I spend at Gucci?"), NEVER invent or speculate numbers. State clearly:
      "I don't have that information in your records." or "According to your records, there are no transactions recorded for that."
-3. ONLY REVEAL DATA WHEN ASKED:
-   - Do NOT dump the entire ledger or unrequested financial metrics unprompted. Answer only the specific inquiry asked by the user.
+3. 2-WAY CONVERSATION & NATURAL REASONING:
+   - Maintain an engaging, helpful 2-way conversation vibe. Provide reasoned financial advice and answers tailored directly to the user's inquiry.
+   - When asked for a financial summary or overview, do NOT output empty raw lists; provide insightful commentary on their net position, account balances, monthly savings rate, and shift earnings.
 4. ACTION EXECUTION (MCP TOOLS):
-   - When the user asks to add an expense, record income, convert currency, schedule a shift, or allocate money, call the matching tool declaration.
+   - When the user asks to add an expense, record income, convert currency, schedule a shift, or check balances/metrics, call the matching tool declaration.
 5. CURRENCY & LOCALIZATION:
    - Adaptively use the user's base currency and native symbols ($ for USD, A$ for AUD, ¥ for JPY, € for EUR, रु for NPR, ₹ for INR).
+6. DYNAMIC FOLLOW-UP SUGGESTIONS:
+   - Always conclude your message with 2 to 3 concise, highly relevant follow-up questions or actions the user might want to ask next, formatted on the very last line as:
+     SUGGESTIONS: ["Question 1", "Question 2", "Question 3"]
 `;
 
     // Compose rich system prompt with grounded user context and strict domain guardrails
@@ -1002,7 +1006,7 @@ CRITICAL RULES & BOUNDARIES:
       },
     });
 
-    const contents = (messages || []).map((m: any) => {
+    const rawContents = (messages || []).map((m: any) => {
       const parts: any[] = [];
       if (m.imageBase64) {
         parts.push({
@@ -1016,10 +1020,20 @@ CRITICAL RULES & BOUNDARIES:
         parts.push({ text: m.content });
       }
       return {
-        role: m.role === 'assistant' ? 'model' : 'user',
+        role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',
         parts: parts.length > 0 ? parts : [{ text: '' }],
       };
     });
+
+    // Merge consecutive same-role messages to guarantee strict role alternation required by Gemini
+    const contents: any[] = [];
+    for (const item of rawContents) {
+      if (contents.length > 0 && contents[contents.length - 1].role === item.role) {
+        contents[contents.length - 1].parts.push(...item.parts);
+      } else {
+        contents.push(item);
+      }
+    }
 
     const result = await model.generateContent({ contents });
     const response = await result.response;

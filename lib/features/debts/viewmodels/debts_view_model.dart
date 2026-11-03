@@ -76,6 +76,52 @@ class DebtsViewModel extends ChangeNotifier {
     return lent - borrowed;
   }
 
+  /// Aggregated party summary grouped by person/counterparty
+  List<DebtPartySummary> get partiesSummary {
+    final Map<String, List<Debt>> grouped = {};
+    for (final debt in financeStore.debts) {
+      final key = debt.personName.trim().toLowerCase();
+      if (key.isEmpty) continue;
+      grouped.putIfAbsent(key, () => []).add(debt);
+    }
+
+    final list = <DebtPartySummary>[];
+    for (final entry in grouped.entries) {
+      final debts = entry.value;
+      final displayName = debts.first.personName.trim();
+      int lent = 0;
+      int borrowed = 0;
+      for (final d in debts) {
+        if (!d.isSettled) {
+          if (d.type == DebtType.lent.value) {
+            lent += d.amountMinor;
+          } else {
+            borrowed += d.amountMinor;
+          }
+        }
+      }
+      list.add(
+        DebtPartySummary(
+          personName: displayName,
+          debts: debts..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+          totalLentMinor: lent,
+          totalBorrowedMinor: borrowed,
+          currencyCode: debts.first.currencyCode,
+        ),
+      );
+    }
+
+    // Sort: Active parties with non-zero balance first (highest absolute net first), then settled
+    list.sort((a, b) {
+      if (!a.isSettled && b.isSettled) return -1;
+      if (a.isSettled && !b.isSettled) return 1;
+      final diff = b.netBalanceMinor.abs().compareTo(a.netBalanceMinor.abs());
+      if (diff != 0) return diff;
+      return a.personName.toLowerCase().compareTo(b.personName.toLowerCase());
+    });
+    return list;
+  }
+
   Future<int> addDebt({
     required String personName,
     required DebtType type,
@@ -158,8 +204,16 @@ class DebtsViewModel extends ChangeNotifier {
   }) async {
     if (paymentMinor <= 0) return;
 
-    final isFullSettlement = paymentMinor >= debt.amountMinor;
-    final remainingMinor = (debt.amountMinor - paymentMinor).clamp(0, debt.amountMinor);
+    final origMinor = debt.originalAmountMinor;
+    final currentPaid = debt.paidAmountMinor;
+    final remainingMinor = debt.remainingAmountMinor;
+
+    // Clamp payment so it never exceeds remaining balance!
+    // Prevents overcharging the user's cash flow and prevents invalid state.
+    final effectivePayment = paymentMinor.clamp(1, remainingMinor);
+    final newPaidMinor = currentPaid + effectivePayment;
+    final newRemainingMinor = (origMinor - newPaidMinor).clamp(0, origMinor);
+    final isFullSettlement = newRemainingMinor <= 0;
 
     final effectiveAccountId = debt.accountId ?? financeStore.everydayAccount?.id;
 
@@ -170,7 +224,7 @@ class DebtsViewModel extends ChangeNotifier {
         await transactionRepo.add(
           accountId: effectiveAccountId,
           type: TransactionType.income,
-          amountMinor: paymentMinor,
+          amountMinor: effectivePayment,
           category: 'Debt Repayment',
           note: 'Repayment from ${debt.personName}',
           occurredAt: DateTime.now(),
@@ -180,7 +234,7 @@ class DebtsViewModel extends ChangeNotifier {
         await transactionRepo.add(
           accountId: effectiveAccountId,
           type: TransactionType.expense,
-          amountMinor: paymentMinor,
+          amountMinor: effectivePayment,
           category: 'Debt Repayment',
           note: 'Repayment to ${debt.personName}',
           occurredAt: DateTime.now(),
@@ -188,25 +242,51 @@ class DebtsViewModel extends ChangeNotifier {
       }
     }
 
-    if (isFullSettlement) {
-      await debtRepo.settle(debt.id);
-    } else {
-      final nowFormatted = DateFormat('MMM d').format(DateTime.now());
-      final paymentLog = 'Paid ${paymentMinor / 100} on $nowFormatted';
-      final updatedNote = debt.note != null && debt.note!.isNotEmpty
-          ? '${debt.note} · $paymentLog'
-          : paymentLog;
+    final nowFormatted = DateFormat('MMM d').format(DateTime.now());
+    final paymentLog = 'Paid ${(effectivePayment / 100).toStringAsFixed(2)} on $nowFormatted';
+    final updatedNote = DebtPaymentDetails.formatNoteWithMetadata(
+      existingNote: debt.cleanNote,
+      originalAmountMinor: origMinor,
+      paidAmountMinor: newPaidMinor,
+      logText: paymentLog,
+    );
 
+    if (isFullSettlement) {
       await debtRepo.update(
         debt.id,
         personName: debt.personName,
         type: DebtType.fromValue(debt.type),
-        amountMinor: remainingMinor,
+        amountMinor: origMinor,
         currencyCode: debt.currencyCode,
         dueDate: debt.dueDate != null ? DateTime.fromMillisecondsSinceEpoch(debt.dueDate!) : null,
         note: updatedNote,
         accountId: debt.accountId,
       );
+      await debtRepo.settle(debt.id);
+      ShiftNotificationService.instance.cancelNotification(30000 + (debt.id % 50000));
+    } else {
+      await debtRepo.update(
+        debt.id,
+        personName: debt.personName,
+        type: DebtType.fromValue(debt.type),
+        amountMinor: newRemainingMinor,
+        currencyCode: debt.currencyCode,
+        dueDate: debt.dueDate != null ? DateTime.fromMillisecondsSinceEpoch(debt.dueDate!) : null,
+        note: updatedNote,
+        accountId: debt.accountId,
+      );
+    }
+  }
+
+  /// Settles all active debts with a specific party in one go
+  Future<void> settleParty(String personName, {bool linkCashFlow = true}) async {
+    final partyDebts = financeStore.debts.where(
+      (d) =>
+          d.personName.trim().toLowerCase() == personName.trim().toLowerCase() &&
+          !d.isSettled,
+    ).toList();
+    for (final debt in partyDebts) {
+      await settleDebt(debt.id, linkCashFlow: linkCashFlow);
     }
   }
 

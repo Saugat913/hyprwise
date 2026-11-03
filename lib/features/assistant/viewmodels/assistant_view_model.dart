@@ -718,54 +718,6 @@ Respond ONLY with a JSON object in this exact format:
       return true;
     }
 
-    // 7. Specific category / merchant spending query (e.g. "how much did I spend at Gucci", "spending on groceries")
-    final spendRegex = RegExp(
-      r'\b(spend on|spent on|spent at|spend at|how much.*(?:spent|spend|for))\b',
-    );
-    if (spendRegex.hasMatch(lower)) {
-      final localAnswer = financeStore.ask(text);
-      if (localAnswer.headline.isNotEmpty &&
-          localAnswer.headline != 'Here is where you stand') {
-        _messages.add(
-          AssistantMessage(
-            isUser: false,
-            headline: localAnswer.headline,
-            text: localAnswer.body,
-            explanation: localAnswer.explanation,
-            suggestions: localAnswer.suggestions,
-          ),
-        );
-        notifyListeners();
-        return true;
-      }
-    }
-
-    // 7.1 Financial summary / overview query (instant verified on-device reply)
-    final summaryRegex = RegExp(
-      r'\b(financial summary|summary|overview|where do i stand|how am i doing|financial status|status|my finances|net worth|position)\b',
-    );
-    final isSummaryQuery = summaryRegex.hasMatch(lower) ||
-        RegExp(r'(आर्थिक|विवरण|सारांश|हिसाब)').hasMatch(lower);
-    if (isSummaryQuery) {
-      final localAnswer = financeStore.ask(text);
-      if (localAnswer.headline.isNotEmpty) {
-        _messages.add(
-          AssistantMessage(
-            isUser: false,
-            headline: localAnswer.headline,
-            text: localAnswer.body,
-            explanation: localAnswer.explanation,
-            suggestions: [
-              ...localAnswer.suggestions,
-              ...localAnswer.followUps,
-            ],
-          ),
-        );
-        notifyListeners();
-        return true;
-      }
-    }
-
     // 8. Restrict unknown / out-of-scope non-financial queries locally
     final isFinancialOrAction = RegExp(
       r'\b(money|balance|account|save|saving|savings|goal|goals|spend|spent|spending|expense|expenses|income|cash|shift|shifts|job|jobs|debt|debts|owe|owes|lent|borrow|borrowed|loan|loans|afford|buy|purchase|convert|currency|wage|wages|pay|rate|rates|cost|budget|bill|bills|wallet|groceries|dining|food|transport|fuel|financial|finance|finances|summary|overview|status|report|net|worth|position|earning|earnings|worked|hours)\b',
@@ -839,6 +791,8 @@ Respond ONLY with a JSON object in this exact format:
     } else {
       // 5. Try Server-side Gemini AI Gateway with personalized financial context & MCP tools
       AiChatResult? serverAiResponse;
+      late final String systemPrompt;
+      late final List<Map<String, dynamic>> history;
       try {
         final debts = financeStore.debts.where((d) => !d.isSettled).toList();
         final debtsSummary =
@@ -948,26 +902,29 @@ Respond ONLY with a JSON object in this exact format:
                     .join(', ')
                 : 'None';
 
-        final systemPrompt = '''
-You are Hyprwise, the personal finance, budgeting, and shift management assistant for this user.
+        systemPrompt = '''
+You are Hyprwise, the personal finance, budgeting, and shift wage intelligence assistant for this user.
 
 CRITICAL RULES & GUARDRAILS:
 1. RESTRICT TO DOMAIN & UNKNOWN INFORMATION:
    - You MUST ONLY answer questions regarding the user's financial records, accounts, work shifts, debts, goals, and personal money management.
    - If the user asks ANY question outside of this scope (e.g. world history, science, celebrities, coding, sports, weather, politics, general trivia, medical advice, or questions unrelated to Hyprwise), you MUST decline and state:
      "I don't know that. I am Hyprwise, your personal finance and shift management assistant. I only have access to your personal financial records, accounts, and shift planner."
-   - If the user asks about specific financial facts, transactions, dates, people, or merchants NOT present in the provided ledger (e.g. "Did I buy shoes in 2022?", "How much did I spend at Gucci?"), DO NOT speculate, invent, or guess numbers. State clearly:
+   - If the user asks about specific financial facts, transactions, dates, people, or merchants NOT present in the provided ledger or tools (e.g. "Did I buy shoes in 2022?", "How much did I spend at Gucci?"), DO NOT speculate, invent, or guess numbers. State clearly:
      "I don't have that information in your records." or "According to your records, there are no transactions recorded for that."
-2. INJECTED APP DATA:
-   - The verified live ledger snapshot is provided below.
-   - ONLY reveal data when the user specifically asks for it. Do NOT dump the entire ledger or unrequested financial metrics unprompted.
-   - When the user asks for a financial summary, overview, status, or how they are doing, provide a structured, polite breakdown of their net position, account balances, month-to-date spending, debts, and shifts from the live ledger below.
-3. ACTIONS & MCP:
-   - When the user asks to add an expense, record income, convert currency, schedule a shift, or allocate savings to a goal, call the matching tool declaration.
+2. 2-WAY CONVERSATION & EMPATHETIC REASONING:
+   - Maintain a natural, engaging 2-way conversation vibe. Provide direct, helpful, and empathetic reasoning tailored specifically to the user's question and numbers.
+   - For financial summaries, do NOT dump unformatted raw records; explain what their numbers mean for their financial health conversationally.
+3. ACTIONS & MCP TOOLS:
+   - When the user asks to add an expense, record income, convert currency, schedule a shift, or check balances/cash flow, call the matching tool declaration.
 4. CURRENCY, LANGUAGE & FORMATTING:
    - Adaptively use the user's base currency (${financeStore.baseCurrency}) and appropriate native symbols (\$ for USD, A\$ for AUD, ¥ for JPY, € for EUR, रु for NPR, ₹ for INR).
    - Active app locale code: "${AppStrings.current().localeCode}". Respond in the user's selected language (e.g., if locale is "ne", reply in natural Nepali using Devanagari script).
- 
+5. DYNAMIC FOLLOW-UP SUGGESTIONS:
+   - Always conclude your response with 2 to 3 concise, highly relevant follow-up questions or actions the user might want to tap next.
+   - Format them on the very last line as:
+     SUGGESTIONS: ["Question 1", "Question 2", "Question 3"]
+
 User Financial Snapshot (Live On-Device Ledger):
 - Current Date: ${now.toIso8601String().substring(0, 10)}
 - Base Currency: ${financeStore.baseCurrency}
@@ -982,8 +939,23 @@ User Financial Snapshot (Live On-Device Ledger):
 - Recent Transactions (Last 15): $recentTxSummary
 ''';
 
+        history = <Map<String, dynamic>>[];
+        final past = _messages.length > 8 ? _messages.sublist(_messages.length - 8) : _messages;
+        for (final m in past) {
+          if (m.text.trim().isEmpty) continue;
+          history.add({
+            'role': m.isUser ? 'user' : 'assistant',
+            'content': m.text.trim(),
+          });
+        }
+        history.add({
+          'role': 'user',
+          'content': text,
+        });
+
         serverAiResponse = await ApiClient.instance.chatWithAiDetailed(
           text,
+          messageHistory: history,
           systemInstruction: systemPrompt,
           tools: mcpTools.declarations,
           quotaAlreadyConsumed: quotaAlreadyConsumed,
@@ -1007,6 +979,61 @@ User Financial Snapshot (Live On-Device Ledger):
         if (serverAiResponse.functionCalls.isNotEmpty) {
           for (final call in serverAiResponse.functionCalls) {
             final toolResult = await mcpTools.execute(call.name, call.args);
+            int? createdTxId;
+            if (call.name == 'record_transaction') {
+              createdTxId = toolResult['transactionId'] as int?;
+            }
+
+            // Ask Gemini to synthesize conversational reasoning with the tool execution output
+            try {
+              final toolFollowUp =
+                  'Tool "${call.name}" executed with result: ${jsonEncode(toolResult)}. Provide your direct answer and conversational financial reasoning to the user\'s inquiry: "$text" based on this data.';
+              final followUpRes = await ApiClient.instance.chatWithAiDetailed(
+                toolFollowUp,
+                messageHistory: [
+                  ...history,
+                  {'role': 'assistant', 'content': 'Executed tool: ${call.name}'},
+                  {'role': 'user', 'content': toolFollowUp},
+                ],
+                systemInstruction: systemPrompt,
+                quotaAlreadyConsumed: true,
+              );
+
+              if (followUpRes != null &&
+                  followUpRes.content != null &&
+                  followUpRes.content!.trim().isNotEmpty) {
+                final parsed = _extractSuggestions(followUpRes.content!);
+                _messages.add(
+                  AssistantMessage(
+                    isUser: false,
+                    headline: 'Hypr AI',
+                    text: parsed.text,
+                    isConfirmed: createdTxId != null,
+                    createdTransactionId: createdTxId,
+                    confirmedSummary: createdTxId != null
+                        ? (toolResult['message'] as String? ?? 'Transaction recorded.')
+                        : null,
+                    suggestions: parsed.suggestions.isNotEmpty
+                        ? parsed.suggestions
+                        : (createdTxId != null
+                            ? const [
+                                'Undo this transaction',
+                                'Check balances',
+                                'How much did I spend this month?',
+                              ]
+                            : const [
+                                'Tell me more',
+                                'Check balances',
+                                'Show upcoming shifts',
+                              ]),
+                  ),
+                );
+                notifyListeners();
+                return true;
+              }
+            } catch (_) {}
+
+            // Fallback display if follow-up synthesis failed
             if (call.name == 'record_transaction') {
               final txId = toolResult['transactionId'] as int?;
               final msg =
@@ -1102,12 +1129,20 @@ User Financial Snapshot (Live On-Device Ledger):
 
         if (serverAiResponse.content != null &&
             serverAiResponse.content!.trim().isNotEmpty) {
+          final parsed = _extractSuggestions(serverAiResponse.content!);
           _messages.add(
             AssistantMessage(
               isUser: false,
-              text: serverAiResponse.content!,
+              text: parsed.text,
               headline: 'Hypr AI',
               explanation: 'Powered by Hypr AI engine.',
+              suggestions: parsed.suggestions.isNotEmpty
+                  ? parsed.suggestions
+                  : const [
+                      'How much can I spend today?',
+                      'When is my next shift?',
+                      'Show my cash flow',
+                    ],
             ),
           );
           notifyListeners();
@@ -1188,5 +1223,23 @@ User Financial Snapshot (Live On-Device Ledger):
     }
 
     notifyListeners();
+  }
+
+  ({String text, List<String> suggestions}) _extractSuggestions(String raw) {
+    var clean = raw;
+    final List<String> suggestions = [];
+    final sugRegex = RegExp(r'SUGGESTIONS:\s*(\[.*?\])', dotAll: true);
+    final match = sugRegex.firstMatch(clean);
+    if (match != null) {
+      try {
+        final list = jsonDecode(match.group(1)!) as List<dynamic>;
+        for (final item in list) {
+          final s = item.toString().trim();
+          if (s.isNotEmpty) suggestions.add(s);
+        }
+        clean = clean.replaceRange(match.start, clean.length, '').trim();
+      } catch (_) {}
+    }
+    return (text: clean, suggestions: suggestions);
   }
 }

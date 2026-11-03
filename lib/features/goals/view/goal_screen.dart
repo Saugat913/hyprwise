@@ -14,6 +14,7 @@ import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/features/goals/data/model/goals.dart';
 import 'package:finance_tracker/features/goals/viewmodels/goal_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 
@@ -130,11 +131,36 @@ class GoalScreen extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              gf.goal.name,
-                              style: text.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    gf.goal.name,
+                                    style: text.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpace.xs),
+                                Material(
+                                  color: Colors.transparent,
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                                    onTap: () => _showEditGoalSheet(context, viewModel, gf.goal),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4.0),
+                                      child: AppIcon(
+                                        HugeIcons.strokeRoundedPencilEdit02,
+                                        size: 16,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           if (gf.goal.priority == 'high') ...[
@@ -742,6 +768,434 @@ class GoalScreen extends StatelessWidget {
                       child: Text(tr.saveToGoal),
                     ),
                   ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditGoalSheet(
+    BuildContext context,
+    PlanViewModel viewModel,
+    Goal goal,
+  ) {
+    final nameController = TextEditingController(text: goal.name);
+    final targetController = TextEditingController(
+      text: (goal.targetAmountMinor / 100).toStringAsFixed(2),
+    );
+    final noteController = TextEditingController(text: goal.note ?? '');
+    DateTime? selectedDate = goal.targetDate != null
+        ? DateTime.fromMillisecondsSinceEpoch(goal.targetDate!)
+        : null;
+    var priority = goal.priority == 'high' ? GoalPriority.high : GoalPriority.normal;
+
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final tr = context.strings;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpace.page,
+                  AppSpace.lg,
+                  AppSpace.page,
+                  MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: scheme.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                            alignment: Alignment.center,
+                            child: AppIcon(
+                              HugeIcons.strokeRoundedPencilEdit02,
+                              size: 22,
+                              color: scheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpace.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tr.t(
+                                    'Edit Goal',
+                                    ne: 'लक्ष्य सम्पादन गर्नुहोस्',
+                                    es: 'Editar meta',
+                                    fr: 'Modifier l\'objectif',
+                                    de: 'Ziel bearbeiten',
+                                    ja: '目標を編集',
+                                    zh: '编辑目标',
+                                    it: 'Modifica obiettivo',
+                                  ),
+                                  style: text.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  tr.t(
+                                    'Update name, target amount, or timeline',
+                                    ne: 'नाम, लक्ष्य रकम वा समयसीमा परिवर्तन गर्नुहोस्',
+                                    es: 'Actualiza nombre, monto o plazo',
+                                    fr: 'Mettez à jour le nom, le montant ou l\'échéance',
+                                    de: 'Name, Zielbetrag oder Zeitplan aktualisieren',
+                                    ja: '名前、目標額、期限を更新',
+                                    zh: '更新名称、目标金额或期限',
+                                    it: 'Aggiorna nome, importo o scadenza',
+                                  ),
+                                  style: text.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.lg),
+
+                      UnderlineField(
+                        label: tr.t(
+                          'Goal Name',
+                          ne: 'लक्ष्यको नाम',
+                          es: 'Nombre de meta',
+                          fr: 'Nom de l\'objectif',
+                          de: 'Zielname',
+                          ja: '目標名',
+                          zh: '目标名称',
+                          it: 'Nome obiettivo',
+                        ),
+                        hint: tr.myGoal,
+                        controller: nameController,
+                        autofocus: false,
+                      ),
+                      const SizedBox(height: AppSpace.md),
+
+                      UnderlineField(
+                        label: tr.t(
+                          'Target Amount (${goal.currencyCode})',
+                          ne: 'लक्ष्य रकम (${goal.currencyCode})',
+                          es: 'Monto objetivo (${goal.currencyCode})',
+                          fr: 'Montant cible (${goal.currencyCode})',
+                          de: 'Zielbetrag (${goal.currencyCode})',
+                          ja: '目標金額 (${goal.currencyCode})',
+                          zh: '目标金额 (${goal.currencyCode})',
+                          it: 'Importo obiettivo (${goal.currencyCode})',
+                        ),
+                        hint: '1000.00',
+                        controller: targetController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.lg),
+
+                      Text(
+                        tr.t(
+                          'Target Date',
+                          ne: 'लक्ष्य मिति',
+                          es: 'Fecha objetivo',
+                          fr: 'Date cible',
+                          de: 'Zieldatum',
+                          ja: '目標期日',
+                          zh: '目标日期',
+                          it: 'Data obiettivo',
+                        ),
+                        style: text.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.sm),
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: ctx,
+                            initialDate: selectedDate ??
+                                DateTime.now().add(const Duration(days: 90)),
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 365),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 3650),
+                            ),
+                          );
+                          if (picked != null) {
+                            setState(() => selectedDate = picked);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpace.md,
+                            vertical: AppSpace.sm + 4,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: scheme.outlineVariant.withValues(
+                                alpha: 0.8,
+                              ),
+                            ),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: Row(
+                            children: [
+                              AppIcon(
+                                HugeIcons.strokeRoundedCalendar03,
+                                size: 18,
+                                color: scheme.primary,
+                              ),
+                              const SizedBox(width: AppSpace.sm),
+                              Expanded(
+                                child: Text(
+                                  selectedDate != null
+                                      ? '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, "0")}-${selectedDate!.day.toString().padLeft(2, "0")}'
+                                      : tr.t(
+                                          'No target date set',
+                                          ne: 'कुनै मिति तोकिएको छैन',
+                                        ),
+                                  style: text.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              if (selectedDate != null)
+                                IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () =>
+                                      setState(() => selectedDate = null),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.lg),
+
+                      Text(
+                        tr.t(
+                          'Priority',
+                          ne: 'प्राथमिकता',
+                          es: 'Prioridad',
+                          fr: 'Priorité',
+                          de: 'Priorität',
+                          ja: '優先度',
+                          zh: '优先级',
+                          it: 'Priorità',
+                        ),
+                        style: text.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.sm),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ChoiceChip(
+                              label: Center(
+                                child: Text(
+                                  tr.t('Normal', ne: 'सामान्य', es: 'Normal'),
+                                ),
+                              ),
+                              selected: priority == GoalPriority.normal,
+                              onSelected: (val) {
+                                if (val) {
+                                  setState(() => priority = GoalPriority.normal);
+                                }
+                              },
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpace.sm),
+                          Expanded(
+                            child: ChoiceChip(
+                              label: Center(
+                                child: Text(
+                                  tr.highPriority,
+                                  style: TextStyle(
+                                    color: priority == GoalPriority.high
+                                        ? const Color(0xFFB45309)
+                                        : null,
+                                    fontWeight: priority == GoalPriority.high
+                                        ? FontWeight.w700
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                              selected: priority == GoalPriority.high,
+                              selectedColor: const Color(0xFFFEF3C7),
+                              onSelected: (val) {
+                                if (val) {
+                                  setState(() => priority = GoalPriority.high);
+                                }
+                              },
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.xl),
+
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                        onPressed: () async {
+                          final name = nameController.text.trim();
+                          if (name.isEmpty) {
+                            showErrorToast(
+                              ctx,
+                              tr.t(
+                                'Please enter a goal name',
+                                ne: 'कृपया लक्ष्यको नाम प्रविष्ट गर्नुहोस्',
+                              ),
+                            );
+                            return;
+                          }
+                          final amt = double.tryParse(
+                            targetController.text.trim(),
+                          );
+                          if (amt == null || amt <= 0) {
+                            showErrorToast(ctx, tr.enterValidAmount);
+                            return;
+                          }
+                          final targetMinor = (amt * 100).round();
+                          await viewModel.updateGoal(
+                            id: goal.id,
+                            name: name,
+                            targetAmountMinor: targetMinor,
+                            targetDate: selectedDate,
+                            accountId: goal.accountId,
+                            priority: priority,
+                            note: noteController.text.trim().isNotEmpty
+                                ? noteController.text.trim()
+                                : goal.note,
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (context.mounted) {
+                            showToast(
+                              context,
+                              tr.t(
+                                'Goal updated successfully',
+                                ne: 'लक्ष्य सफलतापूर्वक अद्यावधिक गरियो',
+                                es: 'Meta actualizada',
+                                fr: 'Objectif mis à jour',
+                                de: 'Ziel aktualisiert',
+                                ja: '目標を更新しました',
+                                zh: '目标已更新',
+                                it: 'Obiettivo aggiornato',
+                              ),
+                            );
+                          }
+                        },
+                        child: Text(
+                          tr.t(
+                            'Save Changes',
+                            ne: 'परिवर्तनहरू सुरक्षित गर्नुहोस्',
+                            es: 'Guardar cambios',
+                            fr: 'Enregistrer les modifications',
+                            de: 'Änderungen speichern',
+                            ja: '変更を保存',
+                            zh: '保存更改',
+                            it: 'Salva modifiche',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.sm),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: scheme.error,
+                          side: BorderSide(
+                            color: scheme.error.withValues(alpha: 0.5),
+                          ),
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: ctx,
+                            builder: (dCtx) => AlertDialog(
+                              title: Text(
+                                tr.t('Delete Goal?', ne: 'लक्ष्य मेटाउने?'),
+                              ),
+                              content: Text(
+                                tr.t(
+                                  'Are you sure you want to delete "${goal.name}"? This action cannot be undone.',
+                                  ne:
+                                      'के तपाईं "${goal.name}" मेटाउन निश्चित हुनुहुन्छ?',
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dCtx, false),
+                                  child: Text(tr.cancel),
+                                ),
+                                FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: scheme.error,
+                                  ),
+                                  onPressed: () => Navigator.pop(dCtx, true),
+                                  child: Text(tr.delete),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await viewModel.deleteGoal(goal.id);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              showToast(
+                                context,
+                                tr.t('Goal deleted', ne: 'लक्ष्य मेटाइयो'),
+                              );
+                            }
+                          }
+                        },
+                        child: Text(
+                          tr.t(
+                            'Delete Goal',
+                            ne: 'लक्ष्य मेटाउनुहोस्',
+                            es: 'Eliminar meta',
+                            fr: 'Supprimer l\'objectif',
+                            de: 'Ziel löschen',
+                            ja: '目標を削除',
+                            zh: '删除目标',
+                            it: 'Elimina obiettivo',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
