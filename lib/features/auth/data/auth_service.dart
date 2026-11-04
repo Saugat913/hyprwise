@@ -36,6 +36,8 @@ class AuthService extends ChangeNotifier {
   static const _userKey = 'auth_user_profile';
   static const _tokenKey = 'auth_api_token';
   static const _deviceGuestIdKey = 'auth_device_guest_id';
+  static const _appleCachedNameKey = 'auth_apple_cached_name';
+  static const _appleCachedEmailKey = 'auth_apple_cached_email';
 
   bool get _hasFirebase => Firebase.apps.isNotEmpty;
 
@@ -256,14 +258,32 @@ class AuthService extends ChangeNotifier {
       if (_hasFirebase) {
         try {
           final appleProvider = AppleAuthProvider();
+          appleProvider.addScope('email');
+          appleProvider.addScope('name');
           final userCredential = await FirebaseAuth.instance.signInWithProvider(
             appleProvider,
           );
           final fbUser = userCredential.user;
           if (fbUser != null) {
             userId = fbUser.uid;
-            userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
-            userName = fbUser.displayName ?? userName;
+            if (fbUser.email != null && fbUser.email!.isNotEmpty) {
+              userEmail = fbUser.email!.trim().toLowerCase();
+              await _storage.write(key: _appleCachedEmailKey, value: userEmail);
+            } else {
+              final cachedEmail = await _storage.read(key: _appleCachedEmailKey);
+              if (cachedEmail != null && cachedEmail.isNotEmpty) {
+                userEmail = cachedEmail;
+              }
+            }
+            if (fbUser.displayName != null && fbUser.displayName!.isNotEmpty) {
+              userName = fbUser.displayName!;
+              await _storage.write(key: _appleCachedNameKey, value: userName);
+            } else {
+              final cachedName = await _storage.read(key: _appleCachedNameKey);
+              if (cachedName != null && cachedName.isNotEmpty) {
+                userName = cachedName;
+              }
+            }
             idToken = await fbUser.getIdToken();
           }
         } catch (e) {

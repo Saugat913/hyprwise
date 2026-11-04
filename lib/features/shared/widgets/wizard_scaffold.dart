@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/shared/widgets/app_button.dart';
@@ -60,7 +62,11 @@ class WizardScaffold extends StatelessWidget {
     if (onClose != null) {
       onClose!();
     } else if (context.mounted) {
-      Navigator.of(context).pop();
+      if (context.canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        context.go(AppRoutes.home);
+      }
     }
   }
 

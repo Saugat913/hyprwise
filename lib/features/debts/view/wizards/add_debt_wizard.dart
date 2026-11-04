@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
@@ -190,7 +191,7 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
             it: _type == DebtType.lent ? 'Prestito salvato' : 'Debito salvato',
           ),
         );
-        context.pop();
+        _safeClose();
       }
     } catch (e) {
       if (mounted) {
@@ -262,6 +263,14 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
     );
   }
 
+  void _safeClose() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.home);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = getIt<DebtsViewModel>();
@@ -272,26 +281,32 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
 
     final existingParties = viewModel.existingParties;
 
-    return switch (_step) {
-      0 => WizardScaffold(
-        step: 0,
-        steps: 2,
-        title: tr.howMuchWasIt,
-        subtitle: tr.t(
-          'Select whether you lent or borrowed this amount.',
-          ne: 'तपाईंले सापटी दिनुभएको वा लिनुभएको छान्नुहोस्।',
-          es: 'Selecciona si prestaste o tomaste prestado este importe.',
-          fr: 'Indiquez si vous avez prêté ou emprunté cette somme.',
-          de: 'Wählen Sie, ob Sie geliehen oder geborgt haben.',
-          ja: '貸したのか借りたのかを選択してください。',
-          zh: '请选择该笔款项为借出或借入。',
-          it: 'Seleziona se hai prestato o preso in prestito.',
-        ),
-        confirmClose: _amountController.text.trim().isNotEmpty,
-        discardTitle: tr.discardThis,
-        primaryLabel: tr.next,
-        onPrimary: _amountController.text.trim().isEmpty ? null : _onNext,
-        onClose: () => context.pop(),
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        context.go(AppRoutes.home);
+      },
+      child: switch (_step) {
+        0 => WizardScaffold(
+          step: 0,
+          steps: 2,
+          title: tr.howMuchWasIt,
+          subtitle: tr.t(
+            'Select whether you lent or borrowed this amount.',
+            ne: 'तपाईंले सापटी दिनुभएको वा लिनुभएको छान्नुहोस्।',
+            es: 'Selecciona si prestaste o tomaste prestado este importe.',
+            fr: 'Indiquez si vous avez prêté ou emprunté cette somme.',
+            de: 'Wählen Sie, ob Sie geliehen oder geborgt haben.',
+            ja: '貸したのか借りたのかを選択してください。',
+            zh: '请选择该笔款项为借出或借入。',
+            it: 'Seleziona se hai prestato o preso in prestito.',
+          ),
+          confirmClose: _amountController.text.trim().isNotEmpty,
+          discardTitle: tr.discardThis,
+          primaryLabel: tr.next,
+          onPrimary: _amountController.text.trim().isEmpty ? null : _onNext,
+          onClose: _safeClose,
         child: Column(
           children: [
             SegmentedTabs<DebtType>(
@@ -368,7 +383,7 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
                 ),
         onPrimary:
             (_partyController.text.trim().isEmpty || _isSaving) ? null : _save,
-        onClose: () => context.pop(),
+        onClose: _safeClose,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -571,8 +586,9 @@ class _AddDebtWizardState extends State<AddDebtWizard> {
           ],
         ),
       ),
-    };
-  }
+    },
+  );
+}
 }
 
 class _CurrencyConverterSheet extends StatefulWidget {

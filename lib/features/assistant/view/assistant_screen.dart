@@ -172,10 +172,24 @@ class _AssistantScreenState extends State<AssistantScreen> {
       builder:
           (context, _) {
             final isPro = subService.isPro;
-            return Scaffold(
-              appBar: AppTopBar(
-                title: '',
-                actions: [
+            return PopScope(
+              canPop: context.canPop(),
+              onPopInvokedWithResult: (didPop, _) {
+                if (didPop) return;
+                context.go(AppRoutes.home);
+              },
+              child: Scaffold(
+                appBar: AppTopBar(
+                  title: '',
+                  showBackButton: true,
+                  onBack: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go(AppRoutes.home);
+                    }
+                  },
+                  actions: [
                   if (!isPro)
                     IconButton(
                       icon: const ProCrownBadge(isCompact: true),
@@ -875,8 +889,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 ],
               ),
             ),
-          );
-        },
+          ),
+        );
+      },
     );
   }
 }

@@ -456,7 +456,8 @@ class _ShiftRow extends StatelessWidget {
     final earnings = job != null ? ShiftEarnings.forShift(shift, job!) : null;
 
     final isCompleted = shift.status == ShiftStatus.completed.value;
-    final timeRangeStr = '${AppDate.timeOnly(start)}${end != null ? "–${AppDate.timeOnly(end)}" : ""}';
+    final isInProgress = shift.status == ShiftStatus.inProgress.value;
+    final timeRangeStr = '${AppDate.timeOnly(start)}${end != null ? " – ${AppDate.timeOnly(end)}" : ""}';
 
     final rateMinor = shift.rateOverrideMinor ?? job?.hourlyRateMinor;
     final rateStr = rateMinor != null
@@ -467,13 +468,25 @@ class _ShiftRow extends StatelessWidget {
         ? (earnings!.workedMinutes / 60.0)
         : (end != null ? (end.difference(start).inMinutes / 60.0) : (shift.durationMinutes / 60.0));
 
+    final earningsStr = earnings != null && earnings.earningsMinor > 0
+        ? MoneyFormatter.format(earnings.earningsMinor, job?.currencyCode ?? baseCurrency)
+        : null;
+    final durationStr = durationHours > 0
+        ? '${tr.localizeDigits(durationHours.toStringAsFixed(1))} ${tr.hrsUnit}'
+        : null;
+
     return InkWell(
       onTap: () => _showShiftActionsSheet(context, shift, job, viewModel),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpace.lg),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.page, vertical: AppSpace.md),
         child: Row(
           children: [
-            IconTile(HugeIcons.strokeRoundedClock01, size: 36),
+            IconTile(
+              isCompleted
+                  ? HugeIcons.strokeRoundedCheckmarkCircle02
+                  : (isInProgress ? HugeIcons.strokeRoundedPlay : HugeIcons.strokeRoundedClock01),
+              size: 40,
+            ),
             const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(
@@ -481,11 +494,15 @@ class _ShiftRow extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        job?.name ?? tr.shiftLabel,
-                        style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                      Flexible(
+                        child: Text(
+                          job?.name ?? tr.shiftLabel,
+                          style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      if (shift.status == ShiftStatus.inProgress.value) ...[
+                      if (isInProgress) ...[
                         const SizedBox(width: AppSpace.xs),
                         StatusChip(tr.activeBadge, tone: ChipTone.warning),
                       ] else if (isCompleted) ...[
@@ -494,10 +511,12 @@ class _ShiftRow extends StatelessWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
-                    '${AppDate.weekdayDay(start)} · $timeRangeStr${rateStr != null ? " · $rateStr" : ""}',
+                    '$timeRangeStr${rateStr != null ? " · $rateStr" : ""}',
                     style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -507,39 +526,54 @@ class _ShiftRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (durationHours > 0)
+                if (isCompleted) ...[
                   Text(
-                    '${tr.localizeDigits(durationHours.toStringAsFixed(1))} ${tr.hrsUnit}',
-                    style: text.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurface,
-                    ),
-                  )
-                else
-                  Text(
-                    timeRangeStr,
+                    earningsStr ?? durationStr ?? tr.done,
                     style: text.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: scheme.onSurface,
                     ),
                   ),
-                if (isCompleted) ...[
                   const SizedBox(height: 2),
                   Text(
-                    tr.done,
-                    style: const TextStyle(
-                      color: Color(0xFF16A34A),
+                    (earningsStr != null && durationStr != null) ? durationStr : tr.done,
+                    style: text.bodySmall?.copyWith(
+                      color: const Color(0xFF16A34A),
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
                   ),
-                ] else if (shift.status == ShiftStatus.inProgress.value) ...[
+                ] else if (isInProgress) ...[
+                  Text(
+                    earningsStr ?? durationStr ?? tr.liveBadge,
+                    style: text.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     tr.liveBadge,
                     style: const TextStyle(
                       color: Color(0xFFEAB308),
                       fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ] else ...[
+                  Text(
+                    durationStr ?? timeRangeStr,
+                    style: text.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    tr.scheduled,
+                    style: text.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                       fontSize: 12,
                     ),
                   ),

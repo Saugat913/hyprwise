@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
@@ -183,7 +184,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
             await viewModel.deleteTransaction(id);
           },
         );
-        context.pop();
+        _safeClose();
       }
     } catch (e) {
       if (mounted) {
@@ -242,6 +243,14 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
     );
   }
 
+  void _safeClose() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.home);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = getIt<MoneyViewModel>();
@@ -254,76 +263,82 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
 
     final merchants = TransactionCategories.merchantsFor(_categoryKey);
 
-    return switch (_step) {
-      0 => WizardScaffold(
-        step: 0,
-        steps: 2,
-        title: tr.howMuchWasIt,
-        subtitle: tr.t(
-          'Type the amount. Your keyboard will do the rest.',
-          ne: 'रकम प्रविष्ट गर्नुहोस्। किबोर्डले बाँकी काम गर्नेछ।',
-          es: 'Escribe la cantidad. El teclado hará el resto.',
-          fr: 'Saisissez le montant. Le clavier fera le reste.',
-          de: 'Betrag eingeben. Die Tastatur erledigt den Rest.',
-          ja: '金額を入力してください。',
-          zh: '输入金额，键盘将自动适配。',
-          it: 'Inserisci l\'importo. La tastiera farà il resto.',
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        context.go(AppRoutes.home);
+      },
+      child: switch (_step) {
+        0 => WizardScaffold(
+          step: 0,
+          steps: 2,
+          title: tr.howMuchWasIt,
+          subtitle: tr.t(
+            'Type the amount. Your keyboard will do the rest.',
+            ne: 'रकम प्रविष्ट गर्नुहोस्। किबोर्डले बाँकी काम गर्नेछ।',
+            es: 'Escribe la cantidad. El teclado hará el resto.',
+            fr: 'Saisissez le montant. Le clavier fera le reste.',
+            de: 'Betrag eingeben. Die Tastatur erledigt den Rest.',
+            ja: '金額を入力してください。',
+            zh: '输入金额，键盘将自动适配。',
+            it: 'Inserisci l\'importo. La tastiera farà il resto.',
+          ),
+          confirmClose: _amountController.text.trim().isNotEmpty,
+          discardTitle:
+              _type == TransactionType.expense
+                  ? tr.discardExpense
+                  : tr.discardIncome,
+          primaryLabel: tr.next,
+          onPrimary: _amountController.text.trim().isEmpty ? null : _onNext,
+          onClose: _safeClose,
+          child: Column(
+            children: [
+              SegmentedTabs<TransactionType>(
+                options: {
+                  TransactionType.expense: tr.expense,
+                  TransactionType.income: tr.income,
+                },
+                value: _type,
+                onChanged: (type) {
+                  setState(() {
+                    _type = type;
+                    _categoryKey =
+                        _type == TransactionType.expense
+                            ? 'eating_out'
+                            : 'shift_pay';
+                    final newMerchants = TransactionCategories.merchantsFor(
+                      _categoryKey,
+                    );
+                    _merchant =
+                        newMerchants.isNotEmpty ? newMerchants.first : null;
+                  });
+                },
+              ),
+              const SizedBox(height: AppSpace.xxl),
+              BigAmountField(
+                currencySymbol: currencySymbol,
+                controller: _amountController,
+                subtitle: _conversionNote,
+                onCurrencyTap: () => _openCurrencyConverter(context),
+                autofocus: true,
+                isRequired: true,
+                errorText: _amountError,
+                onChanged: (val) {
+                  if (_amountError != null) setState(() => _amountError = null);
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
         ),
-        confirmClose: _amountController.text.trim().isNotEmpty,
-        discardTitle:
-            _type == TransactionType.expense
-                ? tr.discardExpense
-                : tr.discardIncome,
-        primaryLabel: tr.next,
-        onPrimary: _amountController.text.trim().isEmpty ? null : _onNext,
-        onClose: () => context.pop(),
-        child: Column(
-          children: [
-            SegmentedTabs<TransactionType>(
-              options: {
-                TransactionType.expense: tr.expense,
-                TransactionType.income: tr.income,
-              },
-              value: _type,
-              onChanged: (type) {
-                setState(() {
-                  _type = type;
-                  _categoryKey =
-                      _type == TransactionType.expense
-                          ? 'eating_out'
-                          : 'shift_pay';
-                  final newMerchants = TransactionCategories.merchantsFor(
-                    _categoryKey,
-                  );
-                  _merchant =
-                      newMerchants.isNotEmpty ? newMerchants.first : null;
-                });
-              },
-            ),
-            const SizedBox(height: AppSpace.xxl),
-            BigAmountField(
-              currencySymbol: currencySymbol,
-              controller: _amountController,
-              subtitle: _conversionNote,
-              onCurrencyTap: () => _openCurrencyConverter(context),
-              autofocus: true,
-              isRequired: true,
-              errorText: _amountError,
-              onChanged: (val) {
-                if (_amountError != null) setState(() => _amountError = null);
-                setState(() {});
-              },
-            ),
-          ],
-        ),
-      ),
-      _ => WizardScaffold(
-        step: 1,
-        steps: 2,
-        title: tr.whatWasItFor,
-        subtitle: tr.pickCategoryAndSpent,
-        onBack: () => setState(() => _step = 0),
-        onClose: () => context.pop(),
+        _ => WizardScaffold(
+          step: 1,
+          steps: 2,
+          title: tr.whatWasItFor,
+          subtitle: tr.pickCategoryAndSpent,
+          onBack: () => setState(() => _step = 0),
+          onClose: _safeClose,
         primaryLabel:
             _isSaving
                 ? tr.saving
@@ -654,8 +669,9 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
           ],
         ),
       ),
-    };
-  }
+    },
+  );
+}
 
   void _promptNewCategory(BuildContext context) {
     final ctrl = TextEditingController();

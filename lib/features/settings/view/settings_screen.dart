@@ -608,6 +608,8 @@ class _AccountAuthCard extends StatelessWidget {
         final user = authService.currentUser;
         if (user != null) {
           final isAnonymous = authService.isGuest || user.provider == AuthProvider.guest;
+          final isApple = user.provider == AuthProvider.apple;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           final displayName = isAnonymous
               ? tr.t(
                   'Anonymous User',
@@ -620,10 +622,12 @@ class _AccountAuthCard extends StatelessWidget {
                   zh: '匿名用户',
                   it: 'Utente anonimo',
                 )
-              : (user.displayName.trim().isNotEmpty
+              : (user.displayName.trim().isNotEmpty && user.displayName.trim() != 'Apple User'
                   ? user.displayName.trim()
-                  : (user.email.contains('@') ? user.email.split('@').first : (user.email.isNotEmpty ? user.email : 'User')));
-          final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+                  : (isApple
+                      ? tr.t('Apple Account', ne: 'एप्पल खाता', hi: 'एप्पल खाता')
+                      : (user.email.contains('@') ? user.email.split('@').first : (user.email.isNotEmpty ? user.email : 'User'))));
+          final initial = isApple ? '' : (displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U');
           return AppCard(
             padding: const EdgeInsets.all(AppSpace.md),
             child: Column(
@@ -638,7 +642,9 @@ class _AccountAuthCard extends StatelessWidget {
                           radius: 22,
                           backgroundColor: isAnonymous
                               ? scheme.surfaceContainerHighest
-                              : scheme.primaryContainer,
+                              : (isApple
+                                  ? (isDark ? Colors.white : Colors.black)
+                                  : scheme.primaryContainer),
                           backgroundImage: (!isAnonymous && user.photoUrl != null && user.photoUrl!.isNotEmpty)
                               ? NetworkImage(user.photoUrl!)
                               : null,
@@ -648,16 +654,22 @@ class _AccountAuthCard extends StatelessWidget {
                                   size: 20,
                                   color: scheme.onSurfaceVariant,
                                 )
-                              : (user.photoUrl == null || user.photoUrl!.isEmpty)
-                                  ? Text(
-                                      initial,
-                                      style: TextStyle(
-                                        color: scheme.onPrimaryContainer,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
+                              : isApple
+                                  ? Icon(
+                                      Icons.apple,
+                                      size: 22,
+                                      color: isDark ? Colors.black : Colors.white,
                                     )
-                                  : null,
+                                  : (user.photoUrl == null || user.photoUrl!.isEmpty)
+                                      ? Text(
+                                          initial,
+                                          style: TextStyle(
+                                            color: scheme.onPrimaryContainer,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        )
+                                      : null,
                         ),
                         if (subService.isPro || subService.everSupported)
                           Positioned(
