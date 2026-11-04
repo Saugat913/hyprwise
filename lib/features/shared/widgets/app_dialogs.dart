@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -138,4 +140,24 @@ void showErrorToast(
     actionLabel: actionLabel,
     onAction: onAction,
   );
+}
+
+/// Runs [task] behind a blocking spinner so a tap never feels dead.
+/// The spinner is always dismissed, even if [task] throws.
+Future<T> showBusyWhile<T>(BuildContext context, Future<T> Function() task) async {
+  final navigator = Navigator.of(context, rootNavigator: true);
+  unawaited(showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    useRootNavigator: true,
+    builder: (_) => const PopScope(
+      canPop: false,
+      child: Center(child: CircularProgressIndicator()),
+    ),
+  ));
+  try {
+    return await task();
+  } finally {
+    if (navigator.canPop()) navigator.pop();
+  }
 }

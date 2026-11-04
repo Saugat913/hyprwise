@@ -113,7 +113,7 @@ class HomePlanningOverview extends StatelessWidget {
                     AppSpace.lg,
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     child: SizedBox(
                       height: 7,
                       child: Stack(

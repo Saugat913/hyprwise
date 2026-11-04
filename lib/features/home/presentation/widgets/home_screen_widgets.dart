@@ -100,7 +100,7 @@ class ShiftHomeScreenWidget extends StatelessWidget {
                         color: isOnBreak
                             ? Colors.amber.withValues(alpha: 0.2)
                             : colors.income.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

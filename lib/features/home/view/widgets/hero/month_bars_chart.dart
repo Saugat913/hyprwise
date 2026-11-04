@@ -189,7 +189,7 @@ class _ComparisonBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(AppRadius.pill),
+    borderRadius: BorderRadius.circular(AppRadius.md),
     child: SizedBox(
       height: 6,
       child: Stack(

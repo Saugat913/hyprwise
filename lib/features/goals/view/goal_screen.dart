@@ -172,7 +172,7 @@ class GoalScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFEF3C7),
                                 borderRadius: BorderRadius.circular(
-                                  AppRadius.pill,
+                                  AppRadius.md,
                                 ),
                                 border: Border.all(
                                   color: const Color(0xFFF59E0B),
@@ -197,7 +197,7 @@ class GoalScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: colors.fill,
                               borderRadius: BorderRadius.circular(
-                                AppRadius.pill,
+                                AppRadius.md,
                               ),
                             ),
                             child: Text(
@@ -289,7 +289,7 @@ class GoalScreen extends StatelessWidget {
                               visualDensity: VisualDensity.compact,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
-                                  AppRadius.pill,
+                                  AppRadius.md,
                                 ),
                               ),
                             ),
@@ -1412,7 +1412,7 @@ class _FilterPill extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.pill),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(
@@ -1421,7 +1421,7 @@ class _FilterPill extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: isSelected ? scheme.primary : scheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
             color: isSelected ? scheme.primary : scheme.outlineVariant,
           ),
@@ -1501,7 +1501,7 @@ class _PlanVelocityBadge extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -1634,7 +1634,7 @@ class _PlanMetricBridge extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: netTone.bg,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -1774,7 +1774,7 @@ class _PlanTrajectoryVector extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: colors.brand.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Text(
                   tr.t(

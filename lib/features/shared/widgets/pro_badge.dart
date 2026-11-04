@@ -29,7 +29,7 @@ class ProCrownBadge extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: goldColor.withValues(alpha: isDark ? 0.2 : 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
           color: goldColor.withValues(alpha: isDark ? 0.45 : 0.35),
           width: 0.8,
@@ -134,7 +134,7 @@ Future<void> showProUpgradeSheet(
                 padding: const EdgeInsets.all(AppSpace.md),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
                 ),
                 child: Column(
@@ -170,7 +170,7 @@ Future<void> showProUpgradeSheet(
                     backgroundColor: goldColor,
                     foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                   ),
                   onPressed: () async {

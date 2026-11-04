@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_card">#18181B</color>
+    <color name="widget_ink">#F4F4F6</color>
+    <color name="widget_muted">#8F8F99</color>
+    <color name="widget_hairline">#27272A</color>
+    <color name="widget_fill">#232326</color>
+    <color name="widget_green">#4CC38A</color>
+    <color name="widget_green_bg">#16301F</color>
+    <color name="widget_red">#F2766B</color>
+    <color name="widget_red_bg">#3A1714</color>
+    <color name="widget_amber">#F0B24A</color>
+    <color name="widget_amber_bg">#3A2C10</color>
+    <color name="widget_brand">#FF8533</color>
+    <color name="widget_brand_bg">#2E1303</color>
+</resources>

@@ -67,12 +67,12 @@ class HeroAccountsTable extends StatelessWidget {
                   context,
                   accounts: viewModel.accounts,
                 ),
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 32, minWidth: 44),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(color: colors.hairline, width: 1.0),
                   ),
                   child: Row(

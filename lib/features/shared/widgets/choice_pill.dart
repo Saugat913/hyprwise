@@ -29,7 +29,7 @@ class ChoicePill extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? scheme.primary : scheme.surface,
           shape: round ? BoxShape.circle : BoxShape.rectangle,
-          borderRadius: round ? null : BorderRadius.circular(AppRadius.pill),
+          borderRadius: round ? null : BorderRadius.circular(AppRadius.sm),
           border: Border.all(color: selected ? scheme.primary : scheme.outlineVariant),
         ),
         child: Text(label, style: style),

@@ -268,7 +268,7 @@ class _HorizontalIncomeVsExpenseBar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           child: Container(
             height: 10,
             color: colors.fill,
@@ -278,7 +278,7 @@ class _HorizontalIncomeVsExpenseBar extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   color: colors.income,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
               ),
             ),
@@ -308,7 +308,7 @@ class _HorizontalIncomeVsExpenseBar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           child: Container(
             height: 10,
             color: colors.fill,
@@ -318,7 +318,7 @@ class _HorizontalIncomeVsExpenseBar extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   color: colors.expense,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
               ),
             ),

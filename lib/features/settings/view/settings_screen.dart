@@ -810,7 +810,7 @@ class _AccountAuthCard extends StatelessWidget {
                           icon: const Icon(Icons.g_mobiledata, size: 20),
                           label: const Text('Connect Google', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                           onPressed: () async {
-                            final user = await authService.signInWithGoogle();
+                            final user = await showBusyWhile(context, authService.signInWithGoogle);
                             if (user != null && context.mounted) showToast(context, tr.signedInWithGoogle);
                           },
                         ),
@@ -827,7 +827,7 @@ class _AccountAuthCard extends StatelessWidget {
                             icon: const Icon(Icons.apple, size: 16),
                             label: const Text('Connect Apple', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                             onPressed: () async {
-                              final user = await authService.signInWithApple();
+                              final user = await showBusyWhile(context, authService.signInWithApple);
                               if (user != null && context.mounted) showToast(context, tr.signedInWithApple);
                             },
                           ),
@@ -961,7 +961,7 @@ class _AccountAuthCard extends StatelessWidget {
                       icon: const Icon(Icons.g_mobiledata, size: 22),
                       label: const Text('Google', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                       onPressed: () async {
-                        final user = await authService.signInWithGoogle();
+                        final user = await showBusyWhile(context, authService.signInWithGoogle);
                         if (user != null && context.mounted) showToast(context, tr.signedInWithGoogle);
                       },
                     ),
@@ -977,7 +977,7 @@ class _AccountAuthCard extends StatelessWidget {
                         icon: const Icon(Icons.apple, size: 18),
                         label: const Text('Apple', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         onPressed: () async {
-                          final user = await authService.signInWithApple();
+                          final user = await showBusyWhile(context, authService.signInWithApple);
                           if (user != null && context.mounted) showToast(context, tr.signedInWithApple);
                         },
                       ),
@@ -1058,7 +1058,7 @@ class _AccountAuthCard extends StatelessWidget {
                   height: 4,
                   decoration: BoxDecoration(
                     color: scheme.outlineVariant.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                 ),
               ),
@@ -1109,7 +1109,7 @@ class _AccountAuthCard extends StatelessWidget {
                   backgroundColor: const Color(0xFFF59E0B),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   elevation: 0,
                 ),
@@ -1138,7 +1138,7 @@ class _AccountAuthCard extends StatelessWidget {
                     width: 1.2,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                 ),
                 onPressed: () async {
@@ -1542,21 +1542,5 @@ void _showWidgetPreviewSheet(BuildContext context) {
 }
 
 
-/// Shows a blocking progress dialog while signing out so the tap never feels dead.
-Future<void> _signOutWithFeedback(BuildContext context, AuthService authService) async {
-  final navigator = Navigator.of(context, rootNavigator: true);
-  unawaited(showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    useRootNavigator: true,
-    builder: (_) => const PopScope(
-      canPop: false,
-      child: Center(child: CircularProgressIndicator()),
-    ),
-  ));
-  try {
-    await authService.signOut();
-  } finally {
-    if (navigator.canPop()) navigator.pop();
-  }
-}
+Future<void> _signOutWithFeedback(BuildContext context, AuthService authService) =>
+    showBusyWhile(context, authService.signOut);

@@ -98,7 +98,7 @@ class WorkScreen extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 4),
                             decoration: BoxDecoration(
                               color: colors.incomeBg.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                             child: Text(
                               '≈ ${MoneyFormatter.format(liveEarnings?.earningsMinor ?? 0, activeCurrency)}',
@@ -239,7 +239,7 @@ class WorkScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: colors.fill,
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Text(
                       tr.formatNumber(viewModel.todayTotalCount),
@@ -408,13 +408,13 @@ class _ShiftFilterPill extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.pill),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? scheme.primary : scheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
             color: isSelected ? scheme.primary : scheme.outlineVariant,
           ),

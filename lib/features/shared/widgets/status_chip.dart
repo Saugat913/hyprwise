@@ -23,7 +23,7 @@ class StatusChip extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 2),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.pill)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.sm)),
       child: Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg)),
     );
   }

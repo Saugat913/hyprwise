@@ -35,7 +35,7 @@ class AccountStackBar extends StatelessWidget {
         constraints: const BoxConstraints(maxHeight: 6.0),
         decoration: BoxDecoration(
           color: colors.onHero.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
       );
     }
@@ -46,7 +46,7 @@ class AccountStackBar extends StatelessWidget {
         constraints: const BoxConstraints(maxHeight: 6.0),
         decoration: BoxDecoration(
           color: colors.onHero.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
       );
     }
@@ -75,10 +75,10 @@ class AccountStackBar extends StatelessWidget {
       height: 6.0,
       constraints: const BoxConstraints(maxHeight: 6.0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: Row(
           children: [
             for (var i = 0; i < validSlices.length; i++) ...[

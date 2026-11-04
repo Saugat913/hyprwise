@@ -212,7 +212,7 @@ class _NavItem extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: selected ? context.colors.fill : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: AppIcon(icon, size: 19, color: color),
           ),

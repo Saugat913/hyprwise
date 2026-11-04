@@ -183,7 +183,7 @@ class AnimatedSuggestionChips extends StatelessWidget {
                       ),
                       backgroundColor: context.colors.brandBg,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                     ),
                   ),

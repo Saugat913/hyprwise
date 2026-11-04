@@ -116,7 +116,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(
               children: [
@@ -398,7 +398,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -674,7 +674,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                                 color: debt.type == DebtType.lent.value
                                     ? colors.income.withValues(alpha: 0.12)
                                     : colors.expense.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(AppRadius.pill),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -1363,12 +1363,12 @@ class _ViewSegmentButton extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.pill),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? scheme.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           boxShadow: isSelected
               ? [
                   BoxShadow(

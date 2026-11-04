@@ -57,7 +57,7 @@ class HeroChartPanel extends StatelessWidget {
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color: colors.segmentedBg,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Row(
             children: [
@@ -129,12 +129,12 @@ class _SegmentButton extends StatelessWidget {
       selected: isSelected,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: Container(
           constraints: const BoxConstraints(minHeight: 32),
           decoration: BoxDecoration(
             color: isSelected ? colors.segmentedSelected : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           alignment: Alignment.center,
           child: Text(

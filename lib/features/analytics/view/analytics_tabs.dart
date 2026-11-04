@@ -817,14 +817,14 @@ class _ToggleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.pill),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? scheme.onSurface : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
             color: selected ? scheme.onSurface : scheme.outlineVariant,
           ),
@@ -1203,7 +1203,7 @@ class _CurrentWeekDayColumn extends StatelessWidget {
             width: 14,
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -1211,7 +1211,7 @@ class _CurrentWeekDayColumn extends StatelessWidget {
               width: 14,
               decoration: BoxDecoration(
                 color: hasWork ? colors.brand : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
             ),
           ),

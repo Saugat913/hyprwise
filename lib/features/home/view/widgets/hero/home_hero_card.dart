@@ -224,7 +224,7 @@ class _LiquidityPill extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 4),
     decoration: BoxDecoration(
       color: colors.liquid.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(AppRadius.pill),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       border: Border.all(color: colors.liquid.withValues(alpha: 0.28)),
     ),
     child: Text(

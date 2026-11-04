@@ -153,7 +153,7 @@ class HeroHeader extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: colors.liquid.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(
                     color: colors.liquid.withValues(alpha: 0.25),
                     width: 0.5,

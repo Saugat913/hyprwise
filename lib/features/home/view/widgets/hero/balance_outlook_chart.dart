@@ -302,13 +302,13 @@ class _RangeChip extends StatelessWidget {
       selected: isSelected,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: Container(
           constraints: const BoxConstraints(minHeight: 26, minWidth: 32),
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           decoration: BoxDecoration(
             color: isSelected ? colors.onHero.withValues(alpha: 0.16) : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           alignment: Alignment.center,
           child: Text(

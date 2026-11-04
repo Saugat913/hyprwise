@@ -99,7 +99,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                       minimumSize: const Size(0, 32),
-                      shape: const StadiumBorder(),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                     ),
                     icon: AppIcon(
                       HugeIcons.strokeRoundedFileExport,
@@ -261,7 +261,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                               alpha: 0.1,
                                             ),
                                             borderRadius: BorderRadius.circular(
-                                              AppRadius.pill,
+                                              AppRadius.md,
                                             ),
                                           ),
                                           child: Text(
@@ -1871,7 +1871,7 @@ class _DayBarItem extends StatelessWidget {
         height: barHeight,
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         alignment: Alignment.bottomCenter,
         child:
@@ -1882,7 +1882,7 @@ class _DayBarItem extends StatelessWidget {
                     width: width,
                     decoration: BoxDecoration(
                       color: color,
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
                 )

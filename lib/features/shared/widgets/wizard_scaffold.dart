@@ -123,7 +123,7 @@ class WizardScaffold extends StatelessWidget {
                                           ? scheme.onSurface
                                           : scheme.outlineVariant,
                                   borderRadius: BorderRadius.circular(
-                                    AppRadius.pill,
+                                    AppRadius.md,
                                   ),
                                 ),
                               ),

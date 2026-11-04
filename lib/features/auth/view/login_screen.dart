@@ -231,7 +231,7 @@ class _SocialButtonsState extends State<_SocialButtons> {
               foregroundColor: scheme.onSurface,
               side: BorderSide(color: scheme.outlineVariant, width: 1.2),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               elevation: 0,
             ),
@@ -263,7 +263,7 @@ class _SocialButtonsState extends State<_SocialButtons> {
                 backgroundColor: isDark ? Colors.white : Colors.black,
                 foregroundColor: isDark ? Colors.black : Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 elevation: 0,
               ),
@@ -504,7 +504,7 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(
-                                  AppRadius.pill,
+                                  AppRadius.md,
                                 ),
                                 child: LinearProgressIndicator(
                                   value: value,
@@ -558,8 +558,7 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
                       const SizedBox(height: AppSpace.sm),
 
                       // Step 1: Authentication
-                      _buildStepTile(
-                        context: context,
+                      SetupStepTile(
                         title: tr.t(
                           'Verifying credentials & identity',
                           ne: 'प्रमाणिकरण र पहिचान जाँच',
@@ -576,8 +575,7 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
                       ),
 
                       // Step 2: Cloud Backup & Ledger
-                      _buildStepTile(
-                        context: context,
+                      SetupStepTile(
                         title: tr.t(
                           'Checking cloud backups & ledger',
                           ne: 'क्लाउड ब्याकअप र लेजर जाँच',
@@ -594,8 +592,7 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
                       ),
 
                       // Step 3: Local Workspace Vault
-                      _buildStepTile(
-                        context: context,
+                      SetupStepTile(
                         title: tr.t(
                           'Securing offline-first database vault',
                           ne: 'अफलाइन-पहिलो डेटाबेस सुरक्षित गरिँदै',
@@ -626,7 +623,7 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
                       color: scheme.surfaceContainerHighest.withValues(
                         alpha: 0.5,
                       ),
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
                         color: scheme.outlineVariant.withValues(alpha: 0.4),
                         width: 0.8,
@@ -657,60 +654,6 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildStepTile({
-    required BuildContext context,
-    required String title,
-    required bool isDone,
-    required bool isActive,
-  }) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final colors = context.colors;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5.0),
-      child: Row(
-        children: [
-          if (isDone)
-            Icon(
-              Icons.check_circle_rounded,
-              size: 18,
-              color: colors.income,
-            )
-          else if (isActive)
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.2,
-                valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
-              ),
-            )
-          else
-            Icon(
-              Icons.radio_button_unchecked,
-              size: 18,
-              color: scheme.outlineVariant.withValues(alpha: 0.5),
-            ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Text(
-              title,
-              style: text.bodySmall?.copyWith(
-                color:
-                    isDone
-                        ? scheme.onSurface
-                        : (isActive ? scheme.primary : scheme.onSurfaceVariant),
-                fontWeight:
-                    isDone || isActive ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

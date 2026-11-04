@@ -240,7 +240,7 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: viewModel.isOnBreak ? colors.warningBg : colors.incomeBg,
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -290,7 +290,7 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: colors.incomeBg.withValues(alpha: 0.65),
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
                                   border: Border.all(
                                     color: colors.income.withValues(alpha: 0.3),
                                   ),
@@ -310,7 +310,7 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
                                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: colors.brand.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
                                   ),
                                   child: Text(
                                     '${tr.overtime}: ${_formatTimer(Duration(minutes: liveEarnings!.overtimeMinutes))} @ ${MoneyFormatter.format(liveEarnings.overtimeRateMinor, currencyCode)}/${tr.hourAbbr}',

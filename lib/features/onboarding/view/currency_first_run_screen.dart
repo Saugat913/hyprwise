@@ -5,7 +5,6 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
-import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
 import 'package:finance_tracker/features/onboarding/viewmodels/onboarding_view_model.dart';
@@ -269,7 +268,7 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
 
                 // Progress Bar
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   child: LinearProgressIndicator(
                     value: (_currentStepIndex / 3).clamp(0.1, 1.0),
                     minHeight: 5,
@@ -280,26 +279,15 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
                 const SizedBox(height: AppSpace.xl),
 
                 // Step Checklist Card
-                Container(
-                  padding: const EdgeInsets.all(AppSpace.md),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(
-                      color: scheme.outlineVariant.withValues(alpha: 0.5),
-                      width: 1,
-                    ),
-                  ),
+                AppCard(
                   child: Column(
                     children: [
-                      _buildChecklistTile(
-                        context: context,
+                      SetupStepTile(
                         title: '${tr.t('Language & Currency set to', ne: 'भाषा र मुद्रा:', hi: 'भाषा और मुद्रा:')} ${widget.viewModel.selectedLocale.toUpperCase()} · ${widget.viewModel.selectedCurrency}',
                         isDone: _currentStepIndex >= 1,
                         isActive: _currentStepIndex == 0,
                       ),
-                      _buildChecklistTile(
-                        context: context,
+                      SetupStepTile(
                         title: tr.t(
                           'Securing encrypted SQLite database vault',
                           ne: 'ईन्क्रिप्टेड डेटाबेस भण्डार सुरक्षित गरिँदै',
@@ -314,8 +302,7 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
                         isDone: _currentStepIndex >= 2,
                         isActive: _currentStepIndex == 1,
                       ),
-                      _buildChecklistTile(
-                        context: context,
+                      SetupStepTile(
                         title: tr.t(
                           'Initializing Cash & Bank accounts',
                           ne: 'नगद र बैंक खाताहरू तयार गरिँदै',
@@ -337,54 +324,6 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildChecklistTile({
-    required BuildContext context,
-    required String title,
-    required bool isDone,
-    required bool isActive,
-  }) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final colors = context.colors;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        children: [
-          if (isDone)
-            Icon(Icons.check_circle_rounded, size: 18, color: colors.income)
-          else if (isActive)
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.2,
-                valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
-              ),
-            )
-          else
-            Icon(
-              Icons.radio_button_unchecked,
-              size: 18,
-              color: scheme.outlineVariant.withValues(alpha: 0.5),
-            ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Text(
-              title,
-              style: text.bodySmall?.copyWith(
-                color: isDone
-                    ? scheme.onSurface
-                    : (isActive ? scheme.primary : scheme.onSurfaceVariant),
-                fontWeight: isDone || isActive ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

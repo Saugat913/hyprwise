@@ -89,7 +89,7 @@ class _HeroEmptyCard extends StatelessWidget {
             height: 6,
             decoration: BoxDecoration(
               color: colors.onHero.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
           ),
           const SizedBox(height: AppSpace.md),

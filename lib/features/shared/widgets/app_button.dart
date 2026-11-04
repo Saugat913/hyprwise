@@ -37,15 +37,27 @@ class AppButton extends StatefulWidget {
 
 class _AppButtonState extends State<AppButton> {
   bool _busy = false;
+  bool _showSpinner = false;
 
   Future<void> _handle() async {
     final r = widget.onPressed!();
     if (r is Future) {
       setState(() => _busy = true);
+      // Only show the spinner for work that is actually slow, so buttons that
+      // merely open a sheet or push a route don't flash a loader.
+      final timer = Timer(const Duration(milliseconds: 300), () {
+        if (mounted && _busy) setState(() => _showSpinner = true);
+      });
       try {
         await r;
       } finally {
-        if (mounted) setState(() => _busy = false);
+        timer.cancel();
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _showSpinner = false;
+          });
+        }
       }
     }
   }
@@ -59,6 +71,7 @@ class _AppButtonState extends State<AppButton> {
     final kind = widget.kind;
     final compact = widget.compact;
     final working = _busy || widget.loading;
+    final spinning = _showSpinner || widget.loading;
     final VoidCallback? onPressed =
         (widget.onPressed == null || working) ? null : _handle;
     final size = compact ? const Size(0, 44) : const Size.fromHeight(AppSize.button);
@@ -68,7 +81,7 @@ class _AppButtonState extends State<AppButton> {
 
     Widget child(Color fg) => AnimatedSwitcher(
           duration: const Duration(milliseconds: 150),
-          child: working
+          child: spinning
               ? SizedBox(
                   key: const ValueKey('loading'),
                   width: 20,
@@ -95,7 +108,7 @@ class _AppButtonState extends State<AppButton> {
             backgroundColor: colors.fill,
             foregroundColor: scheme.onSurface,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               side: BorderSide(color: scheme.outlineVariant),
             ),
           ),

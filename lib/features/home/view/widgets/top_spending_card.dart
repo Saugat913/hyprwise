@@ -201,7 +201,7 @@ class _CategoryRow extends StatelessWidget {
                   height: 3.5,
                   decoration: BoxDecoration(
                     color: colors.expense.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                 ),
                 FractionallySizedBox(
@@ -210,7 +210,7 @@ class _CategoryRow extends StatelessWidget {
                     height: 3.5,
                     decoration: BoxDecoration(
                       color: colors.expense,
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
                 ),

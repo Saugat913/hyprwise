@@ -979,7 +979,7 @@ class _PromptCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: scheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(
-                                  AppRadius.pill,
+                                  AppRadius.md,
                                 ),
                               ),
                               child: Text(

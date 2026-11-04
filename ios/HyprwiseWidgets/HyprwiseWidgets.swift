@@ -1,7 +1,47 @@
 import WidgetKit
 import SwiftUI
+import UIKit
 
 private let appGroupId = "group.com.hypr.hyprwise"
+
+// MARK: - Design tokens (mirror lib/core/theme/app_palette.dart, light + dark)
+
+private extension Color {
+    static func hw(_ light: UInt32, _ dark: UInt32) -> Color {
+        Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+    }
+    static let hwCard = hw(0xFFFFFF, 0x18181B)
+    static let hwInk = hw(0x0F0F11, 0xF4F4F6)
+    static let hwMuted = hw(0x7A827E, 0x8F8F99)
+    static let hwHairline = hw(0xE6E8E7, 0x27272A)
+    static let hwFill = hw(0xEDEEED, 0x232326)
+    static let hwGreen = hw(0x1F7A45, 0x4CC38A)
+    static let hwGreenBg = hw(0xE3F3EA, 0x16301F)
+    static let hwRed = hw(0xB42318, 0xF2766B)
+    static let hwRedBg = hw(0xFDE7E4, 0x3A1714)
+    static let hwAmber = hw(0xF59E0B, 0xF0B24A)
+    static let hwAmberBg = hw(0xFFF1D6, 0x3A2C10)
+    static let hwBrand = hw(0xFF6500, 0xFF8533)
+    static let hwBrandBg = hw(0xFFF0E6, 0x2E1303)
+}
+
+private extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+}
+
+private extension View {
+    /// iOS 17+ requires containerBackground; without it the widget renders blank.
+    @ViewBuilder func widgetBackground() -> some View {
+        if #available(iOSApplicationExtension 17.0, *) {
+            containerBackground(Color.hwCard, for: .widget)
+        } else {
+            background(Color.hwCard)
+        }
+    }
+}
 
 // MARK: - 1. Live Shift Tracker Widget
 
@@ -55,19 +95,19 @@ struct ShiftWidgetView: View {
             // Header: Status dot + Job title
             HStack(spacing: 6) {
                 Circle()
-                    .fill(entry.isActive ? (entry.isOnBreak ? Color(red: 0.96, green: 0.62, blue: 0.04) : Color(red: 0.09, green: 0.64, blue: 0.29)) : Color(red: 0.58, green: 0.64, blue: 0.72))
+                    .fill(entry.isActive ? (entry.isOnBreak ? .hwAmber : .hwGreen) : .hwMuted)
                     .frame(width: 8, height: 8)
 
                 Text(entry.jobName.uppercased())
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    .foregroundColor(.hwInk)
                     .lineLimit(1)
             }
 
             // Subtitle: Time & pay rates
             Text(entry.subtitle)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(red: 0.39, green: 0.45, blue: 0.55))
+                .foregroundColor(.hwMuted)
                 .lineLimit(1)
 
             Spacer(minLength: 0)
@@ -79,28 +119,28 @@ struct ShiftWidgetView: View {
                         Link(destination: URL(string: "hyprwise:///work/shift/live?action=break")!) {
                             Text(entry.isOnBreak ? "resume" : "break")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                                .foregroundColor(.hwInk)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 32)
-                                .background(Color(red: 0.97, green: 0.98, blue: 0.99))
-                                .cornerRadius(8)
+                                .background(.hwFill)
+                                .cornerRadius(12)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color(red: 0.89, green: 0.91, blue: 0.94), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(.hwHairline, lineWidth: 1)
                                 )
                         }
 
                         Link(destination: URL(string: "hyprwise:///work/shift/live?action=end")!) {
                             Text("end")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(Color(red: 0.86, green: 0.15, blue: 0.15))
+                                .foregroundColor(.hwRed)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 32)
-                                .background(Color(red: 0.97, green: 0.98, blue: 0.99))
-                                .cornerRadius(8)
+                                .background(.hwFill)
+                                .cornerRadius(12)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color(red: 0.89, green: 0.91, blue: 0.94), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(.hwHairline, lineWidth: 1)
                                 )
                         }
                     }
@@ -108,11 +148,11 @@ struct ShiftWidgetView: View {
                     Link(destination: URL(string: "hyprwise:///work/shift/start")!) {
                         Text("start shift")
                             .font(.system(size: 12.5, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.hwCard)
                             .frame(maxWidth: .infinity)
                             .frame(height: 32)
-                            .background(Color(red: 0.06, green: 0.09, blue: 0.16))
-                            .cornerRadius(8)
+                            .background(.hwInk)
+                            .cornerRadius(12)
                     }
                 }
             }
@@ -128,7 +168,7 @@ struct ShiftWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: ShiftTimelineProvider()) { entry in
             ShiftWidgetView(entry: entry)
-                .background(Color.white)
+                .widgetBackground()
         }
         .configurationDisplayName("Live Shift Tracker")
         .description("Track active work shifts, live earnings, breaks, and wage progress.")
@@ -165,15 +205,15 @@ struct QuickActionsWidgetView: View {
                 VStack(spacing: 5) {
                     ZStack {
                         Circle()
-                            .fill(Color(red: 0.86, green: 0.99, blue: 0.91))
+                            .fill(.hwGreenBg)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.down.left")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(red: 0.09, green: 0.64, blue: 0.29))
+                            .foregroundColor(.hwGreen)
                     }
                     Text("income")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                        .foregroundColor(.hwInk)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -183,15 +223,15 @@ struct QuickActionsWidgetView: View {
                 VStack(spacing: 5) {
                     ZStack {
                         Circle()
-                            .fill(Color(red: 1.0, green: 0.89, blue: 0.89))
+                            .fill(.hwRedBg)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(red: 0.86, green: 0.15, blue: 0.15))
+                            .foregroundColor(.hwRed)
                     }
                     Text("expense")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                        .foregroundColor(.hwInk)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -201,15 +241,15 @@ struct QuickActionsWidgetView: View {
                 VStack(spacing: 5) {
                     ZStack {
                         Circle()
-                            .fill(Color(red: 0.86, green: 0.92, blue: 1.0))
+                            .fill(.hwAmberBg)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.right")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(red: 0.15, green: 0.39, blue: 0.92))
+                            .foregroundColor(.hwAmber)
                     }
                     Text("lend")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                        .foregroundColor(.hwInk)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -219,15 +259,15 @@ struct QuickActionsWidgetView: View {
                 VStack(spacing: 5) {
                     ZStack {
                         Circle()
-                            .fill(Color(red: 1.0, green: 0.93, blue: 0.84))
+                            .fill(.hwBrandBg)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.left")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(red: 0.92, green: 0.35, blue: 0.05))
+                            .foregroundColor(.hwBrand)
                     }
                     Text("borrow")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                        .foregroundColor(.hwInk)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -243,7 +283,7 @@ struct QuickActionsWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: QuickActionsTimelineProvider()) { _ in
             QuickActionsWidgetView()
-                .background(Color.white)
+                .widgetBackground()
         }
         .configurationDisplayName("Quick Actions")
         .description("Instantly record income, expenses, loans, and borrowed money.")
@@ -277,16 +317,16 @@ struct HyprAiWidgetView: View {
         VStack(spacing: 8) {
             ZStack {
                 Circle()
-                    .fill(Color(red: 0.93, green: 0.95, blue: 1.0))
+                    .fill(.hwBrandBg)
                     .frame(width: 46, height: 46)
                 Image(systemName: "sparkles")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(Color(red: 0.31, green: 0.27, blue: 0.90))
+                    .foregroundColor(.hwBrand)
             }
 
             Text("hyprai")
                 .font(.system(size: 12.5, weight: .bold))
-                .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                .foregroundColor(.hwInk)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(12)
@@ -300,7 +340,7 @@ struct HyprAiWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: HyprAiTimelineProvider()) { _ in
             HyprAiWidgetView()
-                .background(Color.white)
+                .widgetBackground()
         }
         .configurationDisplayName("HyprAI")
         .description("Quick launch your Hyprwise AI financial assistant.")

@@ -13,7 +13,7 @@ class ProgressLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: LinearProgressIndicator(
           value: value.clamp(0, 1).toDouble(),
           minHeight: height,

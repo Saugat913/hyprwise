@@ -26,7 +26,7 @@ class SegmentedTabs<T> extends StatelessWidget {
     if (isScrollable || options.length > 3) {
       return Container(
         padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(color: context.colors.fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
+        decoration: BoxDecoration(color: context.colors.fill, borderRadius: BorderRadius.circular(AppRadius.md)),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -44,7 +44,7 @@ class SegmentedTabs<T> extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: entry.key == value ? scheme.surface : Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       child: Text(
                         entry.value,
@@ -64,7 +64,7 @@ class SegmentedTabs<T> extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: context.colors.fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
+      decoration: BoxDecoration(color: context.colors.fill, borderRadius: BorderRadius.circular(AppRadius.md)),
       child: Row(
         children: [
           for (final entry in options.entries)
@@ -78,7 +78,7 @@ class SegmentedTabs<T> extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: entry.key == value ? scheme.surface : Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Text(
                     entry.value,

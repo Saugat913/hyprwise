@@ -391,7 +391,7 @@ void main() {
       final proportionBarContainers = tester.widgetList<Container>(find.byType(Container)).where((c) {
         return c.constraints?.maxHeight == 6.0 ||
             (c.decoration is BoxDecoration &&
-                (c.decoration as BoxDecoration).borderRadius == BorderRadius.circular(AppRadius.pill));
+                (c.decoration as BoxDecoration).borderRadius == BorderRadius.circular(AppRadius.md));
       }).toList();
       expect(proportionBarContainers.isNotEmpty, isTrue);
 

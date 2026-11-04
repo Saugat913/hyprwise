@@ -18,7 +18,6 @@ abstract final class AppRadius {
   static const double md = 12;
   static const double lg = 12;
   static const double xl = 16;
-  static const double pill = 999;
 }
 
 abstract final class AppSize {
