@@ -192,7 +192,9 @@ class SubscriptionService extends ChangeNotifier {
       }
       if (_isPro || _isSupporter || _everSupported) {
         _isPro = true;
-        authService.updateProStatus(true);
+        if (authService.currentUser != null) {
+          authService.updateProStatus(true);
+        }
       }
       _syncNotifiers();
       notifyListeners();
@@ -390,9 +392,8 @@ class SubscriptionService extends ChangeNotifier {
         }
         if (status['isPro'] != null) {
           final serverPro = status['isPro'] as bool;
-          // If RevenueCat reports an active entitlement or Pro status locally, never downgrade to false;
-          // instead push verification to the server.
-          if ((_hasActiveRevenueCatEntitlement || _isPro) && !serverPro) {
+          // If RevenueCat reports an active entitlement, verify with server.
+          if (_hasActiveRevenueCatEntitlement && !serverPro) {
             final userId = authService.currentUser?.id ??
                 _customerInfo?.originalAppUserId ??
                 'default_user';

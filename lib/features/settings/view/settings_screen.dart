@@ -795,8 +795,8 @@ class _AccountAuthCard extends StatelessWidget {
                           icon: const Icon(Icons.g_mobiledata, size: 20),
                           label: const Text('Connect Google', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                           onPressed: () async {
-                            await authService.signInWithGoogle();
-                            if (context.mounted) showToast(context, tr.signedInWithGoogle);
+                            final user = await authService.signInWithGoogle();
+                            if (user != null && context.mounted) showToast(context, tr.signedInWithGoogle);
                           },
                         ),
                       ),
@@ -812,8 +812,8 @@ class _AccountAuthCard extends StatelessWidget {
                             icon: const Icon(Icons.apple, size: 16),
                             label: const Text('Connect Apple', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                             onPressed: () async {
-                              await authService.signInWithApple();
-                              if (context.mounted) showToast(context, tr.signedInWithApple);
+                              final user = await authService.signInWithApple();
+                              if (user != null && context.mounted) showToast(context, tr.signedInWithApple);
                             },
                           ),
                         ),
@@ -946,8 +946,8 @@ class _AccountAuthCard extends StatelessWidget {
                       icon: const Icon(Icons.g_mobiledata, size: 22),
                       label: const Text('Google', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                       onPressed: () async {
-                        await authService.signInWithGoogle();
-                        if (context.mounted) showToast(context, tr.signedInWithGoogle);
+                        final user = await authService.signInWithGoogle();
+                        if (user != null && context.mounted) showToast(context, tr.signedInWithGoogle);
                       },
                     ),
                   ),
@@ -962,8 +962,8 @@ class _AccountAuthCard extends StatelessWidget {
                         icon: const Icon(Icons.apple, size: 18),
                         label: const Text('Apple', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         onPressed: () async {
-                          await authService.signInWithApple();
-                          if (context.mounted) showToast(context, tr.signedInWithApple);
+                          final user = await authService.signInWithApple();
+                          if (user != null && context.mounted) showToast(context, tr.signedInWithApple);
                         },
                       ),
                     ),

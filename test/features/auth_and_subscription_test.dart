@@ -61,7 +61,7 @@ void main() {
     expect(authService.isGuest, isTrue);
 
     final user = await authService.signInWithGoogle(email: 'user@hyprwise.com', displayName: 'Hyprwise User');
-    expect(user.provider, equals(AuthProvider.google));
+    expect(user!.provider, equals(AuthProvider.google));
     expect(authService.isGuest, isFalse);
     expect(authService.isAuthenticated, isTrue);
   });
@@ -94,7 +94,7 @@ void main() {
       email: 'Canonical.User@Hyprwise.com',
       displayName: 'Canonical User',
     );
-    final firstId = firstLogin.id;
+    final firstId = firstLogin!.id;
     expect(firstId, isNotEmpty);
 
     await authService.signOut();
@@ -104,7 +104,7 @@ void main() {
       email: 'canonical.user@hyprwise.com',
       displayName: 'Canonical User',
     );
-    expect(secondLogin.id, equals(firstId));
+    expect(secondLogin!.id, equals(firstId));
   });
 
   test('Returning user is detected on repeated login and retains onboarded state', () async {
@@ -117,7 +117,7 @@ void main() {
 
     // 2. Complete onboarding & persist preferences
     await authService.markUserOnboarded(
-      userId: user.id,
+      userId: user!.id,
       locale: 'ne',
       baseCurrency: 'AUD',
     );
@@ -133,7 +133,7 @@ void main() {
       email: 'returning.user@hyprwise.com',
       displayName: 'Returning User',
     );
-    expect(loginAgain.id, equals(user.id));
+    expect(loginAgain!.id, equals(user.id));
     expect(authService.isReturningUser, isTrue);
 
     final storedOnboarded = await storage.read(key: 'auth_user_onboarded_${user.id}');
@@ -149,7 +149,7 @@ void main() {
       email: 'free.sync@hyprwise.com',
       displayName: 'Free User',
     );
-    expect(user.isPro, isFalse);
+    expect(user!.isPro, isFalse);
 
     await authService.syncUserPreferences(
       locale: 'ja',
@@ -184,5 +184,33 @@ void main() {
     await subService.resetOnLogout();
     expect(subService.everSupported, isFalse);
     expect(subService.everSupportedNotifier.value, isFalse);
+  });
+
+  test('Aborting Google or Apple sign in returns null without authentication bypass or Pro badge', () async {
+    final result = await authService.signInWithGoogle();
+    expect(result, isNull);
+    expect(authService.isAuthenticated, isFalse);
+    expect(authService.currentUser, isNull);
+    expect(subService.isPro, isFalse);
+    expect(subService.isSupporter, isFalse);
+    expect(subService.everSupported, isFalse);
+
+    final appleResult = await authService.signInWithApple();
+    expect(appleResult, isNull);
+    expect(authService.isAuthenticated, isFalse);
+    expect(authService.currentUser, isNull);
+    expect(subService.isPro, isFalse);
+    expect(subService.isSupporter, isFalse);
+    expect(subService.everSupported, isFalse);
+  });
+
+  test('New account does not auto-onboard and leaves isReturningUser false', () async {
+    final newUser = await authService.signInWithGoogle(
+      email: 'brandnew.user@hyprwise.com',
+      displayName: 'Brand New User',
+    );
+    expect(newUser, isNotNull);
+    expect(authService.isReturningUser, isFalse);
+    expect(authService.hasRestoredCloudData, isFalse);
   });
 }

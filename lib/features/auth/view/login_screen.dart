@@ -45,7 +45,7 @@ class LoginScreen extends StatelessWidget {
 
         void onAuthSuccess() {
           if (!context.mounted) return;
-          if (!settingsRepo.settings.onboarded) {
+          if (!authService.isReturningUser || !settingsRepo.settings.onboarded) {
             context.go(AppRoutes.currency);
           } else {
             context.go(AppRoutes.home);
@@ -134,8 +134,12 @@ class LoginScreen extends StatelessWidget {
                                   loading
                                       ? null
                                       : () async {
-                                        await authService.signInWithGoogle();
-                                        onAuthSuccess();
+                                        final user =
+                                            await authService
+                                                .signInWithGoogle();
+                                        if (user != null) {
+                                          onAuthSuccess();
+                                        }
                                       },
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -183,8 +187,10 @@ class LoginScreen extends StatelessWidget {
                                     loading
                                         ? null
                                         : () async {
-                                          await authService.signInWithApple();
-                                          onAuthSuccess();
+                                          final user = await authService.signInWithApple();
+                                          if (user != null) {
+                                            onAuthSuccess();
+                                          }
                                         },
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -331,7 +337,7 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
       if (_navTimer != null) return;
       _navTimer = Timer(const Duration(milliseconds: 500), () {
         if (!mounted) return;
-        if (!settingsRepo.settings.onboarded) {
+        if (!authService.isReturningUser || !settingsRepo.settings.onboarded) {
           context.go(AppRoutes.currency);
         } else {
           context.go(AppRoutes.home);

@@ -120,54 +120,73 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<UserProfile> signInWithGoogle({
+  Future<UserProfile?> signInWithGoogle({
     String? email,
     String? displayName,
   }) async {
+    String? userEmail;
+    String? userId;
+    String? userName;
+    String? photoUrl;
+    String? idToken;
+
+    if (_hasFirebase) {
+      try {
+        final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+        final GoogleSignInAccount? gUser = await googleSignIn.signIn();
+        if (gUser == null) {
+          // User aborted / backed off Google Sign In - DO NOT BYPASS!
+          return null;
+        }
+
+        userEmail = gUser.email.trim().toLowerCase();
+        userName = gUser.displayName ?? userEmail.split('@')[0];
+        photoUrl = gUser.photoUrl;
+        userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
+
+        final GoogleSignInAuthentication gAuth = await gUser.authentication;
+        idToken = gAuth.idToken;
+
+        final credential = GoogleAuthProvider.credential(
+          accessToken: gAuth.accessToken,
+          idToken: gAuth.idToken,
+        );
+
+        final userCredential = await FirebaseAuth.instance
+            .signInWithCredential(credential);
+        final fbUser = userCredential.user;
+        if (fbUser != null) {
+          userId = fbUser.uid;
+          userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
+          userName = fbUser.displayName ?? userName;
+          photoUrl = fbUser.photoURL ?? photoUrl;
+          idToken = await fbUser.getIdToken();
+        }
+      } catch (e) {
+        debugPrint('[Auth] Google native sign-in error or cancelled: $e');
+        if (email == null) {
+          return null;
+        }
+      }
+    }
+
+    if (email != null) {
+      userEmail ??= email.trim().toLowerCase();
+      userId ??= deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
+      userName ??= displayName ?? userEmail.split('@')[0];
+    }
+
+    if (userEmail == null || userId == null) {
+      return null;
+    }
+
+    final String finalUserId = userId;
+    final String finalEmail = userEmail;
+    final String finalName = userName ?? finalEmail.split('@')[0];
+
     _isLoading = true;
     notifyListeners();
     try {
-      String userEmail =
-          (email ?? 'user.finance@gmail.com').trim().toLowerCase();
-      String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
-      String userName = displayName ?? 'Google User';
-      String? photoUrl;
-      String? idToken;
-
-      if (_hasFirebase) {
-        try {
-          final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
-          final GoogleSignInAccount? gUser = await googleSignIn.signIn();
-          if (gUser != null) {
-            userEmail = gUser.email.trim().toLowerCase();
-            userName = gUser.displayName ?? userEmail.split('@')[0];
-            photoUrl = gUser.photoUrl;
-            userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
-
-            final GoogleSignInAuthentication gAuth = await gUser.authentication;
-            idToken = gAuth.idToken;
-
-            final credential = GoogleAuthProvider.credential(
-              accessToken: gAuth.accessToken,
-              idToken: gAuth.idToken,
-            );
-
-            final userCredential = await FirebaseAuth.instance
-                .signInWithCredential(credential);
-            final fbUser = userCredential.user;
-            if (fbUser != null) {
-              userId = fbUser.uid;
-              userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
-              userName = fbUser.displayName ?? userName;
-              photoUrl = fbUser.photoURL ?? photoUrl;
-              idToken = await fbUser.getIdToken();
-            }
-          }
-        } catch (e) {
-          debugPrint('[Auth] Google native sign-in fallback: $e');
-        }
-      }
-
       final currentLocale = getIt.isRegistered<SettingsRepository>()
           ? getIt<SettingsRepository>().localeCode
           : null;
@@ -180,10 +199,10 @@ class AuthService extends ChangeNotifier {
       Map<String, dynamic>? serverRes;
       try {
         serverRes = await ApiClient.instance.authenticateFirebase(
-          uid: userId,
+          uid: finalUserId,
           idToken: idToken,
-          email: userEmail,
-          displayName: userName,
+          email: finalEmail,
+          displayName: finalName,
           photoUrl: photoUrl,
           provider: 'google',
           locale: currentLocale,
@@ -191,28 +210,25 @@ class AuthService extends ChangeNotifier {
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
         if (serverUser != null) {
-          userId = (serverUser['id'] as String?) ?? userId;
-          userEmail = (serverUser['email'] as String?) ?? userEmail;
-          userName = (serverUser['displayName'] as String?) ?? userName;
           isPro = serverUser['isPro'] as bool? ?? false;
         }
         await _applyServerSyncResult(serverRes);
       } catch (_) {}
 
-      ApiClient.instance.setAuthContext(userId: userId, email: userEmail);
+      ApiClient.instance.setAuthContext(userId: finalUserId, email: finalEmail);
 
       // Link with RevenueCat customer identity using canonical userId
       try {
-        final logInResult = await Purchases.logIn(userId);
+        final logInResult = await Purchases.logIn(finalUserId);
         if (logInResult.customerInfo.entitlements.active.containsKey('hyprwise_pro')) {
           isPro = true;
         }
       } catch (_) {}
 
       final user = UserProfile(
-        id: userId,
-        email: userEmail,
-        displayName: userName,
+        id: finalUserId,
+        email: finalEmail,
+        displayName: finalName,
         photoUrl: photoUrl,
         provider: AuthProvider.google,
         isPro: isPro,
@@ -220,10 +236,10 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
-      await _handlePostSignInSetup(userId: userId, serverRes: serverRes);
+      await _handlePostSignInSetup(userId: finalUserId, serverRes: serverRes, isPro: isPro);
 
       // Firebase Analytics Tracking
-      TelemetryService.instance.setUserId(userId);
+      TelemetryService.instance.setUserId(finalUserId);
       TelemetryService.instance.logLogin(loginMethod: 'google');
       TelemetryService.instance.setUserProperty(
         name: 'auth_provider',
@@ -241,52 +257,70 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<UserProfile> signInWithApple({String? email, String? fullName}) async {
+  Future<UserProfile?> signInWithApple({String? email, String? fullName}) async {
+    String? userEmail = email?.trim().toLowerCase();
+    String? userId = userEmail != null ? deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_') : null;
+    String? userName = fullName;
+    String? idToken;
+
+    if (_hasFirebase) {
+      try {
+        final appleProvider = AppleAuthProvider();
+        appleProvider.addScope('email');
+        appleProvider.addScope('name');
+        final userCredential = await FirebaseAuth.instance.signInWithProvider(
+          appleProvider,
+        );
+        final fbUser = userCredential.user;
+        if (fbUser != null) {
+          userId = fbUser.uid;
+          if (fbUser.email != null && fbUser.email!.isNotEmpty) {
+            userEmail = fbUser.email!.trim().toLowerCase();
+            await _storage.write(key: _appleCachedEmailKey, value: userEmail);
+          } else {
+            final cachedEmail = await _storage.read(key: _appleCachedEmailKey);
+            if (cachedEmail != null && cachedEmail.isNotEmpty) {
+              userEmail = cachedEmail;
+            }
+          }
+          if (fbUser.displayName != null && fbUser.displayName!.isNotEmpty) {
+            userName = fbUser.displayName!;
+            await _storage.write(key: _appleCachedNameKey, value: userName);
+          } else {
+            final cachedName = await _storage.read(key: _appleCachedNameKey);
+            if (cachedName != null && cachedName.isNotEmpty) {
+              userName = cachedName;
+            }
+          }
+          idToken = await fbUser.getIdToken();
+        } else {
+          return null;
+        }
+      } catch (e) {
+        debugPrint('[Auth] Apple native sign-in error or cancelled: $e');
+        if (email == null) {
+          return null;
+        }
+      }
+    }
+
+    if (email != null) {
+      userEmail ??= email.trim().toLowerCase();
+      userId ??= deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_');
+      userName ??= fullName ?? 'Apple User';
+    }
+
+    if (userEmail == null || userId == null) {
+      return null;
+    }
+
+    final String finalUserId = userId;
+    final String finalEmail = userEmail;
+    final String finalName = userName ?? 'Apple User';
+
     _isLoading = true;
     notifyListeners();
     try {
-      String userEmail =
-          (email ?? 'user.finance@icloud.com').trim().toLowerCase();
-      String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_');
-      String userName = fullName ?? 'Apple User';
-      String? idToken;
-
-      if (_hasFirebase) {
-        try {
-          final appleProvider = AppleAuthProvider();
-          appleProvider.addScope('email');
-          appleProvider.addScope('name');
-          final userCredential = await FirebaseAuth.instance.signInWithProvider(
-            appleProvider,
-          );
-          final fbUser = userCredential.user;
-          if (fbUser != null) {
-            userId = fbUser.uid;
-            if (fbUser.email != null && fbUser.email!.isNotEmpty) {
-              userEmail = fbUser.email!.trim().toLowerCase();
-              await _storage.write(key: _appleCachedEmailKey, value: userEmail);
-            } else {
-              final cachedEmail = await _storage.read(key: _appleCachedEmailKey);
-              if (cachedEmail != null && cachedEmail.isNotEmpty) {
-                userEmail = cachedEmail;
-              }
-            }
-            if (fbUser.displayName != null && fbUser.displayName!.isNotEmpty) {
-              userName = fbUser.displayName!;
-              await _storage.write(key: _appleCachedNameKey, value: userName);
-            } else {
-              final cachedName = await _storage.read(key: _appleCachedNameKey);
-              if (cachedName != null && cachedName.isNotEmpty) {
-                userName = cachedName;
-              }
-            }
-            idToken = await fbUser.getIdToken();
-          }
-        } catch (e) {
-          debugPrint('[Auth] Apple native sign-in fallback: $e');
-        }
-      }
-
       final currentLocale = getIt.isRegistered<SettingsRepository>()
           ? getIt<SettingsRepository>().localeCode
           : null;
@@ -299,48 +333,45 @@ class AuthService extends ChangeNotifier {
       Map<String, dynamic>? serverRes;
       try {
         serverRes = await ApiClient.instance.authenticateFirebase(
-          uid: userId,
+          uid: finalUserId,
           idToken: idToken,
-          email: userEmail,
-          displayName: userName,
+          email: finalEmail,
+          displayName: finalName,
           provider: 'apple',
           locale: currentLocale,
           baseCurrency: currentCurrency,
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
         if (serverUser != null) {
-          userId = (serverUser['id'] as String?) ?? userId;
-          userEmail = (serverUser['email'] as String?) ?? userEmail;
-          userName = (serverUser['displayName'] as String?) ?? userName;
           isPro = serverUser['isPro'] as bool? ?? false;
         }
         await _applyServerSyncResult(serverRes);
       } catch (_) {}
 
-      ApiClient.instance.setAuthContext(userId: userId, email: userEmail);
+      ApiClient.instance.setAuthContext(userId: finalUserId, email: finalEmail);
 
       // Link with RevenueCat
       try {
-        final logInResult = await Purchases.logIn(userId);
+        final logInResult = await Purchases.logIn(finalUserId);
         if (logInResult.customerInfo.entitlements.active.containsKey('hyprwise_pro')) {
           isPro = true;
         }
       } catch (_) {}
 
       final user = UserProfile(
-        id: userId,
-        email: userEmail,
-        displayName: userName,
+        id: finalUserId,
+        email: finalEmail,
+        displayName: finalName,
         provider: AuthProvider.apple,
         isPro: isPro,
       );
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
-      await _handlePostSignInSetup(userId: userId, serverRes: serverRes);
+      await _handlePostSignInSetup(userId: finalUserId, serverRes: serverRes, isPro: isPro);
 
       // Firebase Analytics Tracking
-      TelemetryService.instance.setUserId(userId);
+      TelemetryService.instance.setUserId(finalUserId);
       TelemetryService.instance.logLogin(loginMethod: 'apple');
       TelemetryService.instance.setUserProperty(
         name: 'auth_provider',
@@ -669,6 +700,7 @@ class AuthService extends ChangeNotifier {
   Future<void> _handlePostSignInSetup({
     required String userId,
     Map<String, dynamic>? serverRes,
+    bool isPro = false,
   }) async {
     // 1. Account switching check:
     // If a different user was previously active on this device, erase the old user's local database
@@ -685,28 +717,29 @@ class AuthService extends ChangeNotifier {
     // 2. Identify if user is returning or brand new:
     // a) Cloudflare server explicit flag (isNewUser == false)
     // b) Server preferences object (onboarded == true)
-    // c) Local secure storage key for this user ID or email
-    // d) Local app preferences already marked onboarded
+    // c) Local secure storage key for this specific user ID or email
     final isNewUserFromServer = serverRes?['isNewUser'] as bool?;
     final serverPrefs = serverRes?['preferences'] as Map<String, dynamic>?;
     final serverOnboarded = serverPrefs?['onboarded'] as bool?;
     final localOnboarded = await _storage.read(key: _keyUserOnboarded(userId)) ??
         (emailKey.isNotEmpty ? await _storage.read(key: 'auth_user_onboarded_$emailKey') : null);
-    final deviceAlreadyOnboarded = getIt.isRegistered<SettingsRepository>() &&
-        getIt<SettingsRepository>().settings.onboarded;
 
-    _isReturningUser = (isNewUserFromServer == false) ||
-        (serverOnboarded == true) ||
-        (localOnboarded == 'true') ||
-        deviceAlreadyOnboarded;
+    final bool isReturning = (isNewUserFromServer == false && (serverOnboarded == true || serverPrefs != null)) ||
+        (localOnboarded == 'true');
 
-    // 3. Automatically pull latest encrypted cloud snapshot if user has backups
-    _hasRestoredCloudData = await pullCloudDataToLocal();
+    _isReturningUser = isReturning;
 
-    // 4. Returning users bypass first-run language/currency picker and restore settings
-    if (_isReturningUser || _hasRestoredCloudData) {
-      _isReturningUser = true;
-
+    if (!isReturning) {
+      // NEW USER:
+      // Do NOT complete onboarding or pull cloud data.
+      // Reset onboarding flag so user enters the language and currency onboarding wizard.
+      _hasRestoredCloudData = false;
+      if (getIt.isRegistered<SettingsRepository>()) {
+        await getIt<SettingsRepository>().resetOnboarding();
+      }
+    } else {
+      // OLD (RETURNING) USER:
+      // Download preferences and restore settings
       final serverLocale = (serverPrefs?['locale'] as String?)?.trim();
       final serverCurrency = (serverPrefs?['baseCurrency'] as String?)?.trim();
       final localLocale = await _storage.read(key: _keyUserLocale(userId)) ??
@@ -716,35 +749,13 @@ class AuthService extends ChangeNotifier {
           (emailKey.isNotEmpty ? await _storage.read(key: 'auth_user_currency_$emailKey') : null) ??
           await _storage.read(key: 'auth_last_known_currency');
 
-      final currentDeviceLocale = getIt.isRegistered<SettingsRepository>()
-          ? getIt<SettingsRepository>().localeCode
-          : null;
-      final currentDeviceCurrency = getIt.isRegistered<SettingsRepository>()
-          ? getIt<SettingsRepository>().baseCurrency
-          : null;
+      final preferredLocale = (serverLocale != null && serverLocale.isNotEmpty)
+          ? serverLocale
+          : (localLocale != null && localLocale.isNotEmpty ? localLocale : 'en');
 
-      // Retain device local preference if already explicitly configured, otherwise adopt server or stored setting
-      final String preferredLocale;
-      if (currentDeviceLocale != null && currentDeviceLocale.isNotEmpty && currentDeviceLocale != 'en') {
-        preferredLocale = currentDeviceLocale;
-      } else if (serverLocale != null && serverLocale.isNotEmpty) {
-        preferredLocale = serverLocale;
-      } else if (localLocale != null && localLocale.isNotEmpty) {
-        preferredLocale = localLocale;
-      } else {
-        preferredLocale = currentDeviceLocale ?? 'en';
-      }
-
-      final String preferredCurrency;
-      if (currentDeviceCurrency != null && currentDeviceCurrency.isNotEmpty && currentDeviceCurrency != 'USD') {
-        preferredCurrency = currentDeviceCurrency;
-      } else if (serverCurrency != null && serverCurrency.isNotEmpty) {
-        preferredCurrency = serverCurrency;
-      } else if (localCurrency != null && localCurrency.isNotEmpty) {
-        preferredCurrency = localCurrency;
-      } else {
-        preferredCurrency = currentDeviceCurrency ?? 'USD';
-      }
+      final preferredCurrency = (serverCurrency != null && serverCurrency.isNotEmpty)
+          ? serverCurrency
+          : (localCurrency != null && localCurrency.isNotEmpty ? localCurrency : 'USD');
 
       if (getIt.isRegistered<SettingsRepository>()) {
         final settingsRepo = getIt<SettingsRepository>();
@@ -758,12 +769,7 @@ class AuthService extends ChangeNotifier {
       }
 
       if (getIt.isRegistered<AccountRepository>()) {
-        final effectiveCurrency = preferredCurrency.isNotEmpty
-            ? preferredCurrency
-            : (getIt.isRegistered<SettingsRepository>()
-                ? getIt<SettingsRepository>().baseCurrency
-                : 'USD');
-        await getIt<AccountRepository>().ensureFixedTwoAccounts(effectiveCurrency);
+        await getIt<AccountRepository>().ensureFixedTwoAccounts(preferredCurrency);
       }
 
       // Persist user-specific flags to storage
@@ -785,6 +791,15 @@ class AuthService extends ChangeNotifier {
         locale: preferredLocale,
         baseCurrency: preferredCurrency,
       ));
+
+      // PRO vs NON-PRO data sync:
+      // If user is PRO, restore previous data from Cloudflare server
+      final isProUser = _currentUser?.isPro ?? isPro;
+      if (isProUser) {
+        _hasRestoredCloudData = await pullCloudDataToLocal();
+      } else {
+        _hasRestoredCloudData = false;
+      }
     }
 
     // Trigger auto-sync if Pro
@@ -964,6 +979,10 @@ class AuthService extends ChangeNotifier {
 
     if (getIt.isRegistered<SubscriptionService>()) {
       await getIt<SubscriptionService>().resetOnLogout();
+    }
+
+    if (getIt.isRegistered<SettingsRepository>()) {
+      await getIt<SettingsRepository>().resetOnboarding();
     }
 
     // Local-First: We preserve encrypted local SQLite database data across sign-outs.

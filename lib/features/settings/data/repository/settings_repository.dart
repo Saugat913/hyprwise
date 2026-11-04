@@ -148,6 +148,9 @@ class SettingsRepository extends ChangeNotifier {
   Future<void> completeOnboarding() =>
       _apply(_settings.copyWith(onboarded: true), {keyOnboarded: 'true'});
 
+  Future<void> resetOnboarding() =>
+      _apply(_settings.copyWith(onboarded: false), {keyOnboarded: 'false'});
+
   Future<void> setShiftReminders(bool value) => _apply(
     _settings.copyWith(shiftReminders: value),
     {keyShiftReminders: '$value'},
