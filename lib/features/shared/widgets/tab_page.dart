@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -56,6 +57,16 @@ class TabPage extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (!showBackButton && !context.canPop()) ...[
+                  SvgPicture.asset(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 'assets/brandings/hyprwise_logo_white.svg'
+                        : 'assets/brandings/hyprwise_logo.svg',
+                    width: 30,
+                    height: 30,
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

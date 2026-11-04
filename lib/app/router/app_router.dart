@@ -60,8 +60,13 @@ final GoRouter appRouter = GoRouter(
 
     // While authenticating, syncing from cloud, or checking if account is new or returning:
     // keep on the current screen (LoginScreen displays the setup loading screen).
+    // Never let an unauthenticated session reach in-app routes while busy.
     if (authService.isLoading || authService.isCloudSyncing) {
-      return null;
+      final isEntry = location == AppRoutes.login ||
+          location == AppRoutes.welcome ||
+          location == AppRoutes.currency;
+      if (isEntry || authService.isAuthenticated) return null;
+      return settingsRepo.settings.onboarded ? AppRoutes.login : AppRoutes.welcome;
     }
 
     // 1. First-time install / Not yet onboarded

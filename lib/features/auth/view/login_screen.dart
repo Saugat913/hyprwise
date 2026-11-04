@@ -97,130 +97,7 @@ class LoginScreen extends StatelessWidget {
                   const Spacer(flex: 4),
 
                   // Action Buttons
-                  ListenableBuilder(
-                    listenable: authService,
-                    builder: (context, _) {
-                      final loading = authService.isLoading;
-                      final targetPlatform = Theme.of(context).platform;
-                      final showAppleSignIn =
-                          targetPlatform == TargetPlatform.iOS ||
-                          targetPlatform == TargetPlatform.macOS;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Google Sign In Button
-                          SizedBox(
-                            height: AppSize.button,
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor:
-                                    isDark
-                                        ? const Color(0xFF18181B)
-                                        : Colors.white,
-                                foregroundColor: scheme.onSurface,
-                                side: BorderSide(
-                                  color: scheme.outlineVariant,
-                                  width: 1.2,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.pill,
-                                  ),
-                                ),
-                                elevation: 0,
-                              ),
-                              onPressed:
-                                  loading
-                                      ? null
-                                      : () async {
-                                        final user =
-                                            await authService
-                                                .signInWithGoogle();
-                                        if (user != null) {
-                                          onAuthSuccess();
-                                        }
-                                      },
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SvgPicture.string(
-                                    _googleSvgRaw,
-                                    width: 20,
-                                    height: 20,
-                                  ),
-                                  const SizedBox(width: AppSpace.md),
-                                  Text(
-                                    tr.continueWithGoogle,
-                                    style: text.titleSmall?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color:
-                                          isDark
-                                              ? Colors.white
-                                              : const Color(0xFF1F1F1F),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (showAppleSignIn) ...[
-                            const SizedBox(height: AppSpace.md),
-
-                            // Apple Sign In Button (iOS / macOS only)
-                            SizedBox(
-                              height: AppSize.button,
-                              child: FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor:
-                                      isDark ? Colors.white : Colors.black,
-                                  foregroundColor:
-                                      isDark ? Colors.black : Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.pill,
-                                    ),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                onPressed:
-                                    loading
-                                        ? null
-                                        : () async {
-                                          final user = await authService.signInWithApple();
-                                          if (user != null) {
-                                            onAuthSuccess();
-                                          }
-                                        },
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.apple,
-                                      size: 22,
-                                      color:
-                                          isDark ? Colors.black : Colors.white,
-                                    ),
-                                    const SizedBox(width: AppSpace.xs),
-                                    Text(
-                                      tr.continueWithApple,
-                                      style: text.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color:
-                                            isDark
-                                                ? Colors.black
-                                                : Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
+                  _SocialButtons(onAuthSuccess: onAuthSuccess),
 
                   const SizedBox(height: AppSpace.xl),
 
@@ -296,6 +173,121 @@ class LoginScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Sign-in buttons with immediate tap feedback (spinner while the account
+/// picker / provider flow is in progress).
+class _SocialButtons extends StatefulWidget {
+  const _SocialButtons({required this.onAuthSuccess});
+
+  final VoidCallback onAuthSuccess;
+
+  @override
+  State<_SocialButtons> createState() => _SocialButtonsState();
+}
+
+class _SocialButtonsState extends State<_SocialButtons> {
+  String? _busy; // 'google' | 'apple'
+
+  Future<void> _run(String provider, Future<dynamic> Function() action) async {
+    if (_busy != null) return;
+    setState(() => _busy = provider);
+    try {
+      final user = await action();
+      if (user != null) widget.onAuthSuccess();
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tr = context.strings;
+    final authService = getIt<AuthService>();
+    final targetPlatform = Theme.of(context).platform;
+    final showAppleSignIn =
+        targetPlatform == TargetPlatform.iOS || targetPlatform == TargetPlatform.macOS;
+    final disabled = _busy != null;
+
+    Widget spinner(Color c) => SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2.2, color: c),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: AppSize.button,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              backgroundColor: isDark ? const Color(0xFF18181B) : Colors.white,
+              foregroundColor: scheme.onSurface,
+              side: BorderSide(color: scheme.outlineVariant, width: 1.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              elevation: 0,
+            ),
+            onPressed: disabled ? null : () => _run('google', authService.signInWithGoogle),
+            child: _busy == 'google'
+                ? spinner(scheme.primary)
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SvgPicture.string(_googleSvgRaw, width: 20, height: 20),
+                      const SizedBox(width: AppSpace.md),
+                      Text(
+                        tr.continueWithGoogle,
+                        style: text.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF1F1F1F),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+        if (showAppleSignIn) ...[
+          const SizedBox(height: AppSpace.md),
+          SizedBox(
+            height: AppSize.button,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: isDark ? Colors.white : Colors.black,
+                foregroundColor: isDark ? Colors.black : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                elevation: 0,
+              ),
+              onPressed: disabled ? null : () => _run('apple', authService.signInWithApple),
+              child: _busy == 'apple'
+                  ? spinner(isDark ? Colors.black : Colors.white)
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.apple, size: 22, color: isDark ? Colors.black : Colors.white),
+                        const SizedBox(width: AppSpace.xs),
+                        Text(
+                          tr.continueWithApple,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
