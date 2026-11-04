@@ -24,6 +24,7 @@ workflows:
         - app_config             # Contains: SERVER_URL, REVENUECAT_APPLE_KEY
       vars:
         BUNDLE_ID: "com.hypr.hyprwise"
+        WIDGET_BUNDLE_ID: "com.hypr.hyprwise.HyprwiseWidgets"
         XCODE_WORKSPACE: "ios/Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
     triggering:
@@ -42,6 +43,9 @@ workflows:
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          app-store-connect fetch-signing-files "$WIDGET_BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
           keychain add-certificates
