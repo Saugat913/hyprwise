@@ -4,19 +4,19 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
+    android:clickable="true"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="12dp">
 
     <!-- HyprAI Emblem -->
-    <TextView
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="@drawable/widget_icon_bg"
-        android:gravity="center"
-        android:text="✨"
-        android:textColor="#0F172A"
-        android:textSize="22sp" />
+    <ImageView
+        android:layout_width="46dp"
+        android:layout_height="46dp"
+        android:background="@drawable/widget_icon_ai_bg"
+        android:padding="10dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_widget_ai" />
 
     <!-- Label: hyprai -->
     <TextView
@@ -26,7 +26,7 @@
         android:layout_marginTop="6dp"
         android:text="hyprai"
         android:textColor="#0F172A"
-        android:textSize="13sp"
+        android:textSize="12.5sp"
         android:textStyle="bold" />
 
 </LinearLayout>

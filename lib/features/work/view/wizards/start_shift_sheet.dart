@@ -41,18 +41,27 @@ class _StartShiftSheetState extends State<StartShiftSheet> {
     final tr = context.strings;
 
     if (jobs.isEmpty) {
-      return Scaffold(
-        appBar: AppTopBar(title: tr.startShift),
-        body: SafeArea(
-          child: EmptyState(
-            icon: HugeIcons.strokeRoundedBriefcase01,
-            title: tr.noJobsFound,
-            message: tr.addJobBeforeShift,
-            actionLabel: tr.addJobChecklist,
-            onAction: () {
-              context.pop();
-              context.push(AppRoutes.manageJobs);
-            },
+      return PopScope(
+        canPop: context.canPop(),
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          context.go(AppRoutes.home);
+        },
+        child: Scaffold(
+          appBar: AppTopBar(title: tr.startShift),
+          body: SafeArea(
+            child: EmptyState(
+              icon: HugeIcons.strokeRoundedBriefcase01,
+              title: tr.noJobsFound,
+              message: tr.addJobBeforeShift,
+              actionLabel: tr.addJobChecklist,
+              onAction: () {
+                if (context.canPop()) {
+                  context.pop();
+                }
+                context.push(AppRoutes.manageJobs);
+              },
+            ),
           ),
         ),
       );
@@ -62,17 +71,23 @@ class _StartShiftSheetState extends State<StartShiftSheet> {
     final selectedJob = viewModel.jobsById[activeId] ?? jobs.first;
     final now = DateTime.now();
 
-    return Scaffold(
-      appBar: AppTopBar(
-        title: tr.clockIn,
-        actions: [
-          TopBarAction(
-            HugeIcons.strokeRoundedBriefcase01,
-            tooltip: tr.manageJobs,
-            onPressed: () => context.push(AppRoutes.manageJobs),
-          ),
-        ],
-      ),
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        context.go(AppRoutes.home);
+      },
+      child: Scaffold(
+        appBar: AppTopBar(
+          title: tr.clockIn,
+          actions: [
+            TopBarAction(
+              HugeIcons.strokeRoundedBriefcase01,
+              tooltip: tr.manageJobs,
+              onPressed: () => context.push(AppRoutes.manageJobs),
+            ),
+          ],
+        ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(AppSpace.page),
@@ -263,14 +278,21 @@ class _StartShiftSheetState extends State<StartShiftSheet> {
               AppButton(
                 tr.cancel,
                 kind: AppButtonKind.secondary,
-                onPressed: () => context.pop(),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(AppRoutes.home);
+                  }
+                },
               ),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _JobSelectionGridCard extends StatelessWidget {

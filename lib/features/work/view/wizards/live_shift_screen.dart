@@ -41,6 +41,31 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
 
     if (widget.initialAction == 'break') {
       viewModel.toggleBreak();
+    } else if (widget.initialAction == 'end') {
+      _triggerEndShift(viewModel, shift);
+    }
+  }
+
+  Future<void> _triggerEndShift(WorkViewModel viewModel, dynamic shift) async {
+    final job = viewModel.jobsById[shift.jobId];
+    final elapsed = viewModel.activeShiftElapsed;
+    final tr = context.strings;
+    final confirmed = await showConfirmDialog(
+      context,
+      title: tr.endShiftNow,
+      message:
+          '${job?.name ?? tr.shiftLabel} · ${tr.formatNumber(elapsed.inHours)}${tr.hourAbbr} ${tr.formatNumber(elapsed.inMinutes % 60)}${tr.minuteAbbr} (${tr.formatNumber(viewModel.currentBreakMinutes)}${tr.minuteAbbr}).',
+      confirmLabel: tr.endShift,
+      cancelLabel: tr.keepWorking,
+    );
+    if (confirmed && mounted) {
+      final earnings = await viewModel.endShift(
+        shift.id,
+        breakMinutes: viewModel.currentBreakMinutes,
+      );
+      if (mounted) {
+        context.go(AppRoutes.shiftDone(shift.id), extra: earnings);
+      }
     }
   }
 
@@ -380,25 +405,7 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
                     AppButton(
                       tr.endShift,
                       kind: AppButtonKind.danger,
-                      onPressed: () async {
-                        final confirmed = await showConfirmDialog(
-                          context,
-                          title: tr.endShiftNow,
-                          message:
-                              '${job?.name ?? tr.shiftLabel} · ${tr.formatNumber(elapsed.inHours)}${tr.hourAbbr} ${tr.formatNumber(elapsed.inMinutes % 60)}${tr.minuteAbbr} (${tr.formatNumber(viewModel.currentBreakMinutes)}${tr.minuteAbbr}).',
-                          confirmLabel: tr.endShift,
-                          cancelLabel: tr.keepWorking,
-                        );
-                        if (confirmed && context.mounted) {
-                          final earnings = await viewModel.endShift(
-                            shift.id,
-                            breakMinutes: viewModel.currentBreakMinutes,
-                          );
-                          if (context.mounted) {
-                            context.go(AppRoutes.shiftDone(shift.id), extra: earnings);
-                          }
-                        }
-                      },
+                      onPressed: () => _triggerEndShift(viewModel, shift),
                     ),
                   ],
                 ),

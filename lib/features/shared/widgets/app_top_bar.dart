@@ -33,8 +33,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final canPop = context.canPop() || Navigator.of(context).canPop();
-    final shouldShowBack = showBackButton ?? (canPop || onBack != null);
+    final shouldShowBack = showBackButton ?? true;
 
     void handleBack() {
       if (onBack != null) {

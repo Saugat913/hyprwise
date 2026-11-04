@@ -205,8 +205,9 @@ void main() {
   });
 
   test('New account does not auto-onboard and leaves isReturningUser false', () async {
+    final uniqueEmail = 'brandnew_${DateTime.now().microsecondsSinceEpoch}@hyprwise.com';
     final newUser = await authService.signInWithGoogle(
-      email: 'brandnew.user@hyprwise.com',
+      email: uniqueEmail,
       displayName: 'Brand New User',
     );
     expect(newUser, isNotNull);

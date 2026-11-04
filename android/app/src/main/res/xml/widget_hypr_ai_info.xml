@@ -3,8 +3,10 @@
     android:description="@string/widget_ai_desc"
     android:initialKeyguardLayout="@layout/widget_hypr_ai"
     android:initialLayout="@layout/widget_hypr_ai"
-    android:minWidth="70dp"
-    android:minHeight="70dp"
+    android:minWidth="60dp"
+    android:minHeight="60dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
     android:resizeMode="none"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen" />

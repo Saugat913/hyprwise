@@ -148,6 +148,7 @@ class WorkViewModel extends ChangeNotifier {
       unawaited(WidgetSyncService.updateShift(
         jobName: job.name,
         subtitle: subtitle,
+        isOnBreak: _isOnBreak,
       ));
     }
   }
