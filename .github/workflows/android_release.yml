@@ -58,10 +58,27 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Configure Environment Variables (.env)
+        env:
+          SERVER_URL: ${{ secrets.SERVER_URL }}
+          REVENUECAT_GOOGLE_KEY: ${{ secrets.REVENUECAT_GOOGLE_KEY }}
+          FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
+          FIREBASE_WEB_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
+          ENVIRONMENT: 'production'
+        run: |
+          cat << EOF > .env
+          SERVER_URL=${SERVER_URL:-https://hyprwise.kandelsaugat913.workers.dev}
+          ENVIRONMENT=${ENVIRONMENT:-production}
+          REVENUECAT_GOOGLE_KEY=${REVENUECAT_GOOGLE_KEY:-goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy}
+          FIREBASE_ANDROID_API_KEY=${FIREBASE_ANDROID_API_KEY:-}
+          FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY:-}
+          EOF
+          echo "Created .env successfully for Android build"
+
       - name: Verify Code Quality & Tests
         run: |
           flutter analyze
-          flutter test
+          flutter test --dart-define-from-file=.env
 
       - name: Determine Version & Track
         id: versioning
@@ -134,13 +151,11 @@ jobs:
           fi
 
       - name: Build Android App Bundle (.aab)
-        env:
-          FIREBASE_ANDROID_API_KEY: ${{ secrets.FIREBASE_ANDROID_API_KEY }}
         run: |
           flutter build appbundle --release \
             --build-name="${{ steps.versioning.outputs.version_name }}" \
             --build-number="${{ steps.versioning.outputs.version_code }}" \
-            --dart-define="FIREBASE_ANDROID_API_KEY=${FIREBASE_ANDROID_API_KEY}"
+            --dart-define-from-file=.env
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4

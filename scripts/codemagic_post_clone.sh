@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== [Codemagic Post-Clone] 1. Dynamically injecting system environment variables into .env ==="
+echo "=== [Codemagic Post-Clone] 1. Refreshing iOS platform files and getting dependencies ==="
+flutter create . --platforms=ios
+rm -f test/widget_test.dart
+flutter pub get
 
-# Initialize or clean .env
+echo "=== [Codemagic Post-Clone] 2. Dynamically injecting system environment variables into .env ==="
 rm -f .env
 touch .env
 
-# Export all current system environment variables safely into .env
 while IFS= read -r -d '' var; do
   key="${var%%=*}"
   val="${var#*=}"
@@ -38,10 +40,6 @@ if ! grep -q "^APP_STORE_CONNECT_ISSUER_ID=" .env && [ -z "$APP_STORE_CONNECT_IS
 fi
 
 echo "✓ Successfully exported $(wc -l < .env) environment variables into .env"
-
-echo "=== [Codemagic Post-Clone] 2. Getting Flutter dependencies & configuring iOS ==="
-flutter pub get
-flutter build ios --config-only --no-codesign
 
 echo "=== [Codemagic Post-Clone] 3. Installing CocoaPods dependencies ==="
 cd ios && pod install --repo-update && cd ..
