@@ -602,11 +602,22 @@ class AuthService extends ChangeNotifier {
     required String baseCurrency,
   }) async {
     _isReturningUser = true;
+    final email = _currentUser?.email.trim().toLowerCase() ?? '';
     await _storage.write(key: _lastLoggedInUserIdKey, value: userId);
     await _storage.write(key: _keyUserOnboarded(userId), value: 'true');
     await _storage.write(key: _keyUserLocale(userId), value: locale);
     await _storage.write(key: _keyUserCurrency(userId), value: baseCurrency);
+    if (email.isNotEmpty) {
+      await _storage.write(key: 'auth_user_locale_$email', value: locale);
+      await _storage.write(key: 'auth_user_currency_$email', value: baseCurrency);
+      await _storage.write(key: 'auth_user_onboarded_$email', value: 'true');
+    }
+    await _storage.write(key: 'auth_last_known_locale', value: locale);
+    await _storage.write(key: 'auth_last_known_currency', value: baseCurrency);
+
     unawaited(ApiClient.instance.updatePreferences(
+      userId: userId,
+      email: email,
       locale: locale,
       baseCurrency: baseCurrency,
     ));
@@ -638,7 +649,17 @@ class AuthService extends ChangeNotifier {
       key: _keyUserCurrency(user.id),
       value: effectiveCurrency,
     );
+    final email = user.email.trim().toLowerCase();
+    if (email.isNotEmpty) {
+      await _storage.write(key: 'auth_user_locale_$email', value: effectiveLocale);
+      await _storage.write(key: 'auth_user_currency_$email', value: effectiveCurrency);
+    }
+    await _storage.write(key: 'auth_last_known_locale', value: effectiveLocale);
+    await _storage.write(key: 'auth_last_known_currency', value: effectiveCurrency);
+
     unawaited(ApiClient.instance.updatePreferences(
+      userId: user.id,
+      email: email,
       locale: effectiveLocale,
       baseCurrency: effectiveCurrency,
     ));
@@ -659,15 +680,18 @@ class AuthService extends ChangeNotifier {
     }
     await _storage.write(key: _lastLoggedInUserIdKey, value: userId);
 
+    final emailKey = _currentUser?.email.trim().toLowerCase() ?? '';
+
     // 2. Identify if user is returning or brand new:
     // a) Cloudflare server explicit flag (isNewUser == false)
     // b) Server preferences object (onboarded == true)
-    // c) Local secure storage key for this user
+    // c) Local secure storage key for this user ID or email
     // d) Local app preferences already marked onboarded
     final isNewUserFromServer = serverRes?['isNewUser'] as bool?;
     final serverPrefs = serverRes?['preferences'] as Map<String, dynamic>?;
     final serverOnboarded = serverPrefs?['onboarded'] as bool?;
-    final localOnboarded = await _storage.read(key: _keyUserOnboarded(userId));
+    final localOnboarded = await _storage.read(key: _keyUserOnboarded(userId)) ??
+        (emailKey.isNotEmpty ? await _storage.read(key: 'auth_user_onboarded_$emailKey') : null);
     final deviceAlreadyOnboarded = getIt.isRegistered<SettingsRepository>() &&
         getIt<SettingsRepository>().settings.onboarded;
 
@@ -683,28 +707,60 @@ class AuthService extends ChangeNotifier {
     if (_isReturningUser || _hasRestoredCloudData) {
       _isReturningUser = true;
 
-      final serverLocale = serverPrefs?['locale'] as String?;
-      final serverCurrency = serverPrefs?['baseCurrency'] as String?;
-      final localLocale = await _storage.read(key: _keyUserLocale(userId));
-      final localCurrency = await _storage.read(key: _keyUserCurrency(userId));
+      final serverLocale = (serverPrefs?['locale'] as String?)?.trim();
+      final serverCurrency = (serverPrefs?['baseCurrency'] as String?)?.trim();
+      final localLocale = await _storage.read(key: _keyUserLocale(userId)) ??
+          (emailKey.isNotEmpty ? await _storage.read(key: 'auth_user_locale_$emailKey') : null) ??
+          await _storage.read(key: 'auth_last_known_locale');
+      final localCurrency = await _storage.read(key: _keyUserCurrency(userId)) ??
+          (emailKey.isNotEmpty ? await _storage.read(key: 'auth_user_currency_$emailKey') : null) ??
+          await _storage.read(key: 'auth_last_known_currency');
 
-      final preferredLocale = serverLocale ?? localLocale;
-      final preferredCurrency = serverCurrency ?? localCurrency;
+      final currentDeviceLocale = getIt.isRegistered<SettingsRepository>()
+          ? getIt<SettingsRepository>().localeCode
+          : null;
+      final currentDeviceCurrency = getIt.isRegistered<SettingsRepository>()
+          ? getIt<SettingsRepository>().baseCurrency
+          : null;
+
+      // Retain device local preference if already explicitly configured, otherwise adopt server or stored setting
+      final String preferredLocale;
+      if (currentDeviceLocale != null && currentDeviceLocale.isNotEmpty && currentDeviceLocale != 'en') {
+        preferredLocale = currentDeviceLocale;
+      } else if (serverLocale != null && serverLocale.isNotEmpty) {
+        preferredLocale = serverLocale;
+      } else if (localLocale != null && localLocale.isNotEmpty) {
+        preferredLocale = localLocale;
+      } else {
+        preferredLocale = currentDeviceLocale ?? 'en';
+      }
+
+      final String preferredCurrency;
+      if (currentDeviceCurrency != null && currentDeviceCurrency.isNotEmpty && currentDeviceCurrency != 'USD') {
+        preferredCurrency = currentDeviceCurrency;
+      } else if (serverCurrency != null && serverCurrency.isNotEmpty) {
+        preferredCurrency = serverCurrency;
+      } else if (localCurrency != null && localCurrency.isNotEmpty) {
+        preferredCurrency = localCurrency;
+      } else {
+        preferredCurrency = currentDeviceCurrency ?? 'USD';
+      }
 
       if (getIt.isRegistered<SettingsRepository>()) {
         final settingsRepo = getIt<SettingsRepository>();
-        if (preferredLocale != null && preferredLocale.isNotEmpty) {
+        if (preferredLocale != settingsRepo.localeCode) {
           await settingsRepo.setLocaleCode(preferredLocale);
         }
-        if (preferredCurrency != null && preferredCurrency.isNotEmpty) {
+        if (preferredCurrency != settingsRepo.baseCurrency) {
           await settingsRepo.setBaseCurrency(preferredCurrency);
         }
         await settingsRepo.completeOnboarding();
       }
 
       if (getIt.isRegistered<AccountRepository>()) {
-        final effectiveCurrency = preferredCurrency ??
-            (getIt.isRegistered<SettingsRepository>()
+        final effectiveCurrency = preferredCurrency.isNotEmpty
+            ? preferredCurrency
+            : (getIt.isRegistered<SettingsRepository>()
                 ? getIt<SettingsRepository>().baseCurrency
                 : 'USD');
         await getIt<AccountRepository>().ensureFixedTwoAccounts(effectiveCurrency);
@@ -712,12 +768,23 @@ class AuthService extends ChangeNotifier {
 
       // Persist user-specific flags to storage
       await _storage.write(key: _keyUserOnboarded(userId), value: 'true');
-      if (preferredCurrency != null) {
-        await _storage.write(key: _keyUserCurrency(userId), value: preferredCurrency);
+      await _storage.write(key: _keyUserCurrency(userId), value: preferredCurrency);
+      await _storage.write(key: _keyUserLocale(userId), value: preferredLocale);
+      if (emailKey.isNotEmpty) {
+        await _storage.write(key: 'auth_user_onboarded_$emailKey', value: 'true');
+        await _storage.write(key: 'auth_user_currency_$emailKey', value: preferredCurrency);
+        await _storage.write(key: 'auth_user_locale_$emailKey', value: preferredLocale);
       }
-      if (preferredLocale != null) {
-        await _storage.write(key: _keyUserLocale(userId), value: preferredLocale);
-      }
+      await _storage.write(key: 'auth_last_known_locale', value: preferredLocale);
+      await _storage.write(key: 'auth_last_known_currency', value: preferredCurrency);
+
+      // Re-sync final resolved preferences to server in background
+      unawaited(ApiClient.instance.updatePreferences(
+        userId: userId,
+        email: emailKey,
+        locale: preferredLocale,
+        baseCurrency: preferredCurrency,
+      ));
     }
 
     // Trigger auto-sync if Pro

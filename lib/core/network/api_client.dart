@@ -44,9 +44,12 @@ class ApiClient {
   ApiClient._();
   static final ApiClient instance = ApiClient._();
 
+  static const String defaultProductionUrl = 'https://hyprwise.kandelsaugat913.workers.dev';
+
   // Potential host endpoints in order of priority (configurable via .env / --dart-define)
   static List<String> get _candidateHosts => [
     if (AppConfig.serverUrl.isNotEmpty) AppConfig.serverUrl,
+    defaultProductionUrl,
     'http://127.0.0.1:3000',      // Localhost / ADB reverse proxy
     'http://10.0.2.2:3000',        // Android emulator loopback alias
     'http://192.168.100.96:3000',  // Local Wi-Fi host IP
@@ -195,16 +198,23 @@ class ApiClient {
   Future<bool> updatePreferences({
     required String locale,
     required String baseCurrency,
+    String? userId,
+    String? email,
   }) async {
     try {
       final host = await getBaseUrl();
       if (host == null) return false;
+
+      final targetUserId = userId ?? _userId;
+      final targetEmail = email ?? _userEmail;
 
       final res = await http
           .post(
             Uri.parse('$host/api/auth/preferences'),
             headers: _headers,
             body: jsonEncode({
+              if (targetUserId != null) 'userId': targetUserId,
+              if (targetEmail != null) 'email': targetEmail,
               'locale': locale,
               'baseCurrency': baseCurrency,
               'onboarded': true,

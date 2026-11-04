@@ -10,7 +10,10 @@ class AppConfig {
   AppConfig._();
 
   /// Primary Cloudflare / Hono server endpoint
-  static const String serverUrl = String.fromEnvironment('SERVER_URL');
+  static const String serverUrl = String.fromEnvironment(
+    'SERVER_URL',
+    defaultValue: 'https://hyprwise.kandelsaugat913.workers.dev',
+  );
 
   /// Active environment identifier (production, staging, development)
   static const String environment = String.fromEnvironment(
