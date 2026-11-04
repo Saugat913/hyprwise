@@ -612,6 +612,38 @@ class AuthService extends ChangeNotifier {
     ));
   }
 
+  /// Synchronizes lightweight preferences (locale, baseCurrency) with Hyprwise Server
+  /// ensuring free and Pro accounts alike have basic cross-device remembrance.
+  Future<void> syncUserPreferences({
+    String? locale,
+    String? baseCurrency,
+  }) async {
+    final user = _currentUser;
+    if (user == null) return;
+
+    final effectiveLocale = locale ??
+        (getIt.isRegistered<SettingsRepository>()
+            ? getIt<SettingsRepository>().localeCode
+            : 'en');
+    final effectiveCurrency = baseCurrency ??
+        (getIt.isRegistered<SettingsRepository>()
+            ? getIt<SettingsRepository>().baseCurrency
+            : 'USD');
+
+    await _storage.write(
+      key: _keyUserLocale(user.id),
+      value: effectiveLocale,
+    );
+    await _storage.write(
+      key: _keyUserCurrency(user.id),
+      value: effectiveCurrency,
+    );
+    unawaited(ApiClient.instance.updatePreferences(
+      locale: effectiveLocale,
+      baseCurrency: effectiveCurrency,
+    ));
+  }
+
   /// Coordinates post-sign-in state, distinguishing returning users from first-time sign-ups
   Future<void> _handlePostSignInSetup({
     required String userId,

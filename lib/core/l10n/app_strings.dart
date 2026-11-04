@@ -501,6 +501,29 @@ class AppStrings {
   String get purchasesRestored => _t('Purchases restored successfully.', ne: 'खरिदहरू सफलतापूर्वक पुनर्स्थापना गरियो।', es: 'Compras restauradas con éxito.', fr: 'Achats restaurés avec succès.', de: 'Käufe erfolgreich wiederhergestellt.', ja: '購入が正常に復元されました。', zh: '购买已成功恢复。', it: 'Acquisti ripristinati con successo.');
   String get noPurchasesFound => _t('No previous purchases found.', ne: 'कुनै अघिल्लो खरिद फेला परेन।', es: 'No se encontraron compras anteriores.', fr: 'Aucun achat antérieur trouvé.', de: 'Keine früheren Käufe gefunden.', ja: '以前の購入は見つかりませんでした。', zh: '未找到先前的购买记录。', it: 'Nessun acquisto precedente trovato.');
   String get signOut => _t('Sign out', ne: 'साइन आउट', es: 'Cerrar sesión', fr: 'Se déconnecter', de: 'Abmelden', ja: 'サインアウト', zh: '退出登录');
+  String get signOutWarningTitle => _t('Unsaved Data Warning', ne: 'असुरक्षित डेटा चेतावनी', es: 'Aviso de datos no guardados', fr: 'Avertissement de données non sauvegardées', de: 'Warnung vor ungesicherten Daten', ja: '未保存データ警告', zh: '未保存数据警告', it: 'Avviso dati non salvati');
+  String get signOutWarningDesc => _t(
+    'Your accounts, transactions, and shifts are stored locally on this device. Because you are on the free plan, cloud backup is inactive and your data may be lost upon signing out. Upgrade to Hyprwise Pro to automatically sync and protect your finances in the cloud.',
+    ne: 'तपाईंका खाताहरू, कारोबारहरू र सिफ्टहरू हाल यो यन्त्रमा मात्र सुरक्षित छन्। तपाईं फ्रि योजनामा हुनुभएकाले क्लाउड ब्याकअप सक्रिय छैन र साइन आउट गर्दा डेटा हराउन सक्छ। आफ्नो वित्तीय डेटा क्लाउडमा सुरक्षित रूपमा सिंक र संरक्षण गर्न Hyprwise Pro मा अपग्रेड गर्नुहोस्।',
+    es: 'Tus cuentas, transacciones y turnos se guardan únicamente en este dispositivo. Al estar en el plan gratuito, la copia en la nube no está activa y tus datos podrían perderse al cerrar sesión. Actualiza a Hyprwise Pro para sincronizar y proteger tus finanzas en la nube.',
+    fr: 'Vos comptes, transactions et quarts sont stockés localement sur cet appareil. Avec le forfait gratuit, la sauvegarde cloud n\'est pas active et vos données pourraient être perdues. Passez à Hyprwise Pro pour synchroniser et protéger vos finances dans le cloud.',
+    de: 'Ihre Konten, Transaktionen und Schichten sind lokal auf diesem Gerät gespeichert. Im kostenlosen Plan ist das Cloud-Backup inaktiv und Ihre Daten können beim Abmelden verloren gehen. Upgraden Sie auf Hyprwise Pro, um Ihre Finanzen in der Cloud zu sichern.',
+    ja: 'アカウント、取引、シフトはこの端末にのみローカル保存されています。無料プランではクラウドバックアップが無効なため、サインアウトするとデータが失われる可能性があります。クラウドで安全に同期・保護するには、Hyprwise Proにアップグレードしてください。',
+    zh: '您的账户、交易和班次记录仅保存在此设备上。由于您使用的是免费版，云端备份未激活，退出登录后数据可能会丢失。升级到 Hyprwise Pro 可自动在云端备份和保护您的财务数据。',
+    it: 'I tuoi account, transazioni e turni sono salvati localmente su questo dispositivo. Con il piano gratuito il backup cloud non è attivo e i dati potrebbero andare persi. Passa a Hyprwise Pro per proteggere le tue finanze nel cloud.',
+  );
+  String get signOutAnyway => _t('Sign out anyway', ne: 'तैपनि साइन आउट गर्नुहोस्', es: 'Cerrar sesión de todos modos', fr: 'Se déconnecter quand même', de: 'Trotzdem abmelden', ja: 'それでもサインアウト', zh: '仍然退出登录', it: 'Esci comunque');
+  String get staySignedIn => _t('Stay signed in', ne: 'साइन इन नै रहनुहोस्', es: 'Permanecer conectado', fr: 'Rester connecté', de: 'Angemeldet bleiben', ja: 'サインインのまま', zh: '保持登录', it: 'Rimani connesso');
+  String get proSignOutConfirmDesc => _t(
+    'Your accounts and financial data are safely backed up to the cloud and will be restored when you sign in again.',
+    ne: 'तपाईंका खाताहरू र वित्तीय डेटा क्लाउडमा सुरक्षित छन् र अर्को पटक साइन इन गर्दा पुनर्स्थापना हुनेछन्।',
+    es: 'Tus cuentas y datos financieros están respaldados de forma segura en la nube y se restaurarán cuando vuelvas a iniciar sesión.',
+    fr: 'Vos comptes et données financières sont sauvegardés en toute sécurité dans le cloud et seront restaurés lors de votre prochaine connexion.',
+    de: 'Ihre Konten und Finanzdaten sind sicher in der Cloud gesichert und werden bei der nächsten Anmeldung wiederhergestellt.',
+    ja: 'アカウントと財務データはクラウドに安全にバックアップされており、次回サインイン時に復元されます。',
+    zh: '您的账户和财务数据已安全备份到云端，再次登录时将自动恢复。',
+    it: 'I tuoi account e dati finanziari sono al sicuro nel cloud e saranno ripristinati al prossimo accesso.',
+  );
 
   String get categories => _t('Categories', ne: 'वर्गहरू', es: 'Categorías', fr: 'Catégories', de: 'Kategorien', ja: 'カテゴリー', zh: '分类');
   String get systemTheme => _t('System', ne: 'प्रणाली', es: 'Sistema', fr: 'Système', de: 'System', ja: 'システム', zh: '跟随系统');

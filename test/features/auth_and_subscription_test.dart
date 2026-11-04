@@ -144,6 +144,24 @@ void main() {
     expect(storedLocale, equals('ne'));
   });
 
+  test('Free users synchronize basic currency and language preferences to storage & backend', () async {
+    final user = await authService.signInWithGoogle(
+      email: 'free.sync@hyprwise.com',
+      displayName: 'Free User',
+    );
+    expect(user.isPro, isFalse);
+
+    await authService.syncUserPreferences(
+      locale: 'ja',
+      baseCurrency: 'JPY',
+    );
+
+    final storedLocale = await storage.read(key: 'auth_user_locale_${user.id}');
+    final storedCurrency = await storage.read(key: 'auth_user_currency_${user.id}');
+    expect(storedLocale, equals('ja'));
+    expect(storedCurrency, equals('JPY'));
+  });
+
   test('RevenueCat dual-key configuration exposes Test Store key for debug', () {
     expect(SubscriptionService.testStoreKey, equals('test_gyjflYZzhqICSKhjUzpGpbmhnJu'));
     expect(SubscriptionService.playStoreKey, equals('goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy'));

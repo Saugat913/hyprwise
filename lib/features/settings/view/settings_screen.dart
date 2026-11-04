@@ -728,7 +728,7 @@ class _AccountAuthCard extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => authService.signOut(),
+                      onPressed: () => _showSignOutDialog(context, authService, subService),
                       child: Text(tr.signOut),
                     ),
                   ],
@@ -974,6 +974,185 @@ class _AccountAuthCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _showSignOutDialog(
+    BuildContext context,
+    AuthService authService,
+    SubscriptionService subService,
+  ) async {
+    final tr = context.strings;
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final isPro = subService.isPro;
+
+    if (isPro) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          title: Text(tr.signOut),
+          content: Text(tr.proSignOutConfirmDesc),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(tr.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.error,
+                foregroundColor: scheme.onError,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(tr.signOut),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) {
+        await authService.signOut();
+      }
+      return;
+    }
+
+    // Non-Pro user: Show warning that offline local data is not backed up to the cloud
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.page,
+            AppSpace.md,
+            AppSpace.page,
+            AppSpace.lg + MediaQuery.of(sheetCtx).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.outlineVariant.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpace.lg),
+              Center(
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: scheme.errorContainer.withValues(alpha: 0.45),
+                    border: Border.all(
+                      color: scheme.error.withValues(alpha: 0.35),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.cloud_off_rounded,
+                    size: 32,
+                    color: scheme.error,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              Text(
+                tr.signOutWarningTitle,
+                textAlign: TextAlign.center,
+                style: text.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              Text(
+                tr.signOutWarningDesc,
+                textAlign: TextAlign.center,
+                style: text.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: AppSpace.xl),
+
+              // Vertically stacked action buttons per AGENTS.md rule
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(double.infinity, AppSize.button),
+                  backgroundColor: const Color(0xFFF59E0B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.star_rounded, size: 20),
+                label: Text(
+                  tr.upgradeToPro,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                onPressed: () async {
+                  Navigator.of(sheetCtx).pop();
+                  final paywallResult = await subService.presentPaywall();
+                  if (paywallResult == PaywallResult.purchased ||
+                      paywallResult == PaywallResult.restored ||
+                      subService.isPro) {
+                    authService.triggerProAutoSync();
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpace.sm),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, AppSize.button),
+                  foregroundColor: scheme.error,
+                  side: BorderSide(
+                    color: scheme.error.withValues(alpha: 0.5),
+                    width: 1.2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.of(sheetCtx).pop();
+                  await authService.signOut();
+                },
+                child: Text(
+                  tr.signOutAnyway,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              TextButton(
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(double.infinity, AppSize.button),
+                ),
+                onPressed: () => Navigator.of(sheetCtx).pop(),
+                child: Text(
+                  tr.staySignedIn,
+                  style: text.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

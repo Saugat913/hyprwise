@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart' show Locale, ThemeMode;
 import 'package:flutter/foundation.dart';
 
+import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
+import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/settings/data/model/app_settings.dart';
 
 /// Device-local settings persisted in the `app_preferences` key/value table.
@@ -89,6 +92,9 @@ class SettingsRepository extends ChangeNotifier {
 
   Future<void> setLocale(String code) {
     TelemetryService.instance.setUserProperty(name: 'locale', value: code);
+    if (getIt.isRegistered<AuthService>()) {
+      unawaited(getIt<AuthService>().syncUserPreferences(locale: code));
+    }
     return _apply(_settings.copyWith(localeCode: code), {keyLocale: code});
   }
 
@@ -96,6 +102,9 @@ class SettingsRepository extends ChangeNotifier {
 
   Future<void> setBaseCurrency(String code) {
     TelemetryService.instance.setUserProperty(name: 'base_currency', value: code);
+    if (getIt.isRegistered<AuthService>()) {
+      unawaited(getIt<AuthService>().syncUserPreferences(baseCurrency: code));
+    }
     return _apply(
       _settings.copyWith(baseCurrency: code),
       {keyBaseCurrency: code},
