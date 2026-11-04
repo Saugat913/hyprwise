@@ -51,9 +51,12 @@ This document is the **single source of truth** for all autonomous agents, human
 
 ### Branch Topology
 - **`main`**: Production-ready code. Every commit on `main` is production quality.
+  - **AGENT RULE**: Autonomous agents must **NEVER** push to `main`. Only the user manually merges/pushes to `main`.
   - Triggers: **Codemagic Production Workflow** & Google Play Production deployment.
-- **`dev`**: Active integration branch. All features merge here first.
+- **`dev`**: Active integration branch. All client app features and fixes are pushed strictly here.
   - Triggers: **Codemagic Internal Testing Workflow** & Google Play Internal Testing track.
+- **`server`**: Dedicated standalone branch for Cloudflare Workers backend (`server/`).
+  - All server changes are pushed strictly to this branch.
 - **`patch`**: Single dedicated standing branch for emergency production hotfixes/patches.
   - Always kept in sync with `main`.
   - Triggers: **Codemagic Production Workflow** (Play Store patch release).
