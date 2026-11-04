@@ -609,25 +609,31 @@ class _AccountAuthCard extends StatelessWidget {
         if (user != null) {
           final isAnonymous = authService.isGuest || user.provider == AuthProvider.guest;
           final isApple = user.provider == AuthProvider.apple;
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          final displayName = isAnonymous
-              ? tr.t(
-                  'Anonymous User',
-                  ne: 'अज्ञात प्रयोगकर्ता',
-                  hi: 'गुमनाम उपयोगकर्ता',
-                  es: 'Usuario anónimo',
-                  fr: 'Utilisateur anonyme',
-                  de: 'Anonymer Benutzer',
-                  ja: '匿名ユーザー',
-                  zh: '匿名用户',
-                  it: 'Utente anonimo',
-                )
-              : (user.displayName.trim().isNotEmpty && user.displayName.trim() != 'Apple User'
-                  ? user.displayName.trim()
-                  : (isApple
-                      ? tr.t('Apple Account', ne: 'एप्पल खाता', hi: 'एप्पल खाता')
-                      : (user.email.contains('@') ? user.email.split('@').first : (user.email.isNotEmpty ? user.email : 'User'))));
-          final initial = isApple ? '' : (displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U');
+          final String displayName;
+          if (isAnonymous) {
+            displayName = tr.t(
+              'Anonymous User',
+              ne: 'अज्ञात प्रयोगकर्ता',
+              hi: 'गुमनाम उपयोगकर्ता',
+              es: 'Usuario anónimo',
+              fr: 'Utilisateur anonyme',
+              de: 'Anonymer Benutzer',
+              ja: '匿名ユーザー',
+              zh: '匿名用户',
+              it: 'Utente anonimo',
+            );
+          } else if (user.displayName.trim().isNotEmpty &&
+              user.displayName.trim() != 'Apple User' &&
+              user.displayName.trim() != 'Apple Account') {
+            displayName = user.displayName.trim();
+          } else if (user.email.isNotEmpty && user.email.contains('@')) {
+            displayName = AuthService.formatDisplayNameFromEmail(user.email);
+          } else {
+            displayName = isApple
+                ? tr.t('Apple User', ne: 'एप्पल प्रयोगकर्ता', hi: 'एप्पल उपयोगकर्ता')
+                : (user.email.isNotEmpty ? user.email : 'User');
+          }
+          final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
           return AppCard(
             padding: const EdgeInsets.all(AppSpace.md),
             child: Column(
@@ -642,9 +648,7 @@ class _AccountAuthCard extends StatelessWidget {
                           radius: 22,
                           backgroundColor: isAnonymous
                               ? scheme.surfaceContainerHighest
-                              : (isApple
-                                  ? (isDark ? Colors.white : Colors.black)
-                                  : scheme.primaryContainer),
+                              : scheme.primaryContainer,
                           backgroundImage: (!isAnonymous && user.photoUrl != null && user.photoUrl!.isNotEmpty)
                               ? NetworkImage(user.photoUrl!)
                               : null,
@@ -654,22 +658,16 @@ class _AccountAuthCard extends StatelessWidget {
                                   size: 20,
                                   color: scheme.onSurfaceVariant,
                                 )
-                              : isApple
-                                  ? Icon(
-                                      Icons.apple,
-                                      size: 22,
-                                      color: isDark ? Colors.black : Colors.white,
+                              : (user.photoUrl == null || user.photoUrl!.isEmpty)
+                                  ? Text(
+                                      initial,
+                                      style: TextStyle(
+                                        color: scheme.onPrimaryContainer,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
                                     )
-                                  : (user.photoUrl == null || user.photoUrl!.isEmpty)
-                                      ? Text(
-                                          initial,
-                                          style: TextStyle(
-                                            color: scheme.onPrimaryContainer,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        )
-                                      : null,
+                                  : null,
                         ),
                         if (subService.isPro || subService.everSupported)
                           Positioned(
@@ -714,14 +712,29 @@ class _AccountAuthCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           if (!isAnonymous && user.email.isNotEmpty) ...[
-                            const SizedBox(height: 1),
-                            Text(
-                              user.email,
-                              style: text.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontSize: 11.5,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isApple) ...[
+                                  Icon(
+                                    Icons.apple,
+                                    size: 13,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 3),
+                                ],
+                                Flexible(
+                                  child: Text(
+                                    user.email,
+                                    style: text.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      fontSize: 11.5,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ],

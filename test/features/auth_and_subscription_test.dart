@@ -214,4 +214,66 @@ void main() {
     expect(authService.isReturningUser, isFalse);
     expect(authService.hasRestoredCloudData, isFalse);
   });
+
+  test('AuthService.formatDisplayNameFromEmail creates human-friendly username', () {
+    expect(
+      AuthService.formatDisplayNameFromEmail('saugat.kandel@icloud.com'),
+      equals('Saugat Kandel'),
+    );
+    expect(
+      AuthService.formatDisplayNameFromEmail('john_doe@privaterelay.appleid.com'),
+      equals('John Doe'),
+    );
+    expect(
+      AuthService.formatDisplayNameFromEmail('alice-smith@domain.com'),
+      equals('Alice Smith'),
+    );
+    expect(
+      AuthService.formatDisplayNameFromEmail('developer@hyprwise.com'),
+      equals('Developer'),
+    );
+  });
+
+  test('AuthService.extractNameFromProfile handles nested, flat, and string profile formats', () {
+    expect(
+      AuthService.extractNameFromProfile({'name': 'Saugat Kandel'}),
+      equals('Saugat Kandel'),
+    );
+    expect(
+      AuthService.extractNameFromProfile({
+        'name': {'firstName': 'Saugat', 'lastName': 'Kandel'},
+      }),
+      equals('Saugat Kandel'),
+    );
+    expect(
+      AuthService.extractNameFromProfile({
+        'firstName': 'Jane',
+        'lastName': 'Doe',
+      }),
+      equals('Jane Doe'),
+    );
+    expect(
+      AuthService.extractNameFromProfile(null),
+      isNull,
+    );
+  });
+
+  test('Signing in with Apple derives username from email and never defaults to Apple Account', () async {
+    final appleUser = await authService.signInWithApple(
+      email: 'saugat.kandel@icloud.com',
+    );
+    expect(appleUser, isNotNull);
+    expect(appleUser!.provider, equals(AuthProvider.apple));
+    expect(appleUser.email, equals('saugat.kandel@icloud.com'));
+    expect(appleUser.displayName, equals('Saugat Kandel'));
+    expect(appleUser.displayName, isNot(equals('Apple User')));
+    expect(appleUser.displayName, isNot(equals('Apple Account')));
+
+    // Signing in again without explicit name retains the cached username
+    final returningAppleUser = await authService.signInWithApple(
+      email: 'saugat.kandel@icloud.com',
+    );
+    expect(returningAppleUser, isNotNull);
+    expect(returningAppleUser!.displayName, equals('Saugat Kandel'));
+  });
 }

@@ -68,6 +68,52 @@ class AuthService extends ChangeNotifier {
     return '$prefix$hex';
   }
 
+  /// Formats a human-readable display name from an email address prefix
+  /// (e.g. "saugat.kandel@icloud.com" -> "Saugat Kandel", "jane_doe@..." -> "Jane Doe")
+  static String formatDisplayNameFromEmail(String email) {
+    if (!email.contains('@')) return email.isNotEmpty ? email : 'User';
+    final prefix = email.split('@').first.trim();
+    final parts = prefix.split(RegExp(r'[._\-]')).where((p) => p.isNotEmpty).toList();
+    if (parts.isNotEmpty) {
+      return parts.map((p) => p[0].toUpperCase() + (p.length > 1 ? p.substring(1) : '')).join(' ');
+    }
+    return prefix.isNotEmpty ? prefix : 'User';
+  }
+
+  /// Safely extracts JWT claims from an ID token without external dependencies
+  static Map<String, dynamic>? decodeJwtPayload(String? jwt) {
+    if (jwt == null || !jwt.contains('.')) return null;
+    try {
+      final parts = jwt.split('.');
+      if (parts.length < 2) return null;
+      var normalized = base64Url.normalize(parts[1]);
+      final payloadString = utf8.decode(base64Url.decode(normalized));
+      return jsonDecode(payloadString) as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Extracts user full name from OAuth additionalUserInfo profile
+  static String? extractNameFromProfile(Map<String, dynamic>? profile) {
+    if (profile == null) return null;
+    if (profile['name'] is String && (profile['name'] as String).trim().isNotEmpty) {
+      return (profile['name'] as String).trim();
+    }
+    if (profile['name'] is Map) {
+      final nameMap = profile['name'] as Map;
+      final first = (nameMap['firstName'] ?? nameMap['givenName'] ?? '').toString().trim();
+      final last = (nameMap['lastName'] ?? nameMap['familyName'] ?? '').toString().trim();
+      final combined = '$first $last'.trim();
+      if (combined.isNotEmpty) return combined;
+    }
+    final first = (profile['firstName'] ?? profile['givenName'] ?? '').toString().trim();
+    final last = (profile['lastName'] ?? profile['familyName'] ?? '').toString().trim();
+    final combined = '$first $last'.trim();
+    if (combined.isNotEmpty) return combined;
+    return null;
+  }
+
   Future<void> _applyServerSyncResult(Map<String, dynamic>? serverRes) async {
     if (serverRes == null) return;
     final token = serverRes['token'] as String?;
@@ -260,7 +306,12 @@ class AuthService extends ChangeNotifier {
   Future<UserProfile?> signInWithApple({String? email, String? fullName}) async {
     String? userEmail = email?.trim().toLowerCase();
     String? userId = userEmail != null ? deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_') : null;
-    String? userName = fullName;
+    String? userName = (fullName != null &&
+            fullName.trim().isNotEmpty &&
+            fullName.trim() != 'Apple User' &&
+            fullName.trim() != 'Apple Account')
+        ? fullName.trim()
+        : null;
     String? idToken;
 
     if (_hasFirebase) {
@@ -274,25 +325,84 @@ class AuthService extends ChangeNotifier {
         final fbUser = userCredential.user;
         if (fbUser != null) {
           userId = fbUser.uid;
-          if (fbUser.email != null && fbUser.email!.isNotEmpty) {
-            userEmail = fbUser.email!.trim().toLowerCase();
-            await _storage.write(key: _appleCachedEmailKey, value: userEmail);
-          } else {
-            final cachedEmail = await _storage.read(key: _appleCachedEmailKey);
-            if (cachedEmail != null && cachedEmail.isNotEmpty) {
-              userEmail = cachedEmail;
-            }
-          }
-          if (fbUser.displayName != null && fbUser.displayName!.isNotEmpty) {
-            userName = fbUser.displayName!;
-            await _storage.write(key: _appleCachedNameKey, value: userName);
-          } else {
-            final cachedName = await _storage.read(key: _appleCachedNameKey);
-            if (cachedName != null && cachedName.isNotEmpty) {
-              userName = cachedName;
-            }
-          }
           idToken = await fbUser.getIdToken();
+
+          // 1. Try extracting email and name from additionalUserInfo.profile
+          final profile = userCredential.additionalUserInfo?.profile;
+          if (profile != null) {
+            final profileEmail = profile['email'] as String?;
+            if (profileEmail != null && profileEmail.isNotEmpty) {
+              userEmail ??= profileEmail.trim().toLowerCase();
+            }
+            final extractedName = extractNameFromProfile(profile);
+            if (extractedName != null && extractedName.isNotEmpty) {
+              userName ??= extractedName;
+            }
+          }
+
+          // 2. Try extracting from fbUser.providerData
+          for (final p in fbUser.providerData) {
+            if ((userEmail == null || userEmail.isEmpty) && p.email != null && p.email!.isNotEmpty) {
+              userEmail = p.email!.trim().toLowerCase();
+            }
+            if ((userName == null || userName.isEmpty || userName == 'Apple User' || userName == 'Apple Account') &&
+                p.displayName != null &&
+                p.displayName!.trim().isNotEmpty &&
+                p.displayName!.trim() != 'Apple User' &&
+                p.displayName!.trim() != 'Apple Account') {
+              userName = p.displayName!.trim();
+            }
+          }
+
+          // 3. Try extracting from idToken JWT claims
+          if (idToken != null) {
+            final claims = decodeJwtPayload(idToken);
+            if (claims != null) {
+              if (userEmail == null || userEmail.isEmpty) {
+                final tokenEmail = claims['email'] as String?;
+                if (tokenEmail != null && tokenEmail.isNotEmpty) {
+                  userEmail = tokenEmail.trim().toLowerCase();
+                }
+              }
+              if (userName == null || userName.isEmpty || userName == 'Apple User' || userName == 'Apple Account') {
+                final tokenName = claims['name'] as String?;
+                if (tokenName != null && tokenName.isNotEmpty && tokenName != 'Apple User') {
+                  userName = tokenName.trim();
+                }
+              }
+            }
+          }
+
+          // 4. Check direct fbUser properties
+          if (fbUser.email != null && fbUser.email!.isNotEmpty) {
+            userEmail ??= fbUser.email!.trim().toLowerCase();
+          }
+          if (fbUser.displayName != null &&
+              fbUser.displayName!.trim().isNotEmpty &&
+              fbUser.displayName!.trim() != 'Apple User' &&
+              fbUser.displayName!.trim() != 'Apple Account') {
+            userName ??= fbUser.displayName!.trim();
+          }
+
+          // 5. Restore from secure storage cache by userId, then global fallback
+          userEmail ??= await _storage.read(key: 'auth_apple_email_$userId');
+          userEmail ??= await _storage.read(key: _appleCachedEmailKey);
+
+          userName ??= await _storage.read(key: 'auth_apple_name_$userId');
+          userName ??= await _storage.read(key: _appleCachedNameKey);
+
+          // 6. Cache valid email and name back to storage
+          if (userEmail != null && userEmail.isNotEmpty) {
+            await _storage.write(key: 'auth_apple_email_$userId', value: userEmail);
+            await _storage.write(key: _appleCachedEmailKey, value: userEmail);
+          }
+          if (userName != null &&
+              userName.isNotEmpty &&
+              userName != 'Apple User' &&
+              userName != 'Apple Account') {
+            await _storage.write(key: 'auth_apple_name_$userId', value: userName);
+            await _storage.write(key: _appleCachedNameKey, value: userName);
+          }
         } else {
           return null;
         }
@@ -307,16 +417,48 @@ class AuthService extends ChangeNotifier {
     if (email != null) {
       userEmail ??= email.trim().toLowerCase();
       userId ??= deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_');
-      userName ??= fullName ?? 'Apple User';
+      if (fullName != null &&
+          fullName.trim().isNotEmpty &&
+          fullName.trim() != 'Apple User' &&
+          fullName.trim() != 'Apple Account') {
+        userName ??= fullName.trim();
+      }
     }
 
     if (userEmail == null || userId == null) {
       return null;
     }
 
+    // If userName is still absent or generic, format human-friendly username from email prefix
+    if (userName == null ||
+        userName.trim().isEmpty ||
+        userName.trim() == 'Apple User' ||
+        userName.trim() == 'Apple Account') {
+      userName = formatDisplayNameFromEmail(userEmail);
+    }
+
     final String finalUserId = userId;
-    final String finalEmail = userEmail;
-    final String finalName = userName ?? 'Apple User';
+    String finalEmail = userEmail;
+    String finalName = userName;
+
+    // Persist final resolved identity to secure storage cache
+    await _storage.write(key: 'auth_apple_email_$finalUserId', value: finalEmail);
+    await _storage.write(key: _appleCachedEmailKey, value: finalEmail);
+    await _storage.write(key: 'auth_apple_name_$finalUserId', value: finalName);
+    await _storage.write(key: _appleCachedNameKey, value: finalName);
+
+    // Update Firebase user displayName on-device if possible
+    if (_hasFirebase) {
+      try {
+        final currentFb = FirebaseAuth.instance.currentUser;
+        if (currentFb != null &&
+            (currentFb.displayName == null ||
+             currentFb.displayName!.isEmpty ||
+             currentFb.displayName == 'Apple User')) {
+          await currentFb.updateDisplayName(finalName);
+        }
+      } catch (_) {}
+    }
 
     _isLoading = true;
     notifyListeners();
@@ -344,6 +486,17 @@ class AuthService extends ChangeNotifier {
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
         if (serverUser != null) {
           isPro = serverUser['isPro'] as bool? ?? false;
+          final sName = serverUser['displayName'] as String?;
+          if (sName != null &&
+              sName.trim().isNotEmpty &&
+              sName.trim() != 'Apple User' &&
+              sName.trim() != 'Apple Account') {
+            finalName = sName.trim();
+          }
+          final sEmail = serverUser['email'] as String?;
+          if (sEmail != null && sEmail.trim().isNotEmpty && !sEmail.startsWith('guest@')) {
+            finalEmail = sEmail.trim().toLowerCase();
+          }
         }
         await _applyServerSyncResult(serverRes);
       } catch (_) {}
@@ -523,13 +676,15 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      String userEmail = 'user.finance@icloud.com';
-      String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_');
-      String userName = 'Apple User';
+      String? userEmail;
+      String? userId;
+      String? userName;
       String? idToken;
 
       if (_hasFirebase) {
         final appleProvider = AppleAuthProvider();
+        appleProvider.addScope('email');
+        appleProvider.addScope('name');
         final currentFbUser = FirebaseAuth.instance.currentUser;
         UserCredential userCredential;
         if (currentFbUser != null && currentFbUser.isAnonymous) {
@@ -555,43 +710,151 @@ class AuthService extends ChangeNotifier {
         final fbUser = userCredential.user;
         if (fbUser != null) {
           userId = fbUser.uid;
-          userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
-          userName = fbUser.displayName ?? userName;
           idToken = await fbUser.getIdToken();
+
+          // 1. Extract from profile
+          final profile = userCredential.additionalUserInfo?.profile;
+          if (profile != null) {
+            final profileEmail = profile['email'] as String?;
+            if (profileEmail != null && profileEmail.isNotEmpty) {
+              userEmail = profileEmail.trim().toLowerCase();
+            }
+            final extractedName = extractNameFromProfile(profile);
+            if (extractedName != null && extractedName.isNotEmpty) {
+              userName = extractedName;
+            }
+          }
+
+          // 2. Extract from providerData
+          for (final p in fbUser.providerData) {
+            if ((userEmail == null || userEmail.isEmpty) && p.email != null && p.email!.isNotEmpty) {
+              userEmail = p.email!.trim().toLowerCase();
+            }
+            if ((userName == null || userName.isEmpty || userName == 'Apple User' || userName == 'Apple Account') &&
+                p.displayName != null &&
+                p.displayName!.trim().isNotEmpty &&
+                p.displayName!.trim() != 'Apple User' &&
+                p.displayName!.trim() != 'Apple Account') {
+              userName = p.displayName!.trim();
+            }
+          }
+
+          // 3. Extract from JWT claims
+          if (idToken != null) {
+            final claims = decodeJwtPayload(idToken);
+            if (claims != null) {
+              if (userEmail == null || userEmail.isEmpty) {
+                final tokenEmail = claims['email'] as String?;
+                if (tokenEmail != null && tokenEmail.isNotEmpty) {
+                  userEmail = tokenEmail.trim().toLowerCase();
+                }
+              }
+              if (userName == null || userName.isEmpty || userName == 'Apple User' || userName == 'Apple Account') {
+                final tokenName = claims['name'] as String?;
+                if (tokenName != null && tokenName.isNotEmpty && tokenName != 'Apple User') {
+                  userName = tokenName.trim();
+                }
+              }
+            }
+          }
+
+          // 4. Direct fbUser
+          if (fbUser.email != null && fbUser.email!.isNotEmpty) {
+            userEmail ??= fbUser.email!.trim().toLowerCase();
+          }
+          if (fbUser.displayName != null &&
+              fbUser.displayName!.trim().isNotEmpty &&
+              fbUser.displayName!.trim() != 'Apple User' &&
+              fbUser.displayName!.trim() != 'Apple Account') {
+            userName ??= fbUser.displayName!.trim();
+          }
+
+          // 5. Secure storage fallback
+          userEmail ??= await _storage.read(key: 'auth_apple_email_$userId');
+          userEmail ??= await _storage.read(key: _appleCachedEmailKey);
+
+          userName ??= await _storage.read(key: 'auth_apple_name_$userId');
+          userName ??= await _storage.read(key: _appleCachedNameKey);
         }
+      }
+
+      userEmail ??= await _storage.read(key: _appleCachedEmailKey);
+      userId ??= userEmail != null
+          ? deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_')
+          : 'usr_a_unknown';
+      if (userEmail == null || userEmail.isEmpty) {
+        userEmail = 'user.finance@icloud.com';
+      }
+
+      if (userName == null ||
+          userName.trim().isEmpty ||
+          userName.trim() == 'Apple User' ||
+          userName.trim() == 'Apple Account') {
+        userName = formatDisplayNameFromEmail(userEmail);
+      }
+
+      final String finalUserId = userId;
+      String finalEmail = userEmail;
+      String finalName = userName;
+
+      // Cache to storage
+      await _storage.write(key: 'auth_apple_email_$finalUserId', value: finalEmail);
+      await _storage.write(key: _appleCachedEmailKey, value: finalEmail);
+      await _storage.write(key: 'auth_apple_name_$finalUserId', value: finalName);
+      await _storage.write(key: _appleCachedNameKey, value: finalName);
+
+      // Update Firebase user displayName on-device if possible
+      if (_hasFirebase) {
+        try {
+          final currentFb = FirebaseAuth.instance.currentUser;
+          if (currentFb != null &&
+              (currentFb.displayName == null ||
+               currentFb.displayName!.isEmpty ||
+               currentFb.displayName == 'Apple User')) {
+            await currentFb.updateDisplayName(finalName);
+          }
+        } catch (_) {}
       }
 
       // Synchronize with Cloudflare Server and adopt canonical account identity
       bool isPro = false;
       try {
         final serverRes = await ApiClient.instance.authenticateFirebase(
-          uid: userId,
+          uid: finalUserId,
           idToken: idToken,
-          email: userEmail,
-          displayName: userName,
+          email: finalEmail,
+          displayName: finalName,
           provider: 'apple',
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
         if (serverUser != null) {
-          userId = (serverUser['id'] as String?) ?? userId;
-          userEmail = (serverUser['email'] as String?) ?? userEmail;
-          userName = (serverUser['displayName'] as String?) ?? userName;
+          final sName = serverUser['displayName'] as String?;
+          if (sName != null &&
+              sName.trim().isNotEmpty &&
+              sName.trim() != 'Apple User' &&
+              sName.trim() != 'Apple Account') {
+            finalName = sName.trim();
+          }
+          final sEmail = serverUser['email'] as String?;
+          if (sEmail != null && sEmail.trim().isNotEmpty && !sEmail.startsWith('guest@')) {
+            finalEmail = sEmail.trim().toLowerCase();
+          }
           isPro = serverUser['isPro'] as bool? ?? false;
         }
         await _applyServerSyncResult(serverRes);
       } catch (_) {}
 
-      ApiClient.instance.setAuthContext(userId: userId, email: userEmail);
+      ApiClient.instance.setAuthContext(userId: finalUserId, email: finalEmail);
 
       // Link with RevenueCat
       try {
-        await Purchases.logIn(userId);
+        await Purchases.logIn(finalUserId);
       } catch (_) {}
 
       final user = UserProfile(
-        id: userId,
-        email: userEmail,
-        displayName: userName,
+        id: finalUserId,
+        email: finalEmail,
+        displayName: finalName,
         provider: AuthProvider.apple,
         isPro: isPro,
       );
