@@ -69,27 +69,28 @@ authRouter.post('/firebase', async (c) => {
       `).run();
     } catch (_) {}
 
-    // Update preferences if client provided them
-    if (locale || baseCurrency) {
-      try {
-        await c.env.DB.prepare(`
-          INSERT INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
-          VALUES (?, ?, ?, 1, ?)
-          ON CONFLICT(userId) DO UPDATE SET
-            locale = COALESCE(excluded.locale, user_preferences.locale),
-            baseCurrency = COALESCE(excluded.baseCurrency, user_preferences.baseCurrency),
-            onboarded = 1,
-            updatedAt = excluded.updatedAt
-        `).bind(finalUserId, locale || null, baseCurrency || null, Date.now()).run();
-      } catch (_) {}
-    }
-
+    // Fetch existing preferences first
     let prefs: any = null;
     try {
       prefs = await c.env.DB.prepare('SELECT * FROM user_preferences WHERE userId = ?')
         .bind(finalUserId)
         .first<any>();
     } catch (_) {}
+
+    // Only initialize preferences on login if the user has NO existing preferences.
+    // Never overwrite an existing user's saved preferences with initial login payload!
+    if (!prefs && (locale || baseCurrency)) {
+      try {
+        await c.env.DB.prepare(`
+          INSERT INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
+          VALUES (?, ?, ?, 1, ?)
+        `).bind(finalUserId, locale || null, baseCurrency || null, Date.now()).run();
+
+        prefs = await c.env.DB.prepare('SELECT * FROM user_preferences WHERE userId = ?')
+          .bind(finalUserId)
+          .first<any>();
+      } catch (_) {}
+    }
 
     const quota = computeQuotaSnapshot(user as any);
 
@@ -116,11 +117,22 @@ authRouter.post('/firebase', async (c) => {
 
 authRouter.post('/preferences', async (c) => {
   try {
-    const user = await resolveUser(c);
-    if (!user) {
-      return c.json({ error: 'Unauthorized' }, 401);
+    const body = await c.req.json().catch(() => ({}));
+    let user = await resolveUser(c);
+
+    if (!user && (body.userId || body.email)) {
+      if (body.userId) {
+        user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(body.userId).first<any>();
+      }
+      if (!user && body.email) {
+        user = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?').bind(String(body.email).trim().toLowerCase()).first<any>();
+      }
     }
-    const body = await c.req.json();
+
+    const targetUserId = user?.id || body.userId;
+    if (!targetUserId) {
+      return c.json({ error: 'Unauthorized or missing userId' }, 401);
+    }
     const { locale, baseCurrency } = body;
 
     try {
@@ -143,7 +155,7 @@ authRouter.post('/preferences', async (c) => {
         baseCurrency = COALESCE(excluded.baseCurrency, user_preferences.baseCurrency),
         onboarded = 1,
         updatedAt = excluded.updatedAt
-    `).bind(user.id, locale || null, baseCurrency || null, Date.now()).run();
+    `).bind(targetUserId, locale || null, baseCurrency || null, Date.now()).run();
 
     return c.json({ success: true });
   } catch (e: any) {
