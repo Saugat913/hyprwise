@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
-import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
@@ -45,7 +44,8 @@ class LoginScreen extends StatelessWidget {
 
         void onAuthSuccess() {
           if (!context.mounted) return;
-          if (!authService.isReturningUser || !settingsRepo.settings.onboarded) {
+          if (!authService.isReturningUser ||
+              !settingsRepo.settings.onboarded) {
             context.go(AppRoutes.currency);
           } else {
             context.go(AppRoutes.home);
@@ -211,14 +211,15 @@ class _SocialButtonsState extends State<_SocialButtons> {
     final authService = getIt<AuthService>();
     final targetPlatform = Theme.of(context).platform;
     final showAppleSignIn =
-        targetPlatform == TargetPlatform.iOS || targetPlatform == TargetPlatform.macOS;
+        targetPlatform == TargetPlatform.iOS ||
+        targetPlatform == TargetPlatform.macOS;
     final disabled = _busy != null;
 
     Widget spinner(Color c) => SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2.2, color: c),
-        );
+      width: 20,
+      height: 20,
+      child: CircularProgressIndicator(strokeWidth: 2.2, color: c),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -235,23 +236,28 @@ class _SocialButtonsState extends State<_SocialButtons> {
               ),
               elevation: 0,
             ),
-            onPressed: disabled ? null : () => _run('google', authService.signInWithGoogle),
-            child: _busy == 'google'
-                ? spinner(scheme.primary)
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SvgPicture.string(_googleSvgRaw, width: 20, height: 20),
-                      const SizedBox(width: AppSpace.md),
-                      Text(
-                        tr.continueWithGoogle,
-                        style: text.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : const Color(0xFF1F1F1F),
+            onPressed:
+                disabled
+                    ? null
+                    : () => _run('google', authService.signInWithGoogle),
+            child:
+                _busy == 'google'
+                    ? spinner(scheme.primary)
+                    : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.string(_googleSvgRaw, width: 20, height: 20),
+                        const SizedBox(width: AppSpace.md),
+                        Text(
+                          tr.continueWithGoogle,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isDark ? Colors.white : const Color(0xFF1F1F1F),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
           ),
         ),
         if (showAppleSignIn) ...[
@@ -267,23 +273,31 @@ class _SocialButtonsState extends State<_SocialButtons> {
                 ),
                 elevation: 0,
               ),
-              onPressed: disabled ? null : () => _run('apple', authService.signInWithApple),
-              child: _busy == 'apple'
-                  ? spinner(isDark ? Colors.black : Colors.white)
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.apple, size: 22, color: isDark ? Colors.black : Colors.white),
-                        const SizedBox(width: AppSpace.xs),
-                        Text(
-                          tr.continueWithApple,
-                          style: text.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
+              onPressed:
+                  disabled
+                      ? null
+                      : () => _run('apple', authService.signInWithApple),
+              child:
+                  _busy == 'apple'
+                      ? spinner(isDark ? Colors.black : Colors.white)
+                      : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.apple,
+                            size: 22,
                             color: isDark ? Colors.black : Colors.white,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: AppSpace.xs),
+                          Text(
+                            tr.continueWithApple,
+                            style: text.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
             ),
           ),
         ],
@@ -296,7 +310,8 @@ class _AccountSetupSyncScreen extends StatefulWidget {
   const _AccountSetupSyncScreen();
 
   @override
-  State<_AccountSetupSyncScreen> createState() => _AccountSetupSyncScreenState();
+  State<_AccountSetupSyncScreen> createState() =>
+      _AccountSetupSyncScreenState();
 }
 
 class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
@@ -346,9 +361,6 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    final colors = context.colors;
     final tr = context.strings;
     final authService = getIt<AuthService>();
 
@@ -402,259 +414,122 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
       );
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.page,
-              vertical: AppSpace.lg,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Branded Emblem with ambient glow
-                Center(child: BrandEmblem(animation: _scaleAnimation)),
-                const SizedBox(height: AppSpace.xl),
-
-                // Headline
-                Text(
-                  authService.hasRestoredCloudData || isSyncing || authService.isReturningUser
-                      ? tr.t(
-                        'We are loading your previous data',
-                        ne: 'तपाईंको अघिल्लो डेटा लोड गरिँदैछ',
-                        hi: 'आपका पिछला डेटा लोड किया जा रहा है',
-                        es: 'Cargando tus datos anteriores',
-                        fr: 'Chargement de vos données précédentes',
-                        de: 'Wir laden Ihre bisherigen Daten',
-                        ja: '以前のデータを読み込んでいます',
-                        zh: '正在加载您之前的数据',
-                        it: 'Stiamo caricando i tuoi dati precedenti',
-                      )
-                      : tr.t(
-                        'Checking account & setting up',
-                        ne: 'खाता जाँच र सेटअप हुँदैछ',
-                        hi: 'खाता जाँच और सेटअप हो रहा है',
-                        es: 'Verificando cuenta y configurando',
-                        fr: 'Vérification du compte et configuration',
-                        de: 'Konto wird überprüft und eingerichtet',
-                        ja: 'アカウントを確認・設定しています',
-                        zh: '正在检查账户并进行设置',
-                        it: 'Verifica dell\'account e configurazione',
-                      ),
-                  textAlign: TextAlign.center,
-                  style: text.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xs),
-                Text(
-                  authService.hasRestoredCloudData || isSyncing || authService.isReturningUser
-                      ? tr.t(
-                        'Please wait a minute while we restore your accounts, shifts, and preferences.',
-                        ne: 'तपाईंका खाताहरू, सिफ्टहरू र प्राथमिकताहरू लोड हुँदैछन्, कृपया एकछिन पर्खनुहोस्।',
-                        hi: 'कृपया कुछ समय प्रतीक्षा करें जब तक हम आपके खाते, शिफ्ट और प्राथमिकताएं पुनर्स्थापित कर रहे हैं।',
-                        es: 'Espera un minuto mientras restauramos tus cuentas, turnos y preferencias.',
-                        fr: 'Veuillez patienter pendant que nous restaurons vos comptes et préférences.',
-                        de: 'Bitte warten Sie einen Moment, während wir Ihre Konten und Einstellungen wiederherstellen.',
-                        ja: 'アカウント、シフト、設定を復元しています。少々お待ちください。',
-                        zh: '请稍候，我们正在恢复您的账户、班次和偏好设置。',
-                        it: 'Attendi un momento mentre ripristiniamo i tuoi account, turni e preferenze.',
-                      )
-                      : tr.t(
-                        'Preparing your offline-first financial dashboard & cloud backup securely.',
-                        ne:
-                            'तपाईंको अफलाइन-पहिलो वित्तीय ड्यासबोर्ड र क्लाउड ब्याकअप सुरक्षित रूपमा तयार गर्दै।',
-                        hi:
-                            'आपके ऑफ़लाइन-प्रथम वित्तीय डैशबोर्ड और क्लाउड बैकअप को सुरक्षित रूप से तैयार किया जा रहा है।',
-                        es:
-                            'Preparando de forma segura tu panel financiero y copia en la nube.',
-                        fr:
-                            'Préparation sécurisée de votre tableau de bord et sauvegarde cloud.',
-                        de:
-                            'Ihr Offline-First-Dashboard und Cloud-Backup werden sicher vorbereitet.',
-                        ja: 'オフライン優先の財務ダッシュボードとクラウドバックアップを安全に準備しています。',
-                        zh: '正在安全准备您的离线优先财务仪表板和云备份。',
-                        it:
-                            'Preparazione sicura della dashboard finanziaria offline e del backup cloud.',
-                      ),
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xl),
-
-                // Multi-step Progress Card
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Smooth Progress Bar
-                      TweenAnimationBuilder<double>(
-                        duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutCubic,
-                        tween: Tween<double>(begin: 0.15, end: targetProgress),
-                        builder: (context, value, _) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.md,
-                                ),
-                                child: LinearProgressIndicator(
-                                  value: value,
-                                  minHeight: 6,
-                                  backgroundColor:
-                                      scheme.surfaceContainerHighest,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    isAllDone ? colors.income : scheme.primary,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: AppSpace.xs),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    statusLabel,
-                                    style: text.labelSmall?.copyWith(
-                                      color:
-                                          isAllDone
-                                              ? colors.income
-                                              : scheme.onSurfaceVariant,
-                                      fontWeight:
-                                          isAllDone
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${(value * 100).toInt()}%',
-                                    style: text.labelSmall?.copyWith(
-                                      color:
-                                          isAllDone
-                                              ? colors.income
-                                              : scheme.primary,
-                                      fontWeight: FontWeight.w700,
-                                      fontFamily: 'RedditMono',
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: AppSpace.md),
-                      const Divider(height: 1),
-                      const SizedBox(height: AppSpace.sm),
-
-                      // Step 1: Authentication
-                      SetupStepTile(
-                        title: tr.t(
-                          'Verifying credentials & identity',
-                          ne: 'प्रमाणिकरण र पहिचान जाँच',
-                          hi: 'क्रेडेंशियल और पहचान का सत्यापन',
-                          es: 'Verificando credenciales e identidad',
-                          fr: 'Vérification des identifiants et de l\'identité',
-                          de: 'Anmeldedaten und Identität werden überprüft',
-                          ja: '認証情報とIDを確認しています',
-                          zh: '正在验证凭据和身份',
-                          it: 'Verifica credenziali e identità',
-                        ),
-                        isDone: isAuthDone,
-                        isActive: !isAuthDone,
-                      ),
-
-                      // Step 2: Cloud Backup & Ledger
-                      SetupStepTile(
-                        title: tr.t(
-                          'Checking cloud backups & ledger',
-                          ne: 'क्लाउड ब्याकअप र लेजर जाँच',
-                          hi: 'क्लाउड बैकअप और बहीखाता जाँच',
-                          es: 'Comprobando copias de seguridad en la nube',
-                          fr: 'Vérification des sauvegardes et du grand livre',
-                          de: 'Cloud-Backups und Hauptbuch werden geprüft',
-                          ja: 'クラウドバックアップと元帳を確認しています',
-                          zh: '正在检查云备份和账本',
-                          it: 'Verifica backup cloud e registro',
-                        ),
-                        isDone: isAllDone || (!isSyncing && isAuthDone),
-                        isActive: isSyncing,
-                      ),
-
-                      // Step 3: Local Workspace Vault
-                      SetupStepTile(
-                        title: tr.t(
-                          'Securing offline-first database vault',
-                          ne: 'अफलाइन-पहिलो डेटाबेस सुरक्षित गरिँदै',
-                          hi: 'ऑफ़लाइन डेटाबेस वॉल्ट को सुरक्षित किया जा रहा है',
-                          es: 'Asegurando bóveda local offline-first',
-                          fr: 'Sécurisation de la base de données hors ligne',
-                          de: 'Lokaler Datenbank-Tresor wird eingerichtet',
-                          ja: 'ローカルデータベースを安全に構築しています',
-                          zh: '正在安全配置本地数据库',
-                          it: 'Protezione del database locale offline-first',
-                        ),
-                        isDone: isAllDone,
-                        isActive: isAuthDone && !isSyncing && !isAllDone,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xl),
-
-                // Offline-First Privacy Reassurance Badge
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(
-                        alpha: 0.5,
-                      ),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(
-                        color: scheme.outlineVariant.withValues(alpha: 0.4),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.shield_outlined,
-                          size: 14,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 7),
-                        Text(
-                          tr.offlineSecurityBadge,
-                          style: text.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return SetupLayout(
+      animation: _scaleAnimation,
+      title:
+          authService.hasRestoredCloudData ||
+                  isSyncing ||
+                  authService.isReturningUser
+              ? tr.t(
+                'We are loading your previous data',
+                ne: 'तपाईंको अघिल्लो डेटा लोड गरिँदैछ',
+                hi: 'आपका पिछला डेटा लोड किया जा रहा है',
+                es: 'Cargando tus datos anteriores',
+                fr: 'Chargement de vos données précédentes',
+                de: 'Wir laden Ihre bisherigen Daten',
+                ja: '以前のデータを読み込んでいます',
+                zh: '正在加载您之前的数据',
+                it: 'Stiamo caricando i tuoi dati precedenti',
+              )
+              : tr.t(
+                'Checking account & setting up',
+                ne: 'खाता जाँच र सेटअप हुँदैछ',
+                hi: 'खाता जाँच और सेटअप हो रहा है',
+                es: 'Verificando cuenta y configurando',
+                fr: 'Vérification du compte et configuration',
+                de: 'Konto wird überprüft und eingerichtet',
+                ja: 'アカウントを確認・設定しています',
+                zh: '正在检查账户并进行设置',
+                it: 'Verifica dell\'account e configurazione',
+              ),
+      subtitle:
+          authService.hasRestoredCloudData ||
+                  isSyncing ||
+                  authService.isReturningUser
+              ? tr.t(
+                'Please wait a minute while we restore your accounts, shifts, and preferences.',
+                ne:
+                    'तपाईंका खाताहरू, सिफ्टहरू र प्राथमिकताहरू लोड हुँदैछन्, कृपया एकछिन पर्खनुहोस्।',
+                hi:
+                    'कृपया कुछ समय प्रतीक्षा करें जब तक हम आपके खाते, शिफ्ट और प्राथमिकताएं पुनर्स्थापित कर रहे हैं।',
+                es:
+                    'Espera un minuto mientras restauramos tus cuentas, turnos y preferencias.',
+                fr:
+                    'Veuillez patienter pendant que nous restaurons vos comptes et préférences.',
+                de:
+                    'Bitte warten Sie einen Moment, während wir Ihre Konten und Einstellungen wiederherstellen.',
+                ja: 'アカウント、シフト、設定を復元しています。少々お待ちください。',
+                zh: '请稍候，我们正在恢复您的账户、班次和偏好设置。',
+                it:
+                    'Attendi un momento mentre ripristiniamo i tuoi account, turni e preferenze.',
+              )
+              : tr.t(
+                'Preparing your offline-first financial dashboard & cloud backup securely.',
+                ne:
+                    'तपाईंको अफलाइन-पहिलो वित्तीय ड्यासबोर्ड र क्लाउड ब्याकअप सुरक्षित रूपमा तयार गर्दै।',
+                hi:
+                    'आपके ऑफ़लाइन-प्रथम वित्तीय डैशबोर्ड और क्लाउड बैकअप को सुरक्षित रूप से तैयार किया जा रहा है।',
+                es:
+                    'Preparando de forma segura tu panel financiero y copia en la nube.',
+                fr:
+                    'Préparation sécurisée de votre tableau de bord et sauvegarde cloud.',
+                de:
+                    'Ihr Offline-First-Dashboard und Cloud-Backup werden sicher vorbereitet.',
+                ja: 'オフライン優先の財務ダッシュボードとクラウドバックアップを安全に準備しています。',
+                zh: '正在安全准备您的离线优先财务仪表板和云备份。',
+                it:
+                    'Preparazione sicura della dashboard finanziaria offline e del backup cloud.',
+              ),
+      progress: targetProgress,
+      statusLabel: statusLabel,
+      done: isAllDone,
+      steps: [
+        SetupStepTile(
+          title: tr.t(
+            'Verifying credentials & identity',
+            ne: 'प्रमाणिकरण र पहिचान जाँच',
+            hi: 'क्रेडेंशियल और पहचान का सत्यापन',
+            es: 'Verificando credenciales e identidad',
+            fr: 'Vérification des identifiants et de l\'identité',
+            de: 'Anmeldedaten und Identität werden überprüft',
+            ja: '認証情報とIDを確認しています',
+            zh: '正在验证凭据和身份',
+            it: 'Verifica credenziali e identità',
           ),
+          isDone: isAuthDone,
+          isActive: !isAuthDone,
         ),
-      ),
+        SetupStepTile(
+          title: tr.t(
+            'Checking cloud backups & ledger',
+            ne: 'क्लाउड ब्याकअप र लेजर जाँच',
+            hi: 'क्लाउड बैकअप और बहीखाता जाँच',
+            es: 'Comprobando copias de seguridad en la nube',
+            fr: 'Vérification des sauvegardes et du grand livre',
+            de: 'Cloud-Backups und Hauptbuch werden geprüft',
+            ja: 'クラウドバックアップと元帳を確認しています',
+            zh: '正在检查云备份和账本',
+            it: 'Verifica backup cloud e registro',
+          ),
+          isDone: isAllDone || (!isSyncing && isAuthDone),
+          isActive: isSyncing,
+        ),
+        SetupStepTile(
+          title: tr.t(
+            'Securing offline-first database vault',
+            ne: 'अफलाइन-पहिलो डेटाबेस सुरक्षित गरिँदै',
+            hi: 'ऑफ़लाइन डेटाबेस वॉल्ट को सुरक्षित किया जा रहा है',
+            es: 'Asegurando bóveda local offline-first',
+            fr: 'Sécurisation de la base de données hors ligne',
+            de: 'Lokaler Datenbank-Tresor wird eingerichtet',
+            ja: 'ローカルデータベースを安全に構築しています',
+            zh: '正在安全配置本地数据库',
+            it: 'Protezione del database locale offline-first',
+          ),
+          isDone: isAllDone,
+          isActive: isAuthDone && !isSyncing && !isAllDone,
+        ),
+      ],
     );
   }
 }

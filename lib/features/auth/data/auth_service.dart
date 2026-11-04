@@ -175,6 +175,7 @@ class AuthService extends ChangeNotifier {
     String? userName;
     String? photoUrl;
     String? idToken;
+    bool? firebaseIsNew;
 
     if (_hasFirebase) {
       try {
@@ -200,6 +201,7 @@ class AuthService extends ChangeNotifier {
 
         final userCredential = await FirebaseAuth.instance
             .signInWithCredential(credential);
+        firebaseIsNew = userCredential.additionalUserInfo?.isNewUser;
         final fbUser = userCredential.user;
         if (fbUser != null) {
           userId = fbUser.uid;
@@ -282,7 +284,7 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
-      await _handlePostSignInSetup(userId: finalUserId, serverRes: serverRes, isPro: isPro);
+      await _handlePostSignInSetup(userId: finalUserId, serverRes: serverRes, isPro: isPro, firebaseIsNew: firebaseIsNew);
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(finalUserId);
@@ -313,6 +315,7 @@ class AuthService extends ChangeNotifier {
         ? fullName.trim()
         : null;
     String? idToken;
+    bool? firebaseIsNew;
 
     if (_hasFirebase) {
       try {
@@ -322,6 +325,7 @@ class AuthService extends ChangeNotifier {
         final userCredential = await FirebaseAuth.instance.signInWithProvider(
           appleProvider,
         );
+        firebaseIsNew = userCredential.additionalUserInfo?.isNewUser;
         final fbUser = userCredential.user;
         if (fbUser != null) {
           userId = fbUser.uid;
@@ -521,7 +525,7 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
-      await _handlePostSignInSetup(userId: finalUserId, serverRes: serverRes, isPro: isPro);
+      await _handlePostSignInSetup(userId: finalUserId, serverRes: serverRes, isPro: isPro, firebaseIsNew: firebaseIsNew);
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(finalUserId);
@@ -964,6 +968,7 @@ class AuthService extends ChangeNotifier {
     required String userId,
     Map<String, dynamic>? serverRes,
     bool isPro = false,
+    bool? firebaseIsNew,
   }) async {
     // 1. Account switching check:
     // If a different user was previously active on this device, erase the old user's local database
@@ -988,7 +993,9 @@ class AuthService extends ChangeNotifier {
         (emailKey.isNotEmpty ? await _storage.read(key: 'auth_user_onboarded_$emailKey') : null);
 
     final bool isReturning = (isNewUserFromServer == false && (serverOnboarded == true || serverPrefs != null)) ||
-        (localOnboarded == 'true');
+        (localOnboarded == 'true') ||
+        // Server unreachable: trust Firebase's own record of a pre-existing account.
+        (serverRes == null && firebaseIsNew == false);
 
     _isReturningUser = isReturning;
 

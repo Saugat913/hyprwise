@@ -55,9 +55,13 @@ class _CurrencyFirstRunScreenState extends State<CurrencyFirstRunScreen> {
           step: step,
           steps: 3,
           title: isLanguageStep ? tr.chooseLanguage : tr.whichCurrencyQuestion,
-          subtitle: isLanguageStep ? tr.chooseLanguageSubtitle : tr.addSecondLater,
+          subtitle:
+              isLanguageStep ? tr.chooseLanguageSubtitle : tr.addSecondLater,
           primaryLabel: isLanguageStep ? tr.continueAction : tr.finishSetup,
-          onBack: isLanguageStep ? () => context.go(AppRoutes.welcome) : _viewModel.previousStep,
+          onBack:
+              isLanguageStep
+                  ? () => context.go(AppRoutes.welcome)
+                  : _viewModel.previousStep,
           onClose: () => context.go(AppRoutes.welcome),
           onPrimary: () async {
             if (isLanguageStep) {
@@ -66,7 +70,10 @@ class _CurrencyFirstRunScreenState extends State<CurrencyFirstRunScreen> {
               _viewModel.goToSettingUp();
             }
           },
-          child: isLanguageStep ? _buildLanguageSelection() : _buildCurrencySelection(),
+          child:
+              isLanguageStep
+                  ? _buildLanguageSelection()
+                  : _buildCurrencySelection(),
         );
       },
     );
@@ -95,7 +102,8 @@ class _CurrencyFirstRunScreenState extends State<CurrencyFirstRunScreen> {
       children: [
         for (final cur in Currency.supported) ...[
           OptionTile(
-            title: '${cur.symbolForLocale(_viewModel.selectedLocale)} · ${cur.name}',
+            title:
+                '${cur.symbolForLocale(_viewModel.selectedLocale)} · ${cur.name}',
             subtitle: cur.code,
             icon: HugeIcons.strokeRoundedWallet01,
             selected: _viewModel.selectedCurrency == cur.code,
@@ -143,7 +151,8 @@ class _SettingUpWorkspaceScreen extends StatefulWidget {
   final OnboardingViewModel viewModel;
 
   @override
-  State<_SettingUpWorkspaceScreen> createState() => _SettingUpWorkspaceScreenState();
+  State<_SettingUpWorkspaceScreen> createState() =>
+      _SettingUpWorkspaceScreenState();
 }
 
 class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
@@ -178,8 +187,10 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
   }
 
   Future<void> _startSetupWorkflow() async {
-    final stepDelay = _isTestEnvironment ? Duration.zero : const Duration(milliseconds: 400);
-    final midDelay = _isTestEnvironment ? Duration.zero : const Duration(milliseconds: 500);
+    final stepDelay =
+        _isTestEnvironment ? Duration.zero : const Duration(milliseconds: 400);
+    final midDelay =
+        _isTestEnvironment ? Duration.zero : const Duration(milliseconds: 500);
 
     // Step 0: Initializing
     await Future<void>.delayed(stepDelay);
@@ -208,123 +219,72 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     final tr = context.strings;
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpace.page,
-              vertical: AppSpace.lg,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(child: BrandEmblem(animation: _scaleAnimation)),
-                const SizedBox(height: AppSpace.xl),
-
-                Text(
-                  tr.t(
-                    'Setting up your workspace...',
-                    ne: 'तपाईंको कार्यक्षेत्र सेटअप गरिँदैछ...',
-                    hi: 'आपका कार्यक्षेत्र तैयार किया जा रहा है...',
-                    es: 'Configurando tu espacio de trabajo...',
-                    fr: 'Configuration de votre espace...',
-                    de: 'Ihr Arbeitsbereich wird eingerichtet...',
-                    ja: 'ワークスペースをセットアップしています...',
-                    zh: '正在设置您的工作区...',
-                    it: 'Configurazione del tuo spazio di lavoro...',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: text.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xs),
-                Text(
-                  tr.t(
-                    'Configuring your currency, language, and offline-first database vault.',
-                    ne: 'तपाईंको मुद्रा, भाषा र अफलाइन डेटाबेस सुरक्षित गरिँदै।',
-                    hi: 'आपकी मुद्रा, भाषा और ऑफ़लाइन डेटाबेस को सुरक्षित किया जा रहा है।',
-                    es: 'Configurando tu moneda, idioma y bóveda offline-first.',
-                    fr: 'Configuration de votre devise, langue et base hors ligne.',
-                    de: 'Währung, Sprache und lokaler Datenbank-Tresor werden eingerichtet.',
-                    ja: '通貨、言語、オフラインデータベースを安全に設定しています。',
-                    zh: '正在配置您的货币、语言和离线优先数据库保管库。',
-                    it: 'Configurazione di valuta, lingua e archivio database offline.',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xl),
-
-                // Progress Bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: LinearProgressIndicator(
-                    value: (_currentStepIndex / 3).clamp(0.1, 1.0),
-                    minHeight: 5,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xl),
-
-                // Step Checklist Card
-                AppCard(
-                  child: Column(
-                    children: [
-                      SetupStepTile(
-                        title: '${tr.t('Language & Currency set to', ne: 'भाषा र मुद्रा:', hi: 'भाषा और मुद्रा:')} ${widget.viewModel.selectedLocale.toUpperCase()} · ${widget.viewModel.selectedCurrency}',
-                        isDone: _currentStepIndex >= 1,
-                        isActive: _currentStepIndex == 0,
-                      ),
-                      SetupStepTile(
-                        title: tr.t(
-                          'Securing encrypted SQLite database vault',
-                          ne: 'ईन्क्रिप्टेड डेटाबेस भण्डार सुरक्षित गरिँदै',
-                          hi: 'सुरक्षित ऑफ़लाइन डेटाबेस बनाया जा रहा है',
-                          es: 'Asegurando bóveda local de SQLite',
-                          fr: 'Sécurisation de la base de données locale',
-                          de: 'Lokaler SQLite-Tresor wird abgesichert',
-                          ja: '暗号化されたローカルデータベースを保護しています',
-                          zh: '正在保护加密的 SQLite 数据库',
-                          it: 'Protezione del database SQLite crittografato',
-                        ),
-                        isDone: _currentStepIndex >= 2,
-                        isActive: _currentStepIndex == 1,
-                      ),
-                      SetupStepTile(
-                        title: tr.t(
-                          'Initializing Cash & Bank accounts',
-                          ne: 'नगद र बैंक खाताहरू तयार गरिँदै',
-                          hi: 'नकद और बैंक खाते तैयार किए जा रहे हैं',
-                          es: 'Inicializando cuentas de Efectivo y Banco',
-                          fr: 'Initialisation des comptes Espèces et Banque',
-                          de: 'Bargeld- und Bankkonten werden initialisiert',
-                          ja: '現金および銀行口座を初期化しています',
-                          zh: '正在初始化现金和银行账户',
-                          it: 'Inizializzazione dei conti Contanti e Banca',
-                        ),
-                        isDone: _currentStepIndex >= 3,
-                        isActive: _currentStepIndex == 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+    return SetupLayout(
+      animation: _scaleAnimation,
+      title: tr.t(
+        'Setting up your workspace...',
+        ne: 'तपाईंको कार्यक्षेत्र सेटअप गरिँदैछ...',
+        hi: 'आपका कार्यक्षेत्र तैयार किया जा रहा है...',
+        es: 'Configurando tu espacio de trabajo...',
+        fr: 'Configuration de votre espace...',
+        de: 'Ihr Arbeitsbereich wird eingerichtet...',
+        ja: 'ワークスペースをセットアップしています...',
+        zh: '正在设置您的工作区...',
+        it: 'Configurazione del tuo spazio di lavoro...',
       ),
+      subtitle: tr.t(
+        'Configuring your currency, language, and offline-first database vault.',
+        ne: 'तपाईंको मुद्रा, भाषा र अफलाइन डेटाबेस सुरक्षित गरिँदै।',
+        hi: 'आपकी मुद्रा, भाषा और ऑफ़लाइन डेटाबेस को सुरक्षित किया जा रहा है।',
+        es: 'Configurando tu moneda, idioma y bóveda offline-first.',
+        fr: 'Configuration de votre devise, langue et base hors ligne.',
+        de: 'Währung, Sprache und lokaler Datenbank-Tresor werden eingerichtet.',
+        ja: '通貨、言語、オフラインデータベースを安全に設定しています。',
+        zh: '正在配置您的货币、语言和离线优先数据库保管库。',
+        it: 'Configurazione di valuta, lingua e archivio database offline.',
+      ),
+      progress: _currentStepIndex / 3,
+      done: _currentStepIndex >= 3,
+      steps: [
+        SetupStepTile(
+          title:
+              '${tr.t('Language & Currency set to', ne: 'भाषा र मुद्रा:', hi: 'भाषा और मुद्रा:')} ${widget.viewModel.selectedLocale.toUpperCase()} · ${widget.viewModel.selectedCurrency}',
+          isDone: _currentStepIndex >= 1,
+          isActive: _currentStepIndex == 0,
+        ),
+        SetupStepTile(
+          title: tr.t(
+            'Securing encrypted SQLite database vault',
+            ne: 'ईन्क्रिप्टेड डेटाबेस भण्डार सुरक्षित गरिँदै',
+            hi: 'सुरक्षित ऑफ़लाइन डेटाबेस बनाया जा रहा है',
+            es: 'Asegurando bóveda local de SQLite',
+            fr: 'Sécurisation de la base de données locale',
+            de: 'Lokaler SQLite-Tresor wird abgesichert',
+            ja: '暗号化されたローカルデータベースを保護しています',
+            zh: '正在保护加密的 SQLite 数据库',
+            it: 'Protezione del database SQLite crittografato',
+          ),
+          isDone: _currentStepIndex >= 2,
+          isActive: _currentStepIndex == 1,
+        ),
+        SetupStepTile(
+          title: tr.t(
+            'Initializing Cash & Bank accounts',
+            ne: 'नगद र बैंक खाताहरू तयार गरिँदै',
+            hi: 'नकद और बैंक खाते तैयार किए जा रहे हैं',
+            es: 'Inicializando cuentas de Efectivo y Banco',
+            fr: 'Initialisation des comptes Espèces et Banque',
+            de: 'Bargeld- und Bankkonten werden initialisiert',
+            ja: '現金および銀行口座を初期化しています',
+            zh: '正在初始化现金和银行账户',
+            it: 'Inizializzazione dei conti Contanti e Banca',
+          ),
+          isDone: _currentStepIndex >= 3,
+          isActive: _currentStepIndex == 2,
+        ),
+      ],
     );
   }
 }
