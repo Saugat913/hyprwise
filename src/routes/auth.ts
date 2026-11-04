@@ -10,7 +10,7 @@ export const authRouter = new Hono<{ Bindings: Bindings }>();
 authRouter.post('/firebase', async (c) => {
   try {
     const body = await c.req.json();
-    const { uid, email, displayName, photoUrl, provider } = body;
+    const { uid, email, displayName, photoUrl, provider, locale, baseCurrency } = body;
 
     const emailStr = String(email || `${uid || 'user'}@hyprwise.local`).trim().toLowerCase();
     const existingByEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
@@ -20,6 +20,7 @@ authRouter.post('/firebase', async (c) => {
       ? await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(uid).first<any>()
       : null;
     const existing = existingByEmail || existingById;
+    const isNewUser = !existing;
 
     const deterministicId = deterministicUserIdFromEmail(emailStr, provider === 'apple' ? 'usr_a_' : 'usr_g_');
     const finalUserId = existing?.id || (uid && uid.length > 5 ? uid : deterministicId);
@@ -55,11 +56,52 @@ authRouter.post('/firebase', async (c) => {
       )
       .run();
 
+    // Auto-initialize user preferences table if needed
+    try {
+      await c.env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS user_preferences (
+          userId TEXT PRIMARY KEY,
+          locale TEXT,
+          baseCurrency TEXT,
+          onboarded INTEGER DEFAULT 1,
+          updatedAt INTEGER
+        )
+      `).run();
+    } catch (_) {}
+
+    // Update preferences if client provided them
+    if (locale || baseCurrency) {
+      try {
+        await c.env.DB.prepare(`
+          INSERT INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
+          VALUES (?, ?, ?, 1, ?)
+          ON CONFLICT(userId) DO UPDATE SET
+            locale = COALESCE(excluded.locale, user_preferences.locale),
+            baseCurrency = COALESCE(excluded.baseCurrency, user_preferences.baseCurrency),
+            onboarded = 1,
+            updatedAt = excluded.updatedAt
+        `).bind(finalUserId, locale || null, baseCurrency || null, Date.now()).run();
+      } catch (_) {}
+    }
+
+    let prefs: any = null;
+    try {
+      prefs = await c.env.DB.prepare('SELECT * FROM user_preferences WHERE userId = ?')
+        .bind(finalUserId)
+        .first<any>();
+    } catch (_) {}
+
     const quota = computeQuotaSnapshot(user as any);
 
     return c.json({
       success: true,
       token: `tok_${finalUserId}_${Date.now()}`,
+      isNewUser,
+      preferences: prefs ? {
+        locale: prefs.locale,
+        baseCurrency: prefs.baseCurrency,
+        onboarded: Boolean(prefs.onboarded),
+      } : (isNewUser ? null : { onboarded: true }),
       user: {
         ...user,
         isPro: quota.activePro,
@@ -69,6 +111,43 @@ authRouter.post('/firebase', async (c) => {
     });
   } catch (e: any) {
     return c.json({ error: e.message || 'Authentication failed' }, 500);
+  }
+});
+
+authRouter.post('/preferences', async (c) => {
+  try {
+    const user = await resolveUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    const body = await c.req.json();
+    const { locale, baseCurrency } = body;
+
+    try {
+      await c.env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS user_preferences (
+          userId TEXT PRIMARY KEY,
+          locale TEXT,
+          baseCurrency TEXT,
+          onboarded INTEGER DEFAULT 1,
+          updatedAt INTEGER
+        )
+      `).run();
+    } catch (_) {}
+
+    await c.env.DB.prepare(`
+      INSERT INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
+      VALUES (?, ?, ?, 1, ?)
+      ON CONFLICT(userId) DO UPDATE SET
+        locale = COALESCE(excluded.locale, user_preferences.locale),
+        baseCurrency = COALESCE(excluded.baseCurrency, user_preferences.baseCurrency),
+        onboarded = 1,
+        updatedAt = excluded.updatedAt
+    `).bind(user.id, locale || null, baseCurrency || null, Date.now()).run();
+
+    return c.json({ success: true });
+  } catch (e: any) {
+    return c.json({ error: e.message || 'Failed to update preferences' }, 500);
   }
 });
 

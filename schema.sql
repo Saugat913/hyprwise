@@ -41,3 +41,11 @@ CREATE TABLE IF NOT EXISTS account_deletions (
   cancelledAt INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS user_preferences (
+  userId TEXT PRIMARY KEY,
+  locale TEXT,
+  baseCurrency TEXT,
+  onboarded INTEGER DEFAULT 1,
+  updatedAt INTEGER
+);
+
