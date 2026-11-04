@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -36,7 +38,7 @@ class WizardScaffold extends StatelessWidget {
   final String? subtitle;
   final Widget child;
   final String primaryLabel;
-  final VoidCallback? onPrimary;
+  final FutureOr<void> Function()? onPrimary;
   final VoidCallback? onBack;
   final VoidCallback? onClose;
 

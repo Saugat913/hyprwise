@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
@@ -7,7 +9,9 @@ import 'package:finance_tracker/features/shared/widgets/app_icon.dart';
 enum AppButtonKind { primary, secondary, success, danger, outline, text }
 
 /// Full-width pill-ish button used for every primary action.
-class AppButton extends StatelessWidget {
+/// If [onPressed] returns a Future the button shows a spinner and ignores
+/// further taps until it completes (or while [loading] is true).
+class AppButton extends StatefulWidget {
   const AppButton(
     this.label, {
     super.key,
@@ -15,31 +19,70 @@ class AppButton extends StatelessWidget {
     this.kind = AppButtonKind.primary,
     this.icon,
     this.compact = false,
+    this.loading = false,
   });
 
   final String label;
-  final VoidCallback? onPressed;
+  final FutureOr<void> Function()? onPressed;
   final AppButtonKind kind;
   final IconGlyph? icon;
+  final bool loading;
 
   /// Shrinks to content (used in empty states and inline confirm cards).
   final bool compact;
 
   @override
+  State<AppButton> createState() => _AppButtonState();
+}
+
+class _AppButtonState extends State<AppButton> {
+  bool _busy = false;
+
+  Future<void> _handle() async {
+    final r = widget.onPressed!();
+    if (r is Future) {
+      setState(() => _busy = true);
+      try {
+        await r;
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final colors = context.colors;
+    final label = widget.label;
+    final icon = widget.icon;
+    final kind = widget.kind;
+    final compact = widget.compact;
+    final working = _busy || widget.loading;
+    final VoidCallback? onPressed =
+        (widget.onPressed == null || working) ? null : _handle;
     final size = compact ? const Size(0, 44) : const Size.fromHeight(AppSize.button);
     final padding = compact
         ? const EdgeInsets.symmetric(horizontal: AppSpace.xl)
         : EdgeInsets.symmetric(horizontal: icon != null ? AppSpace.md : AppSpace.xl);
 
-    Widget child(Color fg) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[AppIcon(icon!, size: 18, color: fg), const SizedBox(width: AppSpace.sm)],
-            Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
-          ],
+    Widget child(Color fg) => AnimatedSwitcher(
+          duration: const Duration(milliseconds: 150),
+          child: working
+              ? SizedBox(
+                  key: const ValueKey('loading'),
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.2, color: fg),
+                )
+              : Row(
+                  key: const ValueKey('label'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (icon != null) ...[AppIcon(icon, size: 18, color: fg), const SizedBox(width: AppSpace.sm)],
+                    Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+                  ],
+                ),
         );
 
     return switch (kind) {

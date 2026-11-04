@@ -212,7 +212,6 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final tr = context.strings;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: SafeArea(
@@ -226,38 +225,7 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: scheme.primary.withValues(alpha: 0.08),
-                        border: Border.all(
-                          color: scheme.primary.withValues(alpha: 0.25),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: scheme.primary.withValues(
-                              alpha: isDark ? 0.20 : 0.12,
-                            ),
-                            blurRadius: 28,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(18),
-                      child: AppIcon(
-                        HugeIcons.strokeRoundedCheckmarkCircle02,
-                        size: 42,
-                        color: scheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
+                Center(child: BrandEmblem(animation: _scaleAnimation)),
                 const SizedBox(height: AppSpace.xl),
 
                 Text(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -309,7 +310,8 @@ class SettingsScreen extends StatelessWidget {
                               final email = authService.currentUser?.email;
                               await ApiClient.instance.deleteAccount(userId: userId, email: email, reason: 'in_app_request');
                               await viewModel.eraseAllData();
-                              await authService.signOut();
+                              if (!context.mounted) return;
+                              await _signOutWithFeedback(context, authService);
                               if (context.mounted) {
                                 showToast(context, tr.accountAndDataDeleted);
                                 context.go(AppRoutes.home);
@@ -1025,8 +1027,8 @@ class _AccountAuthCard extends StatelessWidget {
           ],
         ),
       );
-      if (confirmed == true) {
-        await authService.signOut();
+      if (confirmed == true && context.mounted) {
+        await _signOutWithFeedback(context, authService);
       }
       return;
     }
@@ -1141,7 +1143,7 @@ class _AccountAuthCard extends StatelessWidget {
                 ),
                 onPressed: () async {
                   Navigator.of(sheetCtx).pop();
-                  await authService.signOut();
+                  await _signOutWithFeedback(context, authService);
                 },
                 child: Text(
                   tr.signOutAnyway,
@@ -1537,4 +1539,24 @@ void _showWidgetPreviewSheet(BuildContext context) {
       );
     },
   );
+}
+
+
+/// Shows a blocking progress dialog while signing out so the tap never feels dead.
+Future<void> _signOutWithFeedback(BuildContext context, AuthService authService) async {
+  final navigator = Navigator.of(context, rootNavigator: true);
+  unawaited(showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    useRootNavigator: true,
+    builder: (_) => const PopScope(
+      canPop: false,
+      child: Center(child: CircularProgressIndicator()),
+    ),
+  ));
+  try {
+    await authService.signOut();
+  } finally {
+    if (navigator.canPop()) navigator.pop();
+  }
 }

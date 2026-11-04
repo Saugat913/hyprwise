@@ -27,3 +27,4 @@ export 'legal_dialogs.dart';
 export 'pro_badge.dart';
 export 'language_sheet.dart';
 export 'horizontal_option_selector.dart';
+export 'brand_emblem.dart';

@@ -57,7 +57,7 @@ class TabPage extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (!showBackButton && !context.canPop()) ...[
+                if (!showBackButton && !Navigator.of(context).canPop()) ...[
                   SvgPicture.asset(
                     Theme.of(context).brightness == Brightness.dark
                         ? 'assets/brandings/hyprwise_logo_white.svg'

@@ -350,7 +350,6 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
     final scheme = Theme.of(context).colorScheme;
     final colors = context.colors;
     final tr = context.strings;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final authService = getIt<AuthService>();
 
     _checkAndNavigate();
@@ -416,38 +415,7 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Branded Emblem with ambient glow
-                Center(
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: scheme.primary.withValues(alpha: 0.08),
-                        border: Border.all(
-                          color: scheme.primary.withValues(alpha: 0.25),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: scheme.primary.withValues(
-                              alpha: isDark ? 0.20 : 0.12,
-                            ),
-                            blurRadius: 28,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(18),
-                      child: SvgPicture.asset(
-                        isDark
-                            ? 'assets/brandings/hyprwise_logo_white.svg'
-                            : 'assets/brandings/hyprwise_logo.svg',
-                      ),
-                    ),
-                  ),
-                ),
+                Center(child: BrandEmblem(animation: _scaleAnimation)),
                 const SizedBox(height: AppSpace.xl),
 
                 // Headline
