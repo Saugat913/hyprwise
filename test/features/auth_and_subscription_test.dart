@@ -107,6 +107,43 @@ void main() {
     expect(secondLogin.id, equals(firstId));
   });
 
+  test('Returning user is detected on repeated login and retains onboarded state', () async {
+    // 1. Initial sign in for user
+    final user = await authService.signInWithGoogle(
+      email: 'returning.user@hyprwise.com',
+      displayName: 'Returning User',
+    );
+    expect(authService.isAuthenticated, isTrue);
+
+    // 2. Complete onboarding & persist preferences
+    await authService.markUserOnboarded(
+      userId: user.id,
+      locale: 'ne',
+      baseCurrency: 'AUD',
+    );
+    expect(authService.isReturningUser, isTrue);
+
+    // 3. Log out
+    await authService.signOut();
+    expect(authService.isAuthenticated, isFalse);
+    expect(authService.currentUser, isNull);
+
+    // 4. Log back in with the same account -> immediately recognized as returning user
+    final loginAgain = await authService.signInWithGoogle(
+      email: 'returning.user@hyprwise.com',
+      displayName: 'Returning User',
+    );
+    expect(loginAgain.id, equals(user.id));
+    expect(authService.isReturningUser, isTrue);
+
+    final storedOnboarded = await storage.read(key: 'auth_user_onboarded_${user.id}');
+    final storedCurrency = await storage.read(key: 'auth_user_currency_${user.id}');
+    final storedLocale = await storage.read(key: 'auth_user_locale_${user.id}');
+    expect(storedOnboarded, equals('true'));
+    expect(storedCurrency, equals('AUD'));
+    expect(storedLocale, equals('ne'));
+  });
+
   test('RevenueCat dual-key configuration exposes Test Store key for debug', () {
     expect(SubscriptionService.testStoreKey, equals('test_gyjflYZzhqICSKhjUzpGpbmhnJu'));
     expect(SubscriptionService.playStoreKey, equals('goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy'));

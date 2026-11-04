@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
+import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
 import 'package:finance_tracker/features/assistant/viewmodels/assistant_view_model.dart';
 import 'package:finance_tracker/features/auth/data/model/user_profile.dart';
 import 'package:finance_tracker/features/settings/data/repository/data_repository.dart';
@@ -24,6 +25,7 @@ class AuthService extends ChangeNotifier {
   bool _isLoading = false;
   bool _isCloudSyncing = false;
   bool _hasRestoredCloudData = false;
+  bool _isReturningUser = false;
 
   UserProfile? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
@@ -32,12 +34,17 @@ class AuthService extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isCloudSyncing => _isCloudSyncing;
   bool get hasRestoredCloudData => _hasRestoredCloudData;
+  bool get isReturningUser => _isReturningUser;
 
   static const _userKey = 'auth_user_profile';
   static const _tokenKey = 'auth_api_token';
   static const _deviceGuestIdKey = 'auth_device_guest_id';
   static const _appleCachedNameKey = 'auth_apple_cached_name';
   static const _appleCachedEmailKey = 'auth_apple_cached_email';
+  static const _lastLoggedInUserIdKey = 'auth_last_logged_in_user_id';
+  static String _keyUserOnboarded(String userId) => 'auth_user_onboarded_$userId';
+  static String _keyUserCurrency(String userId) => 'auth_user_currency_$userId';
+  static String _keyUserLocale(String userId) => 'auth_user_locale_$userId';
 
   bool get _hasFirebase => Firebase.apps.isNotEmpty;
 
@@ -161,16 +168,26 @@ class AuthService extends ChangeNotifier {
         }
       }
 
+      final currentLocale = getIt.isRegistered<SettingsRepository>()
+          ? getIt<SettingsRepository>().localeCode
+          : null;
+      final currentCurrency = getIt.isRegistered<SettingsRepository>()
+          ? getIt<SettingsRepository>().baseCurrency
+          : null;
+
       // Synchronize with Hyprwise Cloudflare Server and adopt canonical account identity
       bool isPro = false;
+      Map<String, dynamic>? serverRes;
       try {
-        final serverRes = await ApiClient.instance.authenticateFirebase(
+        serverRes = await ApiClient.instance.authenticateFirebase(
           uid: userId,
           idToken: idToken,
           email: userEmail,
           displayName: userName,
           photoUrl: photoUrl,
           provider: 'google',
+          locale: currentLocale,
+          baseCurrency: currentCurrency,
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
         if (serverUser != null) {
@@ -203,28 +220,7 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
-      // Fresh start: wipe any leftover local cached database data before loading account data
-      if (getIt.isRegistered<DataRepository>()) {
-        await getIt<DataRepository>().eraseAll();
-      }
-
-      // Pull latest cloud data automatically on login
-      _hasRestoredCloudData = await pullCloudDataToLocal();
-
-      // Only mark onboarding as completed if previous cloud data was restored!
-      // New users MUST proceed through language and currency onboarding.
-      if (_hasRestoredCloudData) {
-        if (getIt.isRegistered<SettingsRepository>()) {
-          await getIt<SettingsRepository>().completeOnboarding();
-        }
-      }
-
-      // If user is Pro, trigger Pro auto-sync
-      triggerProAutoSync();
-
-      if (getIt.isRegistered<AssistantViewModel>()) {
-        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
-      }
+      await _handlePostSignInSetup(userId: userId, serverRes: serverRes);
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
@@ -291,15 +287,25 @@ class AuthService extends ChangeNotifier {
         }
       }
 
+      final currentLocale = getIt.isRegistered<SettingsRepository>()
+          ? getIt<SettingsRepository>().localeCode
+          : null;
+      final currentCurrency = getIt.isRegistered<SettingsRepository>()
+          ? getIt<SettingsRepository>().baseCurrency
+          : null;
+
       // Synchronize with Hyprwise Cloudflare Server and adopt canonical account identity
       bool isPro = false;
+      Map<String, dynamic>? serverRes;
       try {
-        final serverRes = await ApiClient.instance.authenticateFirebase(
+        serverRes = await ApiClient.instance.authenticateFirebase(
           uid: userId,
           idToken: idToken,
           email: userEmail,
           displayName: userName,
           provider: 'apple',
+          locale: currentLocale,
+          baseCurrency: currentCurrency,
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
         if (serverUser != null) {
@@ -331,28 +337,7 @@ class AuthService extends ChangeNotifier {
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
 
-      // Fresh start: wipe any leftover local cached database data before loading account data
-      if (getIt.isRegistered<DataRepository>()) {
-        await getIt<DataRepository>().eraseAll();
-      }
-
-      // Pull latest cloud data automatically on login
-      _hasRestoredCloudData = await pullCloudDataToLocal();
-
-      // Only mark onboarding as completed if previous cloud data was restored!
-      // New users MUST proceed through language and currency onboarding.
-      if (_hasRestoredCloudData) {
-        if (getIt.isRegistered<SettingsRepository>()) {
-          await getIt<SettingsRepository>().completeOnboarding();
-        }
-      }
-
-      // If user is Pro, trigger Pro auto-sync
-      triggerProAutoSync();
-
-      if (getIt.isRegistered<AssistantViewModel>()) {
-        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
-      }
+      await _handlePostSignInSetup(userId: userId, serverRes: serverRes);
 
       // Firebase Analytics Tracking
       TelemetryService.instance.setUserId(userId);
@@ -610,6 +595,107 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Records onboarding completion for this user in secure storage and backend
+  Future<void> markUserOnboarded({
+    required String userId,
+    required String locale,
+    required String baseCurrency,
+  }) async {
+    _isReturningUser = true;
+    await _storage.write(key: _lastLoggedInUserIdKey, value: userId);
+    await _storage.write(key: _keyUserOnboarded(userId), value: 'true');
+    await _storage.write(key: _keyUserLocale(userId), value: locale);
+    await _storage.write(key: _keyUserCurrency(userId), value: baseCurrency);
+    unawaited(ApiClient.instance.updatePreferences(
+      locale: locale,
+      baseCurrency: baseCurrency,
+    ));
+  }
+
+  /// Coordinates post-sign-in state, distinguishing returning users from first-time sign-ups
+  Future<void> _handlePostSignInSetup({
+    required String userId,
+    Map<String, dynamic>? serverRes,
+  }) async {
+    // 1. Account switching check:
+    // If a different user was previously active on this device, erase the old user's local database
+    final lastUserId = await _storage.read(key: _lastLoggedInUserIdKey);
+    if (lastUserId != null && lastUserId.isNotEmpty && lastUserId != userId) {
+      if (getIt.isRegistered<DataRepository>()) {
+        await getIt<DataRepository>().eraseAll();
+      }
+    }
+    await _storage.write(key: _lastLoggedInUserIdKey, value: userId);
+
+    // 2. Identify if user is returning or brand new:
+    // a) Cloudflare server explicit flag (isNewUser == false)
+    // b) Server preferences object (onboarded == true)
+    // c) Local secure storage key for this user
+    // d) Local app preferences already marked onboarded
+    final isNewUserFromServer = serverRes?['isNewUser'] as bool?;
+    final serverPrefs = serverRes?['preferences'] as Map<String, dynamic>?;
+    final serverOnboarded = serverPrefs?['onboarded'] as bool?;
+    final localOnboarded = await _storage.read(key: _keyUserOnboarded(userId));
+    final deviceAlreadyOnboarded = getIt.isRegistered<SettingsRepository>() &&
+        getIt<SettingsRepository>().settings.onboarded;
+
+    _isReturningUser = (isNewUserFromServer == false) ||
+        (serverOnboarded == true) ||
+        (localOnboarded == 'true') ||
+        deviceAlreadyOnboarded;
+
+    // 3. Automatically pull latest encrypted cloud snapshot if user has backups
+    _hasRestoredCloudData = await pullCloudDataToLocal();
+
+    // 4. Returning users bypass first-run language/currency picker and restore settings
+    if (_isReturningUser || _hasRestoredCloudData) {
+      _isReturningUser = true;
+
+      final serverLocale = serverPrefs?['locale'] as String?;
+      final serverCurrency = serverPrefs?['baseCurrency'] as String?;
+      final localLocale = await _storage.read(key: _keyUserLocale(userId));
+      final localCurrency = await _storage.read(key: _keyUserCurrency(userId));
+
+      final preferredLocale = serverLocale ?? localLocale;
+      final preferredCurrency = serverCurrency ?? localCurrency;
+
+      if (getIt.isRegistered<SettingsRepository>()) {
+        final settingsRepo = getIt<SettingsRepository>();
+        if (preferredLocale != null && preferredLocale.isNotEmpty) {
+          await settingsRepo.setLocaleCode(preferredLocale);
+        }
+        if (preferredCurrency != null && preferredCurrency.isNotEmpty) {
+          await settingsRepo.setBaseCurrency(preferredCurrency);
+        }
+        await settingsRepo.completeOnboarding();
+      }
+
+      if (getIt.isRegistered<AccountRepository>()) {
+        final effectiveCurrency = preferredCurrency ??
+            (getIt.isRegistered<SettingsRepository>()
+                ? getIt<SettingsRepository>().baseCurrency
+                : 'USD');
+        await getIt<AccountRepository>().ensureFixedTwoAccounts(effectiveCurrency);
+      }
+
+      // Persist user-specific flags to storage
+      await _storage.write(key: _keyUserOnboarded(userId), value: 'true');
+      if (preferredCurrency != null) {
+        await _storage.write(key: _keyUserCurrency(userId), value: preferredCurrency);
+      }
+      if (preferredLocale != null) {
+        await _storage.write(key: _keyUserLocale(userId), value: preferredLocale);
+      }
+    }
+
+    // Trigger auto-sync if Pro
+    triggerProAutoSync();
+
+    if (getIt.isRegistered<AssistantViewModel>()) {
+      unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
+    }
+  }
+
   Timer? _autoSyncDebounce;
 
   /// Pulls the latest cloud backup from Hyprwise Cloud and restores into Drift SQLite
@@ -771,6 +857,8 @@ class AuthService extends ChangeNotifier {
     } catch (_) {}
 
     _currentUser = null;
+    _isReturningUser = false;
+    _hasRestoredCloudData = false;
     await _storage.delete(key: _userKey);
     await _storage.delete(key: _tokenKey);
     ApiClient.instance.clearAuthContext();
@@ -779,10 +867,8 @@ class AuthService extends ChangeNotifier {
       await getIt<SubscriptionService>().resetOnLogout();
     }
 
-    // Fresh start: erase all local database data on sign out
-    if (getIt.isRegistered<DataRepository>()) {
-      await getIt<DataRepository>().eraseAll();
-    }
+    // Local-First: We preserve encrypted local SQLite database data across sign-outs.
+    // If a different user later signs in, account switching logic clears old data.
 
     // Firebase Analytics Tracking
     TelemetryService.instance.setUserId(null);

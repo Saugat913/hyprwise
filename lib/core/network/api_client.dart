@@ -151,6 +151,8 @@ class ApiClient {
     String? displayName,
     String? photoUrl,
     String? provider,
+    String? locale,
+    String? baseCurrency,
   }) async {
     try {
       final host = await getBaseUrl();
@@ -167,6 +169,8 @@ class ApiClient {
               'displayName': displayName,
               'photoUrl': photoUrl,
               'provider': provider,
+              if (locale != null) 'locale': locale,
+              if (baseCurrency != null) 'baseCurrency': baseCurrency,
             }),
           )
           .timeout(const Duration(seconds: 5));
@@ -185,6 +189,33 @@ class ApiClient {
       debugPrint('Error authenticating with Firebase on server: $e');
     }
     return null;
+  }
+
+  /// Updates user preference settings (locale, base currency) on the Hyprwise server
+  Future<bool> updatePreferences({
+    required String locale,
+    required String baseCurrency,
+  }) async {
+    try {
+      final host = await getBaseUrl();
+      if (host == null) return false;
+
+      final res = await http
+          .post(
+            Uri.parse('$host/api/auth/preferences'),
+            headers: _headers,
+            body: jsonEncode({
+              'locale': locale,
+              'baseCurrency': baseCurrency,
+              'onboarded': true,
+            }),
+          )
+          .timeout(const Duration(seconds: 4));
+
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Authenticate with Google on server

@@ -454,7 +454,7 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
 
                 // Headline
                 Text(
-                  authService.hasRestoredCloudData || isSyncing
+                  authService.hasRestoredCloudData || isSyncing || authService.isReturningUser
                       ? tr.t(
                         'We are loading your previous data',
                         ne: 'तपाईंको अघिल्लो डेटा लोड गरिँदैछ',
@@ -485,17 +485,17 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
                 ),
                 const SizedBox(height: AppSpace.xs),
                 Text(
-                  authService.hasRestoredCloudData || isSyncing
+                  authService.hasRestoredCloudData || isSyncing || authService.isReturningUser
                       ? tr.t(
-                        'Please wait a minute while we restore your accounts, shifts, and preferences from the cloud.',
-                        ne: 'क्लाउडबाट तपाईंका खाताहरू, सिफ्टहरू र प्राथमिकताहरू लोड हुँदैछन्, कृपया एकछिन पर्खनुहोस्।',
+                        'Please wait a minute while we restore your accounts, shifts, and preferences.',
+                        ne: 'तपाईंका खाताहरू, सिफ्टहरू र प्राथमिकताहरू लोड हुँदैछन्, कृपया एकछिन पर्खनुहोस्।',
                         hi: 'कृपया कुछ समय प्रतीक्षा करें जब तक हम आपके खाते, शिफ्ट और प्राथमिकताएं पुनर्स्थापित कर रहे हैं।',
                         es: 'Espera un minuto mientras restauramos tus cuentas, turnos y preferencias.',
                         fr: 'Veuillez patienter pendant que nous restaurons vos comptes et préférences.',
                         de: 'Bitte warten Sie einen Moment, während wir Ihre Konten und Einstellungen wiederherstellen.',
-                        ja: 'クラウドからアカウント、シフト、設定を復元しています。少々お待ちください。',
-                        zh: '请稍候，我们正在从云端恢复您的账户、班次和偏好设置。',
-                        it: 'Attendi un momento mentre ripristiniamo i tuoi account, turni e preferenze dal cloud.',
+                        ja: 'アカウント、シフト、設定を復元しています。少々お待ちください。',
+                        zh: '请稍候，我们正在恢复您的账户、班次和偏好设置。',
+                        it: 'Attendi un momento mentre ripristiniamo i tuoi account, turni e preferenze.',
                       )
                       : tr.t(
                         'Preparing your offline-first financial dashboard & cloud backup securely.',

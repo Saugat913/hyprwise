@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
+import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 import 'package:finance_tracker/features/shared/data/currency.dart';
 
@@ -63,5 +65,17 @@ class OnboardingViewModel extends ChangeNotifier {
     await settingsRepo.setBaseCurrency(_selectedCurrency);
     await accountRepo.ensureFixedTwoAccounts(_selectedCurrency);
     await settingsRepo.completeOnboarding();
+
+    if (getIt.isRegistered<AuthService>()) {
+      final auth = getIt<AuthService>();
+      final currentUser = auth.currentUser;
+      if (currentUser != null) {
+        await auth.markUserOnboarded(
+          userId: currentUser.id,
+          locale: _selectedLocale,
+          baseCurrency: _selectedCurrency,
+        );
+      }
+    }
   }
 }
