@@ -39,6 +39,15 @@ class ShiftNotificationService {
     interruptionLevel: InterruptionLevel.active,
   );
 
+  /// Silent, passive notification details for ongoing shifts on iOS to prevent notification spam
+  static const DarwinNotificationDetails _darwinShiftDetails = DarwinNotificationDetails(
+    presentAlert: false,
+    presentBadge: false,
+    presentSound: false,
+    presentBanner: false,
+    interruptionLevel: InterruptionLevel.passive,
+  );
+
   bool get _isNepali {
     try {
       if (getIt.isRegistered<SettingsRepository>()) {
@@ -279,17 +288,26 @@ class ShiftNotificationService {
     if (!_initialized) await initialize();
     if (!_isAvailable) return;
 
-    // Called every second by the work view model: skip unchanged content and
-    // never post more than about once per second.
-    final key = '$jobName|$elapsedFormatted|$earningsFormatted|$isOnBreak|$breakMinutes';
-    final nowTs = DateTime.now();
-    if (!force) {
+    // On iOS, avoid posting notifications continuously every 1-2 seconds.
+    // iOS lacks Android-style ongoing notification updates, so calling show()
+    // every second rings, buzzes, and floods the Notification Center.
+    // We only update on iOS when shift state changes (started, break toggled, ended).
+    if (defaultTargetPlatform == TargetPlatform.iOS && !force) {
+      final stateKey = '$jobName|$isOnBreak';
+      if (stateKey == _lastShiftNotifyKey) {
+        return;
+      }
+      _lastShiftNotifyKey = stateKey;
+    } else if (!force) {
+      // Android: throttle to avoid exceeding 1 update per second
+      final key = '$jobName|$elapsedFormatted|$earningsFormatted|$isOnBreak|$breakMinutes';
+      final nowTs = DateTime.now();
       if (key == _lastShiftNotifyKey) return;
       final last = _lastShiftNotifyAt;
       if (last != null && nowTs.difference(last) < _shiftNotifyMinInterval) return;
+      _lastShiftNotifyKey = key;
+      _lastShiftNotifyAt = nowTs;
     }
-    _lastShiftNotifyKey = key;
-    _lastShiftNotifyAt = nowTs;
 
     final isNe = _isNepali;
     final breakInfo = isOnBreak
@@ -331,7 +349,7 @@ class ShiftNotificationService {
       ],
     );
 
-    final details = NotificationDetails(android: androidDetails, iOS: _darwinDetails);
+    final details = NotificationDetails(android: androidDetails, iOS: _darwinShiftDetails);
 
     try {
       await _notifications.show(

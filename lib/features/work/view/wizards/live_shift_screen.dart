@@ -12,8 +12,37 @@ import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
-class LiveShiftScreen extends StatelessWidget {
-  const LiveShiftScreen({super.key});
+class LiveShiftScreen extends StatefulWidget {
+  const LiveShiftScreen({super.key, this.initialAction});
+
+  final String? initialAction;
+
+  @override
+  State<LiveShiftScreen> createState() => _LiveShiftScreenState();
+}
+
+class _LiveShiftScreenState extends State<LiveShiftScreen> {
+  bool _actionHandled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialAction != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _handleInitialAction());
+    }
+  }
+
+  void _handleInitialAction() {
+    if (_actionHandled || !mounted) return;
+    _actionHandled = true;
+    final viewModel = getIt<WorkViewModel>();
+    final shift = viewModel.activeShift;
+    if (shift == null) return;
+
+    if (widget.initialAction == 'break') {
+      viewModel.toggleBreak();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

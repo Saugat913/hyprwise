@@ -8,6 +8,7 @@ import 'package:finance_tracker/core/notifications/shift_notification_service.da
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
+import 'package:finance_tracker/core/widgets/widget_sync_service.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';
 import 'package:finance_tracker/features/work/data/repository/job_repository.dart';
@@ -116,6 +117,9 @@ class WorkViewModel extends ChangeNotifier {
     final shift = activeShift;
     if (shift == null) {
       ShiftNotificationService.instance.cancelShiftNotification();
+      if (!_isTestEnvironment) {
+        unawaited(WidgetSyncService.clearShift());
+      }
       return;
     }
     final job = jobsById[shift.jobId];
@@ -137,6 +141,15 @@ class WorkViewModel extends ChangeNotifier {
       isOnBreak: _isOnBreak,
       breakMinutes: currentBreakMinutes,
     );
+    if (!_isTestEnvironment) {
+      final subtitle = _isOnBreak
+          ? 'On Break • $earningsStr'
+          : '$h:$m:$s • $earningsStr';
+      unawaited(WidgetSyncService.updateShift(
+        jobName: job.name,
+        subtitle: subtitle,
+      ));
+    }
   }
 
   void _onStoreChanged() {
@@ -152,7 +165,11 @@ class WorkViewModel extends ChangeNotifier {
       if (activeShift != null) {
         // Live notification sync while working; frozen during breaks
         if (!_isOnBreak) {
-          _syncNotification();
+          // On Android: update ongoing silent chronometer notification in-place.
+          // On iOS: do NOT spam notifications every second (causes continuous banner alerts & sounds).
+          if (defaultTargetPlatform == TargetPlatform.android) {
+            _syncNotification();
+          }
         }
         notifyListeners();
       }

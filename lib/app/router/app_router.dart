@@ -222,7 +222,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       parentNavigatorKey: rootNavigatorKey,
       path: AppRoutes.liveShift,
-      builder: (context, state) => const LiveShiftScreen(),
+      builder: (context, state) {
+        final action = state.uri.queryParameters['action'];
+        return LiveShiftScreen(initialAction: action);
+      },
     ),
     GoRoute(
       parentNavigatorKey: rootNavigatorKey,
@@ -285,15 +288,19 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: rootNavigatorKey,
       path: AppRoutes.addDebt,
       builder: (context, state) {
+        final queryType = state.uri.queryParameters['type'];
+        final queryPerson = state.uri.queryParameters['person'];
         if (state.extra is Map<String, dynamic>) {
           final map = state.extra as Map<String, dynamic>;
           return AddDebtWizard(
-            initialType: map['type'] as DebtType? ?? DebtType.lent,
-            initialPersonName: map['personName'] as String?,
+            initialType: map['type'] as DebtType? ?? (queryType == 'borrowed' ? DebtType.borrowed : DebtType.lent),
+            initialPersonName: map['personName'] as String? ?? queryPerson,
           );
         }
-        final initialType = state.extra is DebtType ? state.extra as DebtType : DebtType.lent;
-        return AddDebtWizard(initialType: initialType);
+        final initialType = state.extra is DebtType
+            ? state.extra as DebtType
+            : (queryType == 'borrowed' ? DebtType.borrowed : DebtType.lent);
+        return AddDebtWizard(initialType: initialType, initialPersonName: queryPerson);
       },
     ),
 

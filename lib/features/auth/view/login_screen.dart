@@ -454,17 +454,29 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
 
                 // Headline
                 Text(
-                  tr.t(
-                    'Checking account & setting up',
-                    ne: 'खाता जाँच र सेटअप हुँदैछ',
-                    hi: 'खाता जाँच और सेटअप हो रहा है',
-                    es: 'Verificando cuenta y configurando',
-                    fr: 'Vérification du compte et configuration',
-                    de: 'Konto wird überprüft und eingerichtet',
-                    ja: 'アカウントを確認・設定しています',
-                    zh: '正在检查账户并进行设置',
-                    it: 'Verifica dell\'account e configurazione',
-                  ),
+                  authService.hasRestoredCloudData || isSyncing
+                      ? tr.t(
+                        'We are loading your previous data',
+                        ne: 'तपाईंको अघिल्लो डेटा लोड गरिँदैछ',
+                        hi: 'आपका पिछला डेटा लोड किया जा रहा है',
+                        es: 'Cargando tus datos anteriores',
+                        fr: 'Chargement de vos données précédentes',
+                        de: 'Wir laden Ihre bisherigen Daten',
+                        ja: '以前のデータを読み込んでいます',
+                        zh: '正在加载您之前的数据',
+                        it: 'Stiamo caricando i tuoi dati precedenti',
+                      )
+                      : tr.t(
+                        'Checking account & setting up',
+                        ne: 'खाता जाँच र सेटअप हुँदैछ',
+                        hi: 'खाता जाँच और सेटअप हो रहा है',
+                        es: 'Verificando cuenta y configurando',
+                        fr: 'Vérification du compte et configuration',
+                        de: 'Konto wird überprüft und eingerichtet',
+                        ja: 'アカウントを確認・設定しています',
+                        zh: '正在检查账户并进行设置',
+                        it: 'Verifica dell\'account e configurazione',
+                      ),
                   textAlign: TextAlign.center,
                   style: text.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -473,23 +485,35 @@ class _AccountSetupSyncScreenState extends State<_AccountSetupSyncScreen>
                 ),
                 const SizedBox(height: AppSpace.xs),
                 Text(
-                  tr.t(
-                    'Preparing your offline-first financial dashboard & cloud backup securely.',
-                    ne:
-                        'तपाईंको अफलाइन-पहिलो वित्तीय ड्यासबोर्ड र क्लाउड ब्याकअप सुरक्षित रूपमा तयार गर्दै।',
-                    hi:
-                        'आपके ऑफ़लाइन-प्रथम वित्तीय डैशबोर्ड और क्लाउड बैकअप को सुरक्षित रूप से तैयार किया जा रहा है।',
-                    es:
-                        'Preparando de forma segura tu panel financiero y copia en la nube.',
-                    fr:
-                        'Préparation sécurisée de votre tableau de bord et sauvegarde cloud.',
-                    de:
-                        'Ihr Offline-First-Dashboard und Cloud-Backup werden sicher vorbereitet.',
-                    ja: 'オフライン優先の財務ダッシュボードとクラウドバックアップを安全に準備しています。',
-                    zh: '正在安全准备您的离线优先财务仪表板和云备份。',
-                    it:
-                        'Preparazione sicura della dashboard finanziaria offline e del backup cloud.',
-                  ),
+                  authService.hasRestoredCloudData || isSyncing
+                      ? tr.t(
+                        'Please wait a minute while we restore your accounts, shifts, and preferences from the cloud.',
+                        ne: 'क्लाउडबाट तपाईंका खाताहरू, सिफ्टहरू र प्राथमिकताहरू लोड हुँदैछन्, कृपया एकछिन पर्खनुहोस्।',
+                        hi: 'कृपया कुछ समय प्रतीक्षा करें जब तक हम आपके खाते, शिफ्ट और प्राथमिकताएं पुनर्स्थापित कर रहे हैं।',
+                        es: 'Espera un minuto mientras restauramos tus cuentas, turnos y preferencias.',
+                        fr: 'Veuillez patienter pendant que nous restaurons vos comptes et préférences.',
+                        de: 'Bitte warten Sie einen Moment, während wir Ihre Konten und Einstellungen wiederherstellen.',
+                        ja: 'クラウドからアカウント、シフト、設定を復元しています。少々お待ちください。',
+                        zh: '请稍候，我们正在从云端恢复您的账户、班次和偏好设置。',
+                        it: 'Attendi un momento mentre ripristiniamo i tuoi account, turni e preferenze dal cloud.',
+                      )
+                      : tr.t(
+                        'Preparing your offline-first financial dashboard & cloud backup securely.',
+                        ne:
+                            'तपाईंको अफलाइन-पहिलो वित्तीय ड्यासबोर्ड र क्लाउड ब्याकअप सुरक्षित रूपमा तयार गर्दै।',
+                        hi:
+                            'आपके ऑफ़लाइन-प्रथम वित्तीय डैशबोर्ड और क्लाउड बैकअप को सुरक्षित रूप से तैयार किया जा रहा है।',
+                        es:
+                            'Preparando de forma segura tu panel financiero y copia en la nube.',
+                        fr:
+                            'Préparation sécurisée de votre tableau de bord et sauvegarde cloud.',
+                        de:
+                            'Ihr Offline-First-Dashboard und Cloud-Backup werden sicher vorbereitet.',
+                        ja: 'オフライン優先の財務ダッシュボードとクラウドバックアップを安全に準備しています。',
+                        zh: '正在安全准备您的离线优先财务仪表板和云备份。',
+                        it:
+                            'Preparazione sicura della dashboard finanziaria offline e del backup cloud.',
+                      ),
                   textAlign: TextAlign.center,
                   style: text.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,

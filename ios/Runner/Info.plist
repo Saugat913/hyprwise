@@ -81,6 +81,16 @@
 			<dict>
 				<key>CFBundleTypeRole</key>
 				<string>Editor</string>
+				<key>CFBundleURLName</key>
+				<string>com.hypr.hyprwise</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>hyprwise</string>
+				</array>
+			</dict>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
 					<string>com.googleusercontent.apps.534651621591-7v4e8ni800a1260tnh6fi5brsr3er4no</string>

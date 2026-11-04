@@ -23,6 +23,7 @@ class AuthService extends ChangeNotifier {
   UserProfile? _currentUser;
   bool _isLoading = false;
   bool _isCloudSyncing = false;
+  bool _hasRestoredCloudData = false;
 
   UserProfile? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
@@ -30,6 +31,7 @@ class AuthService extends ChangeNotifier {
       _currentUser == null || _currentUser?.provider == AuthProvider.guest;
   bool get isLoading => _isLoading;
   bool get isCloudSyncing => _isCloudSyncing;
+  bool get hasRestoredCloudData => _hasRestoredCloudData;
 
   static const _userKey = 'auth_user_profile';
   static const _tokenKey = 'auth_api_token';
@@ -205,11 +207,14 @@ class AuthService extends ChangeNotifier {
       }
 
       // Pull latest cloud data automatically on login
-      await pullCloudDataToLocal();
+      _hasRestoredCloudData = await pullCloudDataToLocal();
 
-      // Ensure returning/authenticated user skips first-run onboarding screen
-      if (getIt.isRegistered<SettingsRepository>()) {
-        await getIt<SettingsRepository>().completeOnboarding();
+      // Only mark onboarding as completed if previous cloud data was restored!
+      // New users MUST proceed through language and currency onboarding.
+      if (_hasRestoredCloudData) {
+        if (getIt.isRegistered<SettingsRepository>()) {
+          await getIt<SettingsRepository>().completeOnboarding();
+        }
       }
 
       // If user is Pro, trigger Pro auto-sync
@@ -312,11 +317,14 @@ class AuthService extends ChangeNotifier {
       }
 
       // Pull latest cloud data automatically on login
-      await pullCloudDataToLocal();
+      _hasRestoredCloudData = await pullCloudDataToLocal();
 
-      // Ensure returning/authenticated user skips first-run onboarding screen
-      if (getIt.isRegistered<SettingsRepository>()) {
-        await getIt<SettingsRepository>().completeOnboarding();
+      // Only mark onboarding as completed if previous cloud data was restored!
+      // New users MUST proceed through language and currency onboarding.
+      if (_hasRestoredCloudData) {
+        if (getIt.isRegistered<SettingsRepository>()) {
+          await getIt<SettingsRepository>().completeOnboarding();
+        }
       }
 
       // If user is Pro, trigger Pro auto-sync

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_shift_name">Hyprwise Shift</string>
+    <string name="widget_shift_desc">Live active shift status, duration, earnings, and break/clock-out controls.</string>
+
+    <string name="widget_actions_name">Hyprwise Quick Actions</string>
+    <string name="widget_actions_desc">Fast one-tap access to log income, expense, lent, or borrowed transactions.</string>
+
+    <string name="widget_ai_name">HyprAI</string>
+    <string name="widget_ai_desc">Instant launch button for Hyprwise AI personal finance assistant.</string>
+</resources>

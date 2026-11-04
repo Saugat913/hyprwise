@@ -30,7 +30,52 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="hyprwise"/>
+            </intent-filter>
         </activity>
+
+        <!-- Shift Tracking Widget Receiver -->
+        <receiver
+            android:name=".ShiftWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_shift_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_shift_info"/>
+        </receiver>
+
+        <!-- Quick Actions Bar Widget Receiver -->
+        <receiver
+            android:name=".QuickActionsWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_actions_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_actions_info"/>
+        </receiver>
+
+        <!-- HyprAI Launcher Widget Receiver -->
+        <receiver
+            android:name=".HyprAiWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_ai_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_hypr_ai_info"/>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

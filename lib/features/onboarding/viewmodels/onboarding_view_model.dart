@@ -29,12 +29,17 @@ class OnboardingViewModel extends ChangeNotifier {
   String get selectedCurrency => _selectedCurrency;
 
   void nextStep() {
-    _step = 1;
+    _step = (_step + 1).clamp(0, 2);
     notifyListeners();
   }
 
   void previousStep() {
-    _step = 0;
+    _step = (_step - 1).clamp(0, 2);
+    notifyListeners();
+  }
+
+  void goToSettingUp() {
+    _step = 2;
     notifyListeners();
   }
 

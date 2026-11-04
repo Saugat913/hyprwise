@@ -9,6 +9,7 @@ import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/auth/data/model/user_profile.dart';
+import 'package:finance_tracker/features/home/presentation/widgets/home_screen_widgets.dart';
 import 'package:finance_tracker/features/settings/viewmodels/settings_view_model.dart';
 import 'package:finance_tracker/features/shared/data/currency.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
@@ -101,6 +102,14 @@ class SettingsScreen extends StatelessWidget {
                         leading: const IconTile(HugeIcons.strokeRoundedGridView),
                         trailing: const Chevron(),
                         onTap: () => context.push(AppRoutes.categories),
+                      ),
+                      const RowDivider(),
+                      ListRow(
+                        title: tr.t('Home Screen Widgets', ne: 'गृह स्क्रिन विजेटहरू', hi: 'होम स्क्रीन विजेट्स'),
+                        subtitle: tr.t('Preview Shift, Quick Actions & HyprAI widgets', ne: 'सिफ्ट, द्रुत कार्य र HyprAI विजेटहरू हेर्नुहोस्', hi: 'शिफ्ट, त्वरित कार्य और HyprAI विजेट्स देखें'),
+                        leading: const IconTile(HugeIcons.strokeRoundedLayers01),
+                        trailing: const Chevron(),
+                        onTap: () => _showWidgetPreviewSheet(context),
                       ),
                     ],
                   ),
@@ -1210,4 +1219,118 @@ class _LanguageSelector extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showWidgetPreviewSheet(BuildContext context) {
+  final tr = context.strings;
+  final text = Theme.of(context).textTheme;
+  final scheme = Theme.of(context).colorScheme;
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: scheme.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+    ),
+    builder: (ctx) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(AppSpace.page, AppSpace.lg, AppSpace.page, AppSpace.xxl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              Text(
+                tr.t('Home Screen Widgets', ne: 'गृह स्क्रिन विजेटहरू', hi: 'होम स्क्रीन विजेट्स'),
+                style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                tr.t(
+                  'Quickly access Hyprwise actions and live shift tracking directly from your phone’s home screen.',
+                  ne: 'आफ्नो फोनको गृह स्क्रिनबाट सिधै Hyprwise कार्यहरू र प्रत्यक्ष सिफ्ट ट्र्याकिङ पहुँच गर्नुहोस्।',
+                  hi: 'अपने फोन की होम स्क्रीन से सीधे Hyprwise क्रियाओं और लाइव शिफ्ट ट्रैकिंग तक पहुंचें।',
+                ),
+                style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppSpace.xl),
+
+              // Widget 1: Shift Tracker
+              Text(
+                tr.t('1. Shift Tracker Widget', ne: '१. सिफ्ट ट्र्याकिङ विजेट', hi: '१. शिफ्ट ट्रैकिंग विजेट'),
+                style: text.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              const ShiftHomeScreenWidget(),
+              const SizedBox(height: AppSpace.lg),
+
+              // Widget 2: Quick Action Bar
+              Text(
+                tr.t('2. Quick Actions Bar', ne: '२. द्रुत कार्य विजेट', hi: '२. त्वरित कार्य विजेट'),
+                style: text.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              const QuickActionsBarWidget(),
+              const SizedBox(height: AppSpace.lg),
+
+              // Widget 3: HyprAI Widget
+              Text(
+                tr.t('3. HyprAI Assistant Widget', ne: '३. HyprAI सहायक विजेट', hi: '३. HyprAI सहायक विजेट'),
+                style: text.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppSpace.xs),
+              const Center(child: HyprAiWidget()),
+              const SizedBox(height: AppSpace.xl),
+
+              // How to add instructions card
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tr.t('How to add to Home Screen', ne: 'गृह स्क्रिनमा कसरी थप्ने', hi: 'होम स्क्रीन पर कैसे जोड़ें'),
+                      style: text.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: AppSpace.sm),
+                    Text(
+                      tr.t(
+                        '• Android: Touch and hold an empty space on your home screen, tap Widgets, find Hyprwise, and drag your favorite widget to the screen.\n\n• iOS: Touch and hold your home screen until apps jiggle, tap the "+" button at top, search for Hyprwise, or create a Shortcut with hyprwise:// deep links.',
+                        ne: '• एन्ड्रोइड: गृह स्क्रिनमा खाली ठाउँ थिचिराख्नुहोस्, विजेटहरू ट्याप गर्नुहोस्, Hyprwise खोज्नुहोस् र विजेट तान्नुहोस्।\n\n• iOS: गृह स्क्रिन थिचिराख्नुहोस्, माथिको "+" थिच्नुहोस्, र Hyprwise वा सर्टकट थप्नुहोस्।',
+                        hi: '• एंड्रॉइड: अपनी होम स्क्रीन पर किसी खाली जगह को दबाकर रखें, विजेट्स पर टैप करें, Hyprwise ढूंढें और विजेट खींचें।\n\n• iOS: अपनी होम स्क्रीन को दबाकर रखें, ऊपर "+" दबाएं, Hyprwise या शॉर्टकट जोड़ें।',
+                      ),
+                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpace.xl),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                ),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(tr.closeAction),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
