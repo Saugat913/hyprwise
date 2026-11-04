@@ -22,7 +22,7 @@ class PaywallScreen extends StatefulWidget {
 }
 
 class _PaywallScreenState extends State<PaywallScreen> {
-  bool _isLoadingAuth = false;
+  String? _busyAuthProvider;
   bool _isRestoring = false;
   String? _authError;
 
@@ -36,8 +36,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (_busyAuthProvider != null) return;
     setState(() {
-      _isLoadingAuth = true;
+      _busyAuthProvider = 'google';
       _authError = null;
     });
 
@@ -47,17 +48,17 @@ class _PaywallScreenState extends State<PaywallScreen> {
       if (user != null && mounted) {
         showToast(context, 'Account connected! Current data safely saved.');
         setState(() {
-          _isLoadingAuth = false;
+          _busyAuthProvider = null;
         });
       } else if (mounted) {
         setState(() {
-          _isLoadingAuth = false;
+          _busyAuthProvider = null;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isLoadingAuth = false;
+          _busyAuthProvider = null;
           _authError = 'Google sign-in failed: ${e.toString().split(']').last.trim()}';
         });
       }
@@ -65,8 +66,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _handleAppleSignIn() async {
+    if (_busyAuthProvider != null) return;
     setState(() {
-      _isLoadingAuth = true;
+      _busyAuthProvider = 'apple';
       _authError = null;
     });
 
@@ -76,17 +78,17 @@ class _PaywallScreenState extends State<PaywallScreen> {
       if (user != null && mounted) {
         showToast(context, 'Account connected! Current data safely saved.');
         setState(() {
-          _isLoadingAuth = false;
+          _busyAuthProvider = null;
         });
       } else if (mounted) {
         setState(() {
-          _isLoadingAuth = false;
+          _busyAuthProvider = null;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isLoadingAuth = false;
+          _busyAuthProvider = null;
           _authError = 'Apple sign-in failed: ${e.toString().split(']').last.trim()}';
         });
       }
@@ -223,64 +225,91 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
                     const SizedBox(height: AppSpace.xl),
 
-                    if (_isLoadingAuth) ...[
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: AppSpace.md),
-                          child: CircularProgressIndicator(color: brandOrange),
+                    SizedBox(
+                      height: AppSize.button,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? Colors.white : const Color(0xFF0F0F11),
+                          foregroundColor: isDark ? Colors.black : Colors.white,
+                          disabledBackgroundColor:
+                              (isDark ? Colors.white : const Color(0xFF0F0F11)).withValues(alpha: 0.72),
+                          disabledForegroundColor:
+                              (isDark ? Colors.black : Colors.white).withValues(alpha: 0.9),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
                         ),
+                        icon: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          child: _busyAuthProvider == 'google'
+                              ? SizedBox(
+                                  key: const ValueKey('google_busy'),
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: isDark ? Colors.black : Colors.white,
+                                  ),
+                                )
+                              : AppIcon(
+                                  HugeIcons.strokeRoundedGoogle,
+                                  key: const ValueKey('google_icon'),
+                                  size: 20,
+                                  color: isDark ? Colors.black : Colors.white,
+                                ),
+                        ),
+                        label: Text(
+                          tr.continueWithGoogle,
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                        onPressed: _busyAuthProvider != null ? null : _handleGoogleSignIn,
                       ),
-                    ] else ...[
+                    ),
+
+                    if (!kIsWeb && Platform.isIOS) ...[
+                      const SizedBox(height: AppSpace.sm),
                       SizedBox(
                         height: AppSize.button,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isDark ? Colors.white : const Color(0xFF0F0F11),
+                            backgroundColor: isDark ? Colors.white : Colors.black,
                             foregroundColor: isDark ? Colors.black : Colors.white,
+                            disabledBackgroundColor:
+                                (isDark ? Colors.white : Colors.black).withValues(alpha: 0.72),
+                            disabledForegroundColor:
+                                (isDark ? Colors.black : Colors.white).withValues(alpha: 0.9),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
-                          icon: AppIcon(
-                            HugeIcons.strokeRoundedGoogle,
-                            size: 20,
-                            color: isDark ? Colors.black : Colors.white,
+                          icon: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 180),
+                            child: _busyAuthProvider == 'apple'
+                                ? SizedBox(
+                                    key: const ValueKey('apple_busy'),
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: isDark ? Colors.black : Colors.white,
+                                    ),
+                                  )
+                                : AppIcon(
+                                    HugeIcons.strokeRoundedApple,
+                                    key: const ValueKey('apple_icon'),
+                                    size: 20,
+                                    color: isDark ? Colors.black : Colors.white,
+                                  ),
                           ),
                           label: Text(
-                            tr.continueWithGoogle,
+                            tr.continueWithApple,
                             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                           ),
-                          onPressed: _handleGoogleSignIn,
+                          onPressed: _busyAuthProvider != null ? null : _handleAppleSignIn,
                         ),
                       ),
-
-                      if (!kIsWeb && Platform.isIOS) ...[
-                        const SizedBox(height: AppSpace.sm),
-                        SizedBox(
-                          height: AppSize.button,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isDark ? Colors.white : Colors.black,
-                              foregroundColor: isDark ? Colors.black : Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                              ),
-                            ),
-                            icon: AppIcon(
-                              HugeIcons.strokeRoundedApple,
-                              size: 20,
-                              color: isDark ? Colors.black : Colors.white,
-                            ),
-                            label: Text(
-                              tr.continueWithApple,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                            ),
-                            onPressed: _handleAppleSignIn,
-                          ),
-                        ),
-                      ],
                     ],
                   ],
                 ),
@@ -413,7 +442,19 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 },
               ),
               const SizedBox(height: AppSpace.sm),
-              TextButton(
+              AppButton(
+                tr.t(
+                  'Restore Purchases',
+                  ne: 'खरिदहरू पुनर्स्थापना गर्नुहोस्',
+                  es: 'Restaurar compras',
+                  fr: 'Restaurer les achats',
+                  de: 'Käufe wiederherstellen',
+                  ja: '購入を復元',
+                  zh: '恢复购买',
+                  it: 'Ripristina acquisti',
+                ),
+                kind: AppButtonKind.text,
+                loading: _isRestoring,
                 onPressed: _isRestoring
                     ? null
                     : () async {
@@ -441,18 +482,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           }
                         }
                       },
-                child: Text(
-                  tr.t(
-                    'Restore Purchases',
-                    ne: 'खरिदहरू पुनर्स्थापना गर्नुहोस्',
-                    es: 'Restaurar compras',
-                    fr: 'Restaurer les achats',
-                    de: 'Käufe wiederherstellen',
-                    ja: '購入を復元',
-                    zh: '恢复购买',
-                    it: 'Ripristina acquisti',
-                  ),
-                ),
               ),
             ],
           ),

@@ -186,14 +186,16 @@ void showEditShiftDialog(
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: AppButton(
+                      tr.cancel,
+                      kind: AppButtonKind.secondary,
                       onPressed: () => Navigator.pop(ctx),
-                      child: Text(tr.cancel),
                     ),
                   ),
                   const SizedBox(width: AppSpace.md),
                   Expanded(
-                    child: FilledButton(
+                    child: AppButton(
+                      tr.saveChanges,
                       onPressed: () async {
                         final newStart = DateTime(
                           selectedDate.year,
@@ -225,7 +227,6 @@ void showEditShiftDialog(
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (context.mounted) showToast(context, tr.shiftUpdatedSuccess);
                       },
-                      child: Text(tr.saveChanges),
                     ),
                   ),
                 ],

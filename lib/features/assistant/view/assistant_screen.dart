@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
@@ -239,34 +238,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
                             children: [
                               const SizedBox(height: AppSpace.md),
                               // Centered Hyprwise Logo Emblem
-                              Center(
-                                child: Container(
-                                  width: 72,
-                                  height: 72,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: scheme.primary.withValues(alpha: 0.08),
-                                    border: Border.all(
-                                      color: scheme.primary.withValues(alpha: 0.25),
-                                      width: 1.5,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: scheme.primary.withValues(
-                                          alpha: isDark ? 0.22 : 0.12,
-                                        ),
-                                        blurRadius: 24,
-                                        spreadRadius: 2,
-                                      ),
-                                    ],
-                                  ),
-                                  padding: const EdgeInsets.all(16),
-                                  child: SvgPicture.asset(
-                                    isDark
-                                        ? 'assets/brandings/hyprwise_logo_white.svg'
-                                        : 'assets/brandings/hyprwise_logo.svg',
-                                  ),
-                                ),
+                              const Center(
+                                child: BrandEmblem(size: 56),
                               ),
                               const SizedBox(height: AppSpace.lg),
 
@@ -1289,22 +1262,15 @@ class _AssistantChatAvatar extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: scheme.primary.withValues(alpha: 0.1),
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-          color: scheme.primary.withValues(alpha: 0.25),
-          width: 1.2,
+          color: scheme.outlineVariant,
+          width: 1,
         ),
       ),
-      padding: const EdgeInsets.all(5),
-      child: Image.asset(
-        'assets/brandings/hyprwise_app_icon_1024.png',
-        errorBuilder: (context, error, stackTrace) => SvgPicture.asset(
-          isDark
-              ? 'assets/brandings/hyprwise_logo_white.svg'
-              : 'assets/brandings/hyprwise_logo.svg',
-        ),
-      ),
+      padding: const EdgeInsets.all(6),
+      child: const BrandEmblem(size: 20),
     );
   }
 }

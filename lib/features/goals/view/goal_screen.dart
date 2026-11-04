@@ -709,7 +709,8 @@ class GoalScreen extends StatelessWidget {
                     ],
 
                     const SizedBox(height: AppSpace.xl),
-                    FilledButton(
+                    AppButton(
+                      tr.saveToGoal,
                       onPressed: () async {
                         final amt = double.tryParse(
                           amountController.text.trim(),
@@ -767,7 +768,6 @@ class GoalScreen extends StatelessWidget {
                           );
                         }
                       },
-                      child: Text(tr.saveToGoal),
                     ),
                   ],
                 ),
@@ -1071,9 +1071,16 @@ class GoalScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpace.xl),
 
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 48),
+                      AppButton(
+                        tr.t(
+                          'Save Changes',
+                          ne: 'परिवर्तनहरू सुरक्षित गर्नुहोस्',
+                          es: 'Guardar cambios',
+                          fr: 'Enregistrer les modifications',
+                          de: 'Änderungen speichern',
+                          ja: '変更を保存',
+                          zh: '保存更改',
+                          it: 'Salva modifiche',
                         ),
                         onPressed: () async {
                           final name = nameController.text.trim();
@@ -1123,18 +1130,6 @@ class GoalScreen extends StatelessWidget {
                             );
                           }
                         },
-                        child: Text(
-                          tr.t(
-                            'Save Changes',
-                            ne: 'परिवर्तनहरू सुरक्षित गर्नुहोस्',
-                            es: 'Guardar cambios',
-                            fr: 'Enregistrer les modifications',
-                            de: 'Änderungen speichern',
-                            ja: '変更を保存',
-                            zh: '保存更改',
-                            it: 'Salva modifiche',
-                          ),
-                        ),
                       ),
                       const SizedBox(height: AppSpace.sm),
                       OutlinedButton(

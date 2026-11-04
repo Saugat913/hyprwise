@@ -32,15 +32,13 @@ class LoginScreen extends StatelessWidget {
       builder: (context, _) {
         final text = Theme.of(context).textTheme;
         final scheme = Theme.of(context).colorScheme;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
         final authService = getIt<AuthService>();
         final tr = context.strings;
 
-        if (authService.isAuthenticated ||
+        final showSyncScreen =
+            authService.isAuthenticated ||
             authService.isLoading ||
-            authService.isCloudSyncing) {
-          return const _AccountSetupSyncScreen();
-        }
+            authService.isCloudSyncing;
 
         void onAuthSuccess() {
           if (!context.mounted) return;
@@ -52,125 +50,127 @@ class LoginScreen extends StatelessWidget {
           }
         }
 
-        return Scaffold(
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.page,
-                vertical: AppSpace.md,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Spacer(flex: 3),
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 240),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: showSyncScreen
+              ? const _AccountSetupSyncScreen(key: ValueKey('sync'))
+              : Scaffold(
+                  key: const ValueKey('login'),
+                  body: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpace.page,
+                        vertical: AppSpace.md,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Spacer(flex: 3),
 
-                  // Single Centered Hyprwise Mark
-                  Center(
-                    child: SvgPicture.asset(
-                      isDark
-                          ? 'assets/brandings/hyprwise_logo_white.svg'
-                          : 'assets/brandings/hyprwise_logo.svg',
-                      width: 72,
-                      height: 72,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpace.xl),
-
-                  Text(
-                    'hyprwise',
-                    textAlign: TextAlign.center,
-                    style: text.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpace.xs),
-                  Text(
-                    tr.loginPitch,
-                    textAlign: TextAlign.center,
-                    style: text.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.35,
-                    ),
-                  ),
-
-                  const Spacer(flex: 4),
-
-                  // Action Buttons
-                  _SocialButtons(onAuthSuccess: onAuthSuccess),
-
-                  const SizedBox(height: AppSpace.xl),
-
-                  // Legal Compliance & Security Notice
-                  Center(
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          tr.agreeToTermsPrefix,
-                          style: text.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant,
+                          // Single Centered Hyprwise Mark
+                          const Center(
+                            child: BrandEmblem(size: 72),
                           ),
-                        ),
-                        GestureDetector(
-                          onTap: () => showAppTermsDialog(context),
-                          child: Text(
-                            tr.termsOfService,
-                            style: text.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.underline,
+                          const SizedBox(height: AppSpace.xl),
+
+                          Text(
+                            'hyprwise',
+                            textAlign: TextAlign.center,
+                            style: text.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                        ),
-                        Text(
-                          tr.andWord,
-                          style: text.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => showAppPrivacyPolicyDialog(context),
-                          child: Text(
-                            tr.privacyPolicy,
-                            style: text.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.underline,
+                          const SizedBox(height: AppSpace.xs),
+                          Text(
+                            tr.loginPitch,
+                            textAlign: TextAlign.center,
+                            style: text.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              height: 1.35,
                             ),
                           ),
-                        ),
-                        Text(
-                          tr.agreeToTermsSuffix,
-                          style: text.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant,
+
+                          const Spacer(flex: 4),
+
+                          // Action Buttons
+                          _SocialButtons(onAuthSuccess: onAuthSuccess),
+
+                          const SizedBox(height: AppSpace.xl),
+
+                          // Legal Compliance & Security Notice
+                          Center(
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  tr.agreeToTermsPrefix,
+                                  style: text.bodySmall?.copyWith(
+                                    fontSize: 11,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => showAppTermsDialog(context),
+                                  child: Text(
+                                    tr.termsOfService,
+                                    style: text.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                      color: scheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  tr.andWord,
+                                  style: text.bodySmall?.copyWith(
+                                    fontSize: 11,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => showAppPrivacyPolicyDialog(context),
+                                  child: Text(
+                                    tr.privacyPolicy,
+                                    style: text.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                      color: scheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  tr.agreeToTermsSuffix,
+                                  style: text.bodySmall?.copyWith(
+                                    fontSize: 11,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpace.xs),
-                  Center(
-                    child: Text(
-                      tr.offlineSecurityBadge,
-                      textAlign: TextAlign.center,
-                      style: text.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
-                        fontSize: 10.5,
+                          const SizedBox(height: AppSpace.xs),
+                          Center(
+                            child: Text(
+                              tr.offlineSecurityBadge,
+                              textAlign: TextAlign.center,
+                              style: text.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpace.xs),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppSpace.xs),
-                ],
-              ),
-            ),
-          ),
+                ),
         );
       },
     );
@@ -307,7 +307,7 @@ class _SocialButtonsState extends State<_SocialButtons> {
 }
 
 class _AccountSetupSyncScreen extends StatefulWidget {
-  const _AccountSetupSyncScreen();
+  const _AccountSetupSyncScreen({super.key});
 
   @override
   State<_AccountSetupSyncScreen> createState() =>

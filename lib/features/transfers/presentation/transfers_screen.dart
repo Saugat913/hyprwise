@@ -590,15 +590,10 @@ class _TransferFormState extends State<TransferForm> {
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving || destinations.isEmpty ? null : _save,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(_saving ? 'Saving…' : 'Save transfer'),
-                  ),
-                ),
+              AppButton(
+                'Save transfer',
+                loading: _saving,
+                onPressed: _saving || destinations.isEmpty ? null : _save,
               ),
             ],
           ),

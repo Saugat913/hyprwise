@@ -36,12 +36,13 @@ class SubscriptionAuthGuardSheet extends StatefulWidget {
 }
 
 class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet> {
-  bool _isLoading = false;
+  String? _busyProvider;
   String? _errorMessage;
 
   Future<void> _handleGoogleSignIn() async {
+    if (_busyProvider != null) return;
     setState(() {
-      _isLoading = true;
+      _busyProvider = 'google';
       _errorMessage = null;
     });
 
@@ -53,13 +54,13 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
         Navigator.of(context).pop(true);
       } else if (mounted) {
         setState(() {
-          _isLoading = false;
+          _busyProvider = null;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _busyProvider = null;
           _errorMessage = 'Sign in failed: ${e.toString().split(']').last.trim()}';
         });
       }
@@ -67,8 +68,9 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
   }
 
   Future<void> _handleAppleSignIn() async {
+    if (_busyProvider != null) return;
     setState(() {
-      _isLoading = true;
+      _busyProvider = 'apple';
       _errorMessage = null;
     });
 
@@ -80,13 +82,13 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
         Navigator.of(context).pop(true);
       } else if (mounted) {
         setState(() {
-          _isLoading = false;
+          _busyProvider = null;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _busyProvider = null;
           _errorMessage = 'Apple sign in failed: ${e.toString().split(']').last.trim()}';
         });
       }
@@ -219,81 +221,110 @@ class _SubscriptionAuthGuardSheetState extends State<SubscriptionAuthGuardSheet>
 
               const SizedBox(height: AppSpace.xl),
 
-              if (_isLoading) ...[
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpace.md),
-                    child: CircularProgressIndicator(color: brandOrange),
+              // Google Sign In Button
+              SizedBox(
+                height: AppSize.button,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark ? Colors.white : const Color(0xFF0F0F11),
+                    foregroundColor: isDark ? Colors.black : Colors.white,
+                    disabledBackgroundColor:
+                        (isDark ? Colors.white : const Color(0xFF0F0F11)).withValues(alpha: 0.72),
+                    disabledForegroundColor:
+                        (isDark ? Colors.black : Colors.white).withValues(alpha: 0.9),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
                   ),
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: _busyProvider == 'google'
+                        ? SizedBox(
+                            key: const ValueKey('google_busy'),
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
+                          )
+                        : AppIcon(
+                            HugeIcons.strokeRoundedGoogle,
+                            key: const ValueKey('google_icon'),
+                            size: 20,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
+                  ),
+                  label: Text(
+                    tr.continueWithGoogle,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                  onPressed: _busyProvider != null ? null : _handleGoogleSignIn,
                 ),
-              ] else ...[
-                // Google Sign In Button
+              ),
+
+              // Apple Sign In Button (iOS or web)
+              if (!kIsWeb && Platform.isIOS) ...[
+                const SizedBox(height: AppSpace.sm),
                 SizedBox(
                   height: AppSize.button,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? Colors.white : const Color(0xFF0F0F11),
+                      backgroundColor: isDark ? Colors.white : Colors.black,
                       foregroundColor: isDark ? Colors.black : Colors.white,
+                      disabledBackgroundColor:
+                          (isDark ? Colors.white : Colors.black).withValues(alpha: 0.72),
+                      disabledForegroundColor:
+                          (isDark ? Colors.black : Colors.white).withValues(alpha: 0.9),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                     ),
-                    icon: AppIcon(
-                      HugeIcons.strokeRoundedGoogle,
-                      size: 20,
-                      color: isDark ? Colors.black : Colors.white,
+                    icon: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: _busyProvider == 'apple'
+                          ? SizedBox(
+                              key: const ValueKey('apple_busy'),
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: isDark ? Colors.black : Colors.white,
+                              ),
+                            )
+                          : AppIcon(
+                              HugeIcons.strokeRoundedApple,
+                              key: const ValueKey('apple_icon'),
+                              size: 20,
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
                     ),
                     label: Text(
-                      tr.continueWithGoogle,
+                      tr.continueWithApple,
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                     ),
-                    onPressed: _handleGoogleSignIn,
-                  ),
-                ),
-
-                // Apple Sign In Button (iOS or web)
-                if (!kIsWeb && Platform.isIOS) ...[
-                  const SizedBox(height: AppSpace.sm),
-                  SizedBox(
-                    height: AppSize.button,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDark ? Colors.white : Colors.black,
-                        foregroundColor: isDark ? Colors.black : Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                      ),
-                      icon: AppIcon(
-                        HugeIcons.strokeRoundedApple,
-                        size: 20,
-                        color: isDark ? Colors.black : Colors.white,
-                      ),
-                      label: Text(
-                        tr.continueWithApple,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                      ),
-                      onPressed: _handleAppleSignIn,
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: AppSpace.sm),
-
-                // Dismiss / Cancel Button
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(
-                    tr.cancel,
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    onPressed: _busyProvider != null ? null : _handleAppleSignIn,
                   ),
                 ),
               ],
+
+              const SizedBox(height: AppSpace.sm),
+
+              // Dismiss / Cancel Button
+              TextButton(
+                onPressed: _busyProvider != null
+                    ? null
+                    : () => Navigator.of(context).pop(false),
+                child: Text(
+                  tr.cancel,
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

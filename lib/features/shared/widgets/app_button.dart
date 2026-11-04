@@ -8,9 +8,9 @@ import 'package:finance_tracker/features/shared/widgets/app_icon.dart';
 
 enum AppButtonKind { primary, secondary, success, danger, outline, text }
 
-/// Full-width pill-ish button used for every primary action.
-/// If [onPressed] returns a Future the button shows a spinner and ignores
-/// further taps until it completes (or while [loading] is true).
+/// Full-width 12px-radius button used for primary and secondary actions.
+/// Includes tactile press-scale micro-animation and automatic loading spinner
+/// whenever [onPressed] returns a Future or [loading] is true.
 class AppButton extends StatefulWidget {
   const AppButton(
     this.label, {
@@ -38,14 +38,13 @@ class AppButton extends StatefulWidget {
 class _AppButtonState extends State<AppButton> {
   bool _busy = false;
   bool _showSpinner = false;
+  bool _pressed = false;
 
   Future<void> _handle() async {
     final r = widget.onPressed!();
     if (r is Future) {
       setState(() => _busy = true);
-      // Only show the spinner for work that is actually slow, so buttons that
-      // merely open a sheet or push a route don't flash a loader.
-      final timer = Timer(const Duration(milliseconds: 300), () {
+      final timer = Timer(const Duration(milliseconds: 120), () {
         if (mounted && _busy) setState(() => _showSpinner = true);
       });
       try {
@@ -78,9 +77,14 @@ class _AppButtonState extends State<AppButton> {
     final padding = compact
         ? const EdgeInsets.symmetric(horizontal: AppSpace.xl)
         : EdgeInsets.symmetric(horizontal: icon != null ? AppSpace.md : AppSpace.xl);
+    final borderShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+    );
 
     Widget child(Color fg) => AnimatedSwitcher(
-          duration: const Duration(milliseconds: 150),
+          duration: const Duration(milliseconds: 160),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
           child: spinning
               ? SizedBox(
                   key: const ValueKey('loading'),
@@ -92,13 +96,16 @@ class _AppButtonState extends State<AppButton> {
                   key: const ValueKey('label'),
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (icon != null) ...[AppIcon(icon, size: 18, color: fg), const SizedBox(width: AppSpace.sm)],
+                    if (icon != null) ...[
+                      AppIcon(icon, size: 18, color: fg),
+                      const SizedBox(width: AppSpace.sm),
+                    ],
                     Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
                   ],
                 ),
         );
 
-    return switch (kind) {
+    final button = switch (kind) {
       AppButtonKind.secondary => FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
@@ -121,12 +128,17 @@ class _AppButtonState extends State<AppButton> {
             padding: padding,
             backgroundColor: colors.fill.withValues(alpha: 0.5),
             side: BorderSide(color: scheme.outlineVariant),
+            shape: borderShape,
           ),
           child: child(scheme.onSurface),
         ),
       AppButtonKind.text => TextButton(
           onPressed: onPressed,
-          style: TextButton.styleFrom(minimumSize: size, padding: padding),
+          style: TextButton.styleFrom(
+            minimumSize: size,
+            padding: padding,
+            shape: borderShape,
+          ),
           child: child(scheme.onSurfaceVariant),
         ),
       _ => FilledButton(
@@ -134,6 +146,7 @@ class _AppButtonState extends State<AppButton> {
           style: FilledButton.styleFrom(
             minimumSize: size,
             padding: padding,
+            shape: borderShape,
             backgroundColor: switch (kind) {
               AppButtonKind.success => colors.income,
               AppButtonKind.danger => colors.expense,
@@ -144,6 +157,18 @@ class _AppButtonState extends State<AppButton> {
           child: child(kind == AppButtonKind.primary ? scheme.onPrimary : Colors.white),
         ),
     };
+
+    return Listener(
+      onPointerDown: onPressed != null ? (_) => setState(() => _pressed = true) : null,
+      onPointerUp: onPressed != null ? (_) => setState(() => _pressed = false) : null,
+      onPointerCancel: onPressed != null ? (_) => setState(() => _pressed = false) : null,
+      child: AnimatedScale(
+        scale: (_pressed && onPressed != null) ? 0.98 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOutCubic,
+        child: button,
+      ),
+    );
   }
 }
 
