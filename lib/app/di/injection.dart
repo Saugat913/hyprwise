@@ -62,7 +62,6 @@ Future<void> configureDependencies() async {
   await authService.load();
   final subscriptionService = SubscriptionService(authService: authService);
   await subscriptionService.load();
-  await subscriptionService.initRevenueCat();
 
   getIt
     ..registerSingleton<AccountRepository>(accountRepo)
