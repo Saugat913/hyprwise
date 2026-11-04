@@ -27,11 +27,16 @@ class ShiftWidgetProvider : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val jobName = prefs.getString("flutter.widget_shift_job", null)
-            val subtitle = prefs.getString("flutter.widget_shift_subtitle", null)
-            val isOnBreak = prefs.getBoolean("flutter.widget_shift_is_on_break", false)
-            val hasActiveShift = prefs.getBoolean("flutter.widget_shift_active", false) &&
+            val widgetPrefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+            val flutterPrefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+
+            val jobName = widgetPrefs.getString("widget_shift_job", null)
+                ?: flutterPrefs.getString("flutter.widget_shift_job", null)
+            val subtitle = widgetPrefs.getString("widget_shift_subtitle", null)
+                ?: flutterPrefs.getString("flutter.widget_shift_subtitle", null)
+            val isOnBreak = widgetPrefs.getBoolean("widget_shift_is_on_break", false) ||
+                    flutterPrefs.getBoolean("flutter.widget_shift_is_on_break", false)
+            val hasActiveShift = (widgetPrefs.getBoolean("widget_shift_active", false) || flutterPrefs.getBoolean("flutter.widget_shift_active", false)) &&
                     !jobName.isNullOrEmpty() &&
                     jobName != "NO ACTIVE SHIFT"
 

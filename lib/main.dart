@@ -8,6 +8,7 @@ import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/config/app_config.dart';
 import 'package:finance_tracker/core/notifications/shift_notification_service.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
+import 'package:finance_tracker/core/widgets/widget_sync_service.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 
 Future<void> main() async {
@@ -73,6 +74,15 @@ Future<void> _initBackgroundServices() async {
   } catch (e) {
     if (kDebugMode) {
       debugPrint('[Startup] Background Notifications init error: $e');
+    }
+  }
+
+  // D. Home Screen Widgets (Android & iOS WidgetKit)
+  try {
+    await WidgetSyncService.initialize();
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('[Startup] Background WidgetSyncService init error: $e');
     }
   }
 }
