@@ -95,19 +95,19 @@ struct ShiftWidgetView: View {
             // Header: Status dot + Job title
             HStack(spacing: 6) {
                 Circle()
-                    .fill(entry.isActive ? (entry.isOnBreak ? .hwAmber : .hwGreen) : .hwMuted)
+                    .fill(entry.isActive ? (entry.isOnBreak ? Color.hwAmber : Color.hwGreen) : Color.hwMuted)
                     .frame(width: 8, height: 8)
 
                 Text(entry.jobName.uppercased())
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.hwInk)
+                    .foregroundColor(Color.hwInk)
                     .lineLimit(1)
             }
 
             // Subtitle: Time & pay rates
             Text(entry.subtitle)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.hwMuted)
+                .foregroundColor(Color.hwMuted)
                 .lineLimit(1)
 
             Spacer(minLength: 0)
@@ -119,28 +119,28 @@ struct ShiftWidgetView: View {
                         Link(destination: URL(string: "hyprwise:///work/shift/live?action=break")!) {
                             Text(entry.isOnBreak ? "resume" : "break")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.hwInk)
+                                .foregroundColor(Color.hwInk)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 32)
-                                .background(.hwFill)
+                                .background(Color.hwFill)
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(.hwHairline, lineWidth: 1)
+                                        .stroke(Color.hwHairline, lineWidth: 1)
                                 )
                         }
 
                         Link(destination: URL(string: "hyprwise:///work/shift/live?action=end")!) {
                             Text("end")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.hwRed)
+                                .foregroundColor(Color.hwRed)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 32)
-                                .background(.hwFill)
+                                .background(Color.hwFill)
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(.hwHairline, lineWidth: 1)
+                                        .stroke(Color.hwHairline, lineWidth: 1)
                                 )
                         }
                     }
@@ -148,10 +148,10 @@ struct ShiftWidgetView: View {
                     Link(destination: URL(string: "hyprwise:///work/shift/start")!) {
                         Text("start shift")
                             .font(.system(size: 12.5, weight: .bold))
-                            .foregroundColor(.hwCard)
+                            .foregroundColor(Color.hwCard)
                             .frame(maxWidth: .infinity)
                             .frame(height: 32)
-                            .background(.hwInk)
+                            .background(Color.hwInk)
                             .cornerRadius(12)
                     }
                 }
@@ -205,15 +205,15 @@ struct QuickActionsWidgetView: View {
                 VStack(spacing: 5) {
                     ZStack {
                         Circle()
-                            .fill(.hwGreenBg)
+                            .fill(Color.hwGreenBg)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.down.left")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.hwGreen)
+                            .foregroundColor(Color.hwGreen)
                     }
                     Text("income")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.hwInk)
+                        .foregroundColor(Color.hwInk)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -223,15 +223,15 @@ struct QuickActionsWidgetView: View {
                 VStack(spacing: 5) {
                     ZStack {
                         Circle()
-                            .fill(.hwRedBg)
+                            .fill(Color.hwRedBg)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.hwRed)
+                            .foregroundColor(Color.hwRed)
                     }
                     Text("expense")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.hwInk)
+                        .foregroundColor(Color.hwInk)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -241,15 +241,15 @@ struct QuickActionsWidgetView: View {
                 VStack(spacing: 5) {
                     ZStack {
                         Circle()
-                            .fill(.hwAmberBg)
+                            .fill(Color.hwAmberBg)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.right")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.hwAmber)
+                            .foregroundColor(Color.hwAmber)
                     }
                     Text("lend")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.hwInk)
+                        .foregroundColor(Color.hwInk)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -259,15 +259,15 @@ struct QuickActionsWidgetView: View {
                 VStack(spacing: 5) {
                     ZStack {
                         Circle()
-                            .fill(.hwBrandBg)
+                            .fill(Color.hwBrandBg)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.left")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.hwBrand)
+                            .foregroundColor(Color.hwBrand)
                     }
                     Text("borrow")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.hwInk)
+                        .foregroundColor(Color.hwInk)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -317,16 +317,16 @@ struct HyprAiWidgetView: View {
         VStack(spacing: 8) {
             ZStack {
                 Circle()
-                    .fill(.hwBrandBg)
+                    .fill(Color.hwBrandBg)
                     .frame(width: 46, height: 46)
                 Image(systemName: "sparkles")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.hwBrand)
+                    .foregroundColor(Color.hwBrand)
             }
 
             Text("hyprai")
                 .font(.system(size: 12.5, weight: .bold))
-                .foregroundColor(.hwInk)
+                .foregroundColor(Color.hwInk)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(12)
