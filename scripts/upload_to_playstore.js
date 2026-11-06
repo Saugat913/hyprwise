@@ -127,6 +127,7 @@ async function getAccessToken() {
       'https://oauth2.googleapis.com/token',
       {
         method: 'POST',
+        family: 4,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Content-Length': Buffer.byteLength(postData),
@@ -165,6 +166,7 @@ function uploadAabStream(url, token, filePath, fileSize) {
       url,
       {
         method: 'POST',
+        family: 4,
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/octet-stream',
@@ -206,7 +208,7 @@ function uploadAabStream(url, token, filePath, fileSize) {
 
 function httpsRequest(url, options, data = null) {
   return new Promise((resolve, reject) => {
-    const req = https.request(url, options, (res) => {
+    const req = https.request(url, { family: 4, ...options }, (res) => {
       let body = '';
       res.on('data', (chunk) => (body += chunk));
       res.on('end', () => {
