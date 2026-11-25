@@ -17,3 +17,6 @@ windows/
 scripts/
 .agents/
 firepit-log.txt
+data/*.db
+data/*.db-shm
+data/*.db-wal

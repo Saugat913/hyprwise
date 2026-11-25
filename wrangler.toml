@@ -15,6 +15,12 @@ FIREBASE_PROJECT_ID = "tilvane"
 FIREBASE_CLIENT_EMAIL = "firebase-adminsdk-fbsvc@tilvane.iam.gserviceaccount.com"
 GOOGLE_PROJECT_ID = "projects/218890071998"
 GOOGLE_PROJECT_NUMBER = "218890071998"
-REVENUECAT_WEBHOOK_AUTH = "hyprwise_webhook_secret_2026"
-DISCORD_WEBHOOK_URL = ""
-BUILD_WEBHOOK_SECRET = ""
+ENFORCE_APP_CHECK = "true"
+# Secrets MUST be configured via `wrangler secret put` (never committed here):
+#   wrangler secret put GEMINI_API_KEY
+#   wrangler secret put REVENUECAT_WEBHOOK_AUTH
+#   wrangler secret put BUILD_WEBHOOK_SECRET
+#   wrangler secret put ADMIN_PASSWORD
+#   wrangler secret put ADMIN_AUTH_TOKEN
+#   wrangler secret put SESSION_SECRET
+#   wrangler secret put DISCORD_WEBHOOK_URL

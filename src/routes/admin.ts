@@ -1,25 +1,35 @@
-// Admin Dashboard and Monitoring Routes (Password: P@ssword123)
+// Admin Dashboard and Monitoring Routes
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
-import { type Bindings, type TelemetryEvent } from '../types';
+import { type Bindings } from '../types';
 import {
   renderAdminLoginPage,
   renderAdminDashboard,
   memoryEvents,
-  ADMIN_PASSWORD,
   ADMIN_COOKIE_NAME,
-  ADMIN_AUTH_TOKEN,
+  getAdminPassword,
+  getAdminAuthToken,
 } from '../compliance_and_admin';
+import { safeEqual } from '../middleware/jwt_verify';
 import { FirebaseAnalyticsService } from '../services/firebase_analytics';
 
 export const adminRouter = new Hono<{ Bindings: Bindings }>();
 
-export function isAdminAuthenticated(c: any): boolean {
+export function isAdminAuthenticated(c: Context<{ Bindings: Bindings }>): boolean {
+  const expectedToken = getAdminAuthToken(c.env);
+  const expectedPassword = getAdminPassword(c.env);
+
   const cookie = getCookie(c, ADMIN_COOKIE_NAME);
-  if (cookie === ADMIN_AUTH_TOKEN) return true;
+  if (cookie && safeEqual(cookie, expectedToken)) return true;
+
   const authHeader = c.req.header('Authorization');
-  if (authHeader && authHeader.includes(ADMIN_PASSWORD)) return true;
+  if (authHeader?.startsWith('Bearer ')) {
+    const supplied = authHeader.slice(7).trim();
+    if (safeEqual(supplied, expectedPassword) || safeEqual(supplied, expectedToken)) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -87,7 +97,6 @@ adminRouter.get('/', async (c) => {
   const totalInteractions = allEvents.filter((e) => e.eventType === 'action' || e.eventType === 'screen_view').length;
   const conversionRate = totalUsers > 0 ? `${((proUsers / totalUsers) * 100).toFixed(1)}%` : '0%';
 
-  // Fetch Firebase Analytics metrics and render visual charts
   const analyticsSummary = await FirebaseAnalyticsService.getAnalyticsSummary({
     propertyId: c.env?.GA4_PROPERTY_ID,
     events: allEvents,
@@ -117,30 +126,35 @@ adminRouter.get('/', async (c) => {
 adminRouter.post('/login', async (c) => {
   try {
     const body = await c.req.parseBody();
-    const password = (body['password'] as string || '').trim();
+    const password = String(body['password'] || '').trim();
+    const expectedPassword = getAdminPassword(c.env);
 
-    if (password === ADMIN_PASSWORD) {
-      setCookie(c, ADMIN_COOKIE_NAME, ADMIN_AUTH_TOKEN, {
-        path: '/',
+    if (password.length > 0 && safeEqual(password, expectedPassword)) {
+      const isHttps = c.req.url.startsWith('https://');
+      setCookie(c, ADMIN_COOKIE_NAME, getAdminAuthToken(c.env), {
+        path: '/admin',
         httpOnly: true,
-        secure: false, // works on both localhost and edge HTTPS
+        secure: isHttps,
+        sameSite: 'Strict',
         maxAge: 86400 * 7,
       });
       return c.redirect('/admin');
     }
 
-    return c.html(renderAdminLoginPage({ error: 'Incorrect password. Access denied.' }));
+    return c.html(renderAdminLoginPage({ error: 'Incorrect password. Access denied.' }), 401);
   } catch (err: any) {
-    return c.html(renderAdminLoginPage({ error: err.message || 'Login error' }));
+    return c.html(renderAdminLoginPage({ error: err.message || 'Login error' }), 500);
   }
 });
 
 adminRouter.get('/logout', (c) => {
+  deleteCookie(c, ADMIN_COOKIE_NAME, { path: '/admin' });
   deleteCookie(c, ADMIN_COOKIE_NAME, { path: '/' });
   return c.redirect('/admin');
 });
 
 adminRouter.post('/logout', (c) => {
+  deleteCookie(c, ADMIN_COOKIE_NAME, { path: '/admin' });
   deleteCookie(c, ADMIN_COOKIE_NAME, { path: '/' });
   return c.redirect('/admin');
 });

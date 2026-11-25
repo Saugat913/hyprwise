@@ -2,16 +2,17 @@
 // Note: Admin portal link is intentionally hidden from this public page as requested.
 
 import { getHyprwiseIconSvg } from '../brand_assets';
+import { wrapHtml } from '../compliance_and_admin';
 
 export function renderLandingPage(): string {
-  return `
+  const bodyContent = `
     <div style="max-width: 780px; margin: 0 auto; text-align: center; padding: 40px 16px 20px;">
       <div style="margin-bottom: 22px; display: inline-block;">
         ${getHyprwiseIconSvg(58)}
       </div>
       <h1 style="font-size: 2.2rem; margin-bottom: 8px; letter-spacing: -0.03em;">hyprwise</h1>
       <p class="subtitle" style="justify-content: center; font-size: 1.05rem; margin-bottom: 28px;">
-        Local-first personal finance, shift wage tracker & dual-currency intelligence
+        Local-first personal finance, shift wage tracker &amp; dual-currency intelligence
       </p>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; text-align: left; margin-bottom: 32px;">
@@ -35,7 +36,7 @@ export function renderLandingPage(): string {
           <span class="section-eyebrow" style="color: var(--accent-red);">User Rights</span>
           <h2 style="font-size: 1.15rem; margin: 0 0 6px; color: var(--text);">Delete Account &rarr;</h2>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
-            Google Play Data Safety compliant account and cloud backup deletion portal.
+            Google Play Data Safety &amp; Apple compliant account and cloud backup deletion portal.
           </p>
         </a>
       </div>
@@ -43,11 +44,12 @@ export function renderLandingPage(): string {
       <div class="content-card" style="text-align: left;">
         <h3 style="font-size: 1.05rem; margin-top: 0; margin-bottom: 12px;">Core Product Architecture</h3>
         <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; margin: 0;">
-          Hyprwise is engineered as an encrypted offline-first system. Financial accounts, hourly rates,
-          shift schedules, goals, and transactions are stored locally on your device. Cloud sync is
-          optional and end-to-end user authenticated.
+          Hyprwise is engineered as an offline-first system. Financial accounts, hourly rates,
+          shift schedules, goals, and transactions are stored locally in your device's protected sandbox.
+          Cloud sync is optional and authenticated with verified Firebase credentials over TLS 1.3.
         </p>
       </div>
     </div>
   `;
+  return wrapHtml({ title: 'Personal Finance & Shift Tracker', bodyContent, activeNav: '' });
 }

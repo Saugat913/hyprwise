@@ -2,7 +2,14 @@
 
 import { Hono } from 'hono';
 import { type Bindings } from '../types';
-import { resolveUser, computeQuotaSnapshot, deterministicUserIdFromEmail } from '../middleware/auth';
+import {
+  resolveUser,
+  verifyBearerIdentity,
+  computeQuotaSnapshot,
+  deterministicUserIdFromEmail,
+  getSessionSecret,
+} from '../middleware/auth';
+import { signSessionToken } from '../middleware/jwt_verify';
 import { memoryEvents } from '../compliance_and_admin';
 
 export const authRouter = new Hono<{ Bindings: Bindings }>();
@@ -10,27 +17,47 @@ export const authRouter = new Hono<{ Bindings: Bindings }>();
 authRouter.post('/firebase', async (c) => {
   try {
     const body = await c.req.json();
-    const { uid, email, displayName, photoUrl, provider, locale, baseCurrency } = body;
+    const { displayName, photoUrl, provider, locale, baseCurrency } = body;
 
-    const emailStr = String(email || `${uid || 'user'}@hyprwise.local`).trim().toLowerCase();
-    const existingByEmail = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
-      .bind(emailStr)
-      .first<any>();
+    // Cryptographically verify the Firebase ID token from Authorization: Bearer <idToken>
+    const verified = await verifyBearerIdentity(c);
+    if (!verified && c.env.ALLOW_INSECURE_DEV_AUTH !== 'true') {
+      return c.json(
+        { error: 'unauthorized', message: 'Valid Firebase ID token is required.' },
+        401
+      );
+    }
+
+    const uid = verified?.uid || String(body.uid || '').trim();
+    const rawEmail = verified?.email || String(body.email || '').trim();
+    const emailStr = String(rawEmail || `${uid || 'user'}@hyprwise.local`)
+      .trim()
+      .toLowerCase();
+
     const existingById = uid
       ? await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(uid).first<any>()
       : null;
-    const existing = existingByEmail || existingById;
+    const existingByEmail = !existingById
+      ? await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
+          .bind(emailStr)
+          .first<any>()
+      : null;
+    const existing = existingById || existingByEmail;
     const isNewUser = !existing;
 
-    const deterministicId = deterministicUserIdFromEmail(emailStr, provider === 'apple' ? 'usr_a_' : 'usr_g_');
+    const deterministicId = deterministicUserIdFromEmail(
+      emailStr,
+      provider === 'apple' ? 'usr_a_' : 'usr_g_'
+    );
     const finalUserId = existing?.id || (uid && uid.length > 5 ? uid : deterministicId);
 
     const user = {
       id: finalUserId,
       email: emailStr,
-      displayName: displayName || existing?.displayName || emailStr.split('@')[0],
-      photoUrl: photoUrl || existing?.photoUrl || null,
-      provider: provider || 'google',
+      displayName:
+        displayName || verified?.name || existing?.displayName || emailStr.split('@')[0],
+      photoUrl: photoUrl || verified?.picture || existing?.photoUrl || null,
+      provider: provider || verified?.provider || 'google',
       isPro: existing?.isPro ?? 0,
       proExpiresAt: existing?.proExpiresAt ?? null,
       dailyAiQueriesCount: existing?.dailyAiQueriesCount ?? 0,
@@ -69,7 +96,6 @@ authRouter.post('/firebase', async (c) => {
       `).run();
     } catch (_) {}
 
-    // Fetch existing preferences first
     let prefs: any = null;
     try {
       prefs = await c.env.DB.prepare('SELECT * FROM user_preferences WHERE userId = ?')
@@ -77,14 +103,14 @@ authRouter.post('/firebase', async (c) => {
         .first<any>();
     } catch (_) {}
 
-    // Only initialize preferences on login if the user has NO existing preferences.
-    // Never overwrite an existing user's saved preferences with initial login payload!
     if (!prefs && (locale || baseCurrency)) {
       try {
         await c.env.DB.prepare(`
           INSERT INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
           VALUES (?, ?, ?, 1, ?)
-        `).bind(finalUserId, locale || null, baseCurrency || null, Date.now()).run();
+        `)
+          .bind(finalUserId, locale || null, baseCurrency || null, Date.now())
+          .run();
 
         prefs = await c.env.DB.prepare('SELECT * FROM user_preferences WHERE userId = ?')
           .bind(finalUserId)
@@ -93,16 +119,24 @@ authRouter.post('/firebase', async (c) => {
     }
 
     const quota = computeQuotaSnapshot(user as any);
+    const sessionToken = await signSessionToken(
+      { uid: user.id, email: user.email },
+      getSessionSecret(c.env)
+    );
 
     return c.json({
       success: true,
-      token: `tok_${finalUserId}_${Date.now()}`,
+      token: sessionToken,
       isNewUser,
-      preferences: prefs ? {
-        locale: prefs.locale,
-        baseCurrency: prefs.baseCurrency,
-        onboarded: Boolean(prefs.onboarded),
-      } : (isNewUser ? null : { onboarded: true }),
+      preferences: prefs
+        ? {
+            locale: prefs.locale,
+            baseCurrency: prefs.baseCurrency,
+            onboarded: Boolean(prefs.onboarded),
+          }
+        : isNewUser
+        ? null
+        : { onboarded: true },
       user: {
         ...user,
         isPro: quota.activePro,
@@ -117,23 +151,15 @@ authRouter.post('/firebase', async (c) => {
 
 authRouter.post('/preferences', async (c) => {
   try {
+    const user = await resolveUser(c, false, true);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
     const body = await c.req.json().catch(() => ({}));
-    let user = await resolveUser(c);
-
-    if (!user && (body.userId || body.email)) {
-      if (body.userId) {
-        user = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(body.userId).first<any>();
-      }
-      if (!user && body.email) {
-        user = await c.env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?').bind(String(body.email).trim().toLowerCase()).first<any>();
-      }
-    }
-
-    const targetUserId = user?.id || body.userId;
-    if (!targetUserId) {
-      return c.json({ error: 'Unauthorized or missing userId' }, 401);
-    }
-    const { locale, baseCurrency } = body;
+    const locale = typeof body.locale === 'string' ? body.locale.slice(0, 10) : null;
+    const baseCurrency =
+      typeof body.baseCurrency === 'string' ? body.baseCurrency.slice(0, 6).toUpperCase() : null;
 
     try {
       await c.env.DB.prepare(`
@@ -155,7 +181,9 @@ authRouter.post('/preferences', async (c) => {
         baseCurrency = COALESCE(excluded.baseCurrency, user_preferences.baseCurrency),
         onboarded = 1,
         updatedAt = excluded.updatedAt
-    `).bind(targetUserId, locale || null, baseCurrency || null, Date.now()).run();
+    `)
+      .bind(user.id, locale, baseCurrency, Date.now())
+      .run();
 
     return c.json({ success: true });
   } catch (e: any) {
@@ -164,7 +192,7 @@ authRouter.post('/preferences', async (c) => {
 });
 
 authRouter.get('/profile', async (c) => {
-  const user = await resolveUser(c, true);
+  const user = await resolveUser(c, true, true);
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
@@ -179,46 +207,46 @@ authRouter.get('/profile', async (c) => {
   });
 });
 
+// Authenticated permanent account deletion (Apple Guideline 5.1.1(v) & Google Play Data Safety)
+// Strictly scoped to the verified authenticated caller — never accepts arbitrary target userId/email.
 authRouter.post('/account/delete', async (c) => {
   try {
-    const user = await resolveUser(c);
-    let targetId = user?.id;
-    let targetEmail = user?.email;
-
-    try {
-      const body = await c.req.json();
-      if (body.userId) targetId = body.userId;
-      if (body.email) targetEmail = body.email;
-    } catch (_) {}
-
-    if (!targetId && !targetEmail) {
-      return c.json({ error: 'User identification required' }, 400);
+    const user = await resolveUser(c, false, true);
+    if (!user) {
+      return c.json(
+        { error: 'unauthorized', message: 'Verified authentication is required to delete your account.' },
+        401
+      );
     }
 
+    const targetId = user.id;
+    const targetEmail = user.email.toLowerCase();
+
     if (c.env?.DB) {
-      if (targetId) {
-        await c.env.DB.prepare('DELETE FROM sync_records WHERE userId = ?').bind(targetId).run();
-        await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetId).run();
-      }
-      if (targetEmail) {
-        await c.env.DB.prepare('DELETE FROM users WHERE LOWER(email) = ?').bind(targetEmail.toLowerCase()).run();
-      }
+      await c.env.DB.prepare('DELETE FROM sync_records WHERE userId = ?').bind(targetId).run();
+      await c.env.DB.prepare('DELETE FROM user_preferences WHERE userId = ?').bind(targetId).run();
+      await c.env.DB.prepare('DELETE FROM telemetry_events WHERE userId = ?').bind(targetId).run();
+      await c.env.DB.prepare('DELETE FROM account_deletions WHERE LOWER(email) = ?')
+        .bind(targetEmail)
+        .run();
+      await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetId).run();
     }
 
     memoryEvents.unshift({
       id: `evt_acc_del_${Date.now()}`,
-      userId: targetId || targetEmail,
+      userId: targetId,
       eventType: 'action',
       eventName: 'account_purged_via_api',
-      details: JSON.stringify({ targetId, targetEmail }),
+      details: JSON.stringify({ status: 'purged' }),
       deviceInfo: 'App API',
       appVersion: 'api',
       createdAt: Date.now(),
     });
+    if (memoryEvents.length > 1000) memoryEvents.length = 1000;
 
     return c.json({
       success: true,
-      message: 'Account, credentials, and associated cloud backups have been purged permanently.',
+      message: 'Account, credentials, preferences, telemetry, and cloud backups have been purged permanently.',
     });
   } catch (e: any) {
     return c.json({ error: e.message || 'Deletion failed' }, 500);

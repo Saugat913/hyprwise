@@ -1,8 +1,8 @@
-// Cloud Sync Routes (Pro Feature)
+// Cloud Sync Routes (Pro Feature — Strictly Authenticated)
 
 import { Hono } from 'hono';
 import { type Bindings } from '../types';
-import { resolveUser } from '../middleware/auth';
+import { resolveUser, computeQuotaSnapshot } from '../middleware/auth';
 
 interface SyncRecordRow {
   userId: string;
@@ -11,12 +11,18 @@ interface SyncRecordRow {
   payload: string;
 }
 
+const MAX_SYNC_PAYLOAD_BYTES = 5 * 1024 * 1024; // 5 MB safety limit
+
 export const syncRouter = new Hono<{ Bindings: Bindings }>();
 
 syncRouter.post('/push', async (c) => {
   try {
-    const user = await resolveUser(c);
-    if (!user || !user.isPro) {
+    const user = await resolveUser(c, false, true);
+    if (!user) {
+      return c.json({ error: 'unauthorized', message: 'Authentication required.' }, 401);
+    }
+    const quota = computeQuotaSnapshot(user);
+    if (!quota.activePro) {
       return c.json(
         {
           error: 'pro_required',
@@ -26,23 +32,29 @@ syncRouter.post('/push', async (c) => {
         403
       );
     }
-    const userId = user.id;
 
     const body = await c.req.json();
     const { data } = body;
+    if (data === undefined || data === null) {
+      return c.json({ error: 'invalid_payload', message: 'Missing sync data.' }, 400);
+    }
+
+    const payloadStr = typeof data === 'string' ? data : JSON.stringify(data);
+    if (new TextEncoder().encode(payloadStr).byteLength > MAX_SYNC_PAYLOAD_BYTES) {
+      return c.json({ error: 'payload_too_large', message: 'Sync payload exceeds 5 MB limit.' }, 413);
+    }
 
     const existing = await c.env.DB.prepare('SELECT * FROM sync_records WHERE userId = ?')
-      .bind(userId)
+      .bind(user.id)
       .first<SyncRecordRow>();
     const newVersion = (existing?.version ?? 0) + 1;
     const now = Date.now();
-    const payloadStr = typeof data === 'string' ? data : JSON.stringify(data);
 
     await c.env.DB.prepare(
       `INSERT OR REPLACE INTO sync_records (userId, version, lastSyncedAt, payload)
        VALUES (?, ?, ?, ?)`
     )
-      .bind(userId, newVersion, now, payloadStr)
+      .bind(user.id, newVersion, now, payloadStr)
       .run();
 
     return c.json({
@@ -57,8 +69,12 @@ syncRouter.post('/push', async (c) => {
 });
 
 syncRouter.get('/pull', async (c) => {
-  const user = await resolveUser(c);
-  if (!user || !user.isPro) {
+  const user = await resolveUser(c, false, true);
+  if (!user) {
+    return c.json({ error: 'unauthorized', message: 'Authentication required.' }, 401);
+  }
+  const quota = computeQuotaSnapshot(user);
+  if (!quota.activePro) {
     return c.json(
       {
         error: 'pro_required',
@@ -68,10 +84,9 @@ syncRouter.get('/pull', async (c) => {
       403
     );
   }
-  const userId = user.id;
 
   const record = await c.env.DB.prepare('SELECT * FROM sync_records WHERE userId = ?')
-    .bind(userId)
+    .bind(user.id)
     .first<SyncRecordRow>();
   if (!record) {
     return c.json({
@@ -97,11 +112,13 @@ syncRouter.get('/pull', async (c) => {
 });
 
 syncRouter.get('/status', async (c) => {
-  const user = await resolveUser(c);
-  const userId = user?.id || 'default_user';
+  const user = await resolveUser(c, false, true);
+  if (!user) {
+    return c.json({ error: 'unauthorized', message: 'Authentication required.' }, 401);
+  }
 
   const record = await c.env.DB.prepare('SELECT * FROM sync_records WHERE userId = ?')
-    .bind(userId)
+    .bind(user.id)
     .first<SyncRecordRow>();
   return c.json({
     hasData: !!record,

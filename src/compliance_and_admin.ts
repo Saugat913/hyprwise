@@ -3,6 +3,16 @@
 // and real-time Telemetry & Crash Monitoring.
 
 import { getHyprwiseIconSvg } from './brand_assets';
+import { type Bindings } from './types';
+
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export interface TelemetryEvent {
   id: string;
@@ -29,12 +39,20 @@ export const memoryEvents: TelemetryEvent[] = [
   },
 ];
 
-export const ADMIN_PASSWORD = 'P@ssword123';
 export const ADMIN_COOKIE_NAME = 'hyprwise_admin_auth';
-export const ADMIN_AUTH_TOKEN = 'hypr_adm_token_p92817x8';
+const DEFAULT_DEV_ADMIN_PASSWORD = 'P@ssword123';
+const DEFAULT_DEV_ADMIN_TOKEN = 'hypr_adm_token_p92817x8';
+
+export function getAdminPassword(env?: Partial<Bindings>): string {
+  return (env?.ADMIN_PASSWORD && env.ADMIN_PASSWORD.trim()) || DEFAULT_DEV_ADMIN_PASSWORD;
+}
+
+export function getAdminAuthToken(env?: Partial<Bindings>): string {
+  return (env?.ADMIN_AUTH_TOKEN && env.ADMIN_AUTH_TOKEN.trim()) || DEFAULT_DEV_ADMIN_TOKEN;
+}
 
 // Base HTML Page Wrapper with Hyprwise Clean Light Modern Aesthetic
-function wrapHtml({
+export function wrapHtml({
   title,
   bodyContent,
   activeNav = '',
@@ -48,7 +66,7 @@ function wrapHtml({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} | Hyprwise</title>
+  <title>${escapeHtml(title)} | Hyprwise</title>
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -679,9 +697,9 @@ export function renderAccountDeletionPage(opts?: {
         opts?.status === 'email_sent'
           ? `
           <div class="alert alert-success">
-            <strong>Verification Email Sent:</strong>
+            <strong>Deletion Request Recorded:</strong>
             <p style="margin: 6px 0 0; color: inherit;">
-              A confirmation link has been dispatched to <strong>${opts.email}</strong>. Please check your inbox and click the confirmation link to schedule your account deletion.
+              A deletion request has been registered for <strong>${escapeHtml(opts.email)}</strong>${opts.token ? ` — <a href="/delete-account/confirm?token=${encodeURIComponent(opts.token)}" style="color: inherit; font-weight: 700; text-decoration: underline;">confirm deletion now</a>` : ''}.
             </p>
             <p style="margin: 8px 0 0; font-size: 0.85rem; color: inherit;">
               <strong>Protection Note:</strong> Your data is NOT deleted immediately. Confirmation activates a <strong>30-day grace period</strong> during which your records are safely preserved, and you can cancel anytime.
@@ -697,13 +715,13 @@ export function renderAccountDeletionPage(opts?: {
           <div class="alert alert-success">
             <strong>Deletion Confirmed — 30-Day Grace Window Active:</strong>
             <p style="margin: 6px 0 0; color: inherit;">
-              Account deletion for <strong>${opts.email}</strong> has been confirmed and scheduled for permanent purge.
+              Account deletion for <strong>${escapeHtml(opts.email)}</strong> has been confirmed and scheduled for permanent purge.
             </p>
             <p style="margin: 8px 0; font-weight: 700; font-size: 1rem; color: inherit;">
-              Scheduled Purge Date: ${opts.scheduledPurgeDate || 'In 30 days'}
+              Scheduled Purge Date: ${escapeHtml(opts.scheduledPurgeDate || 'In 30 days')}
             </p>
             <p style="margin: 8px 0 0; font-size: 0.85rem; color: inherit;">
-              You have 30 days to change your mind. Use the cancellation form below or the cancel link in your email at any time to restore your active account.
+              You have 30 days to change your mind. Use the cancellation form below at any time to restore your active account.
             </p>
           </div>
         `
@@ -716,7 +734,7 @@ export function renderAccountDeletionPage(opts?: {
           <div class="alert alert-success">
             <strong>Deletion Cancelled:</strong>
             <p style="margin: 6px 0 0; color: inherit;">
-              The pending deletion request for <strong>${opts.email}</strong> has been cancelled. Your account and cloud sync vaults remain active and protected.
+              The pending deletion request for <strong>${escapeHtml(opts.email)}</strong> has been cancelled. Your account and cloud sync vaults remain active and protected.
             </p>
           </div>
         `
@@ -727,7 +745,7 @@ export function renderAccountDeletionPage(opts?: {
         opts?.error
           ? `
           <div class="alert alert-error">
-            <strong>Error:</strong> ${opts.error}
+            <strong>Error:</strong> ${escapeHtml(opts.error)}
           </div>
         `
           : ''
@@ -754,7 +772,7 @@ export function renderAccountDeletionPage(opts?: {
       <form method="POST" action="/delete-account" style="margin-bottom: 32px;">
         <div class="form-group">
           <label for="email">Account Email Address</label>
-          <input type="email" id="email" name="email" required placeholder="e.g. name@example.com" value="${opts?.email || ''}">
+          <input type="email" id="email" name="email" required placeholder="e.g. name@example.com" value="${escapeHtml(opts?.email || '')}">
         </div>
 
         <div class="form-group">
@@ -786,7 +804,7 @@ export function renderAccountDeletionPage(opts?: {
         </p>
 
         <form method="POST" action="/delete-account/cancel" style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <input type="email" name="email" required placeholder="Your registered email address" style="flex: 1; min-width: 240px;" value="${opts?.email || ''}">
+          <input type="email" name="email" required placeholder="Your registered email address" style="flex: 1; min-width: 240px;" value="${escapeHtml(opts?.email || '')}">
           <button type="submit" class="btn btn-outline" style="padding: 10px 18px;">
             Cancel Deletion & Keep Account
           </button>
@@ -808,7 +826,7 @@ export function renderAdminLoginPage(opts?: { error?: string }): string {
         <h1 style="font-size: 1.45rem; margin-bottom: 6px; letter-spacing: -0.03em;">hyprwise admin</h1>
         <p class="subtitle" style="margin-bottom: 22px; justify-content: center; font-size: 0.875rem;">Edge telemetry and live operational monitor</p>
 
-        ${opts?.error ? `<div class="alert alert-error" style="text-align: left;">${opts.error}</div>` : ''}
+        ${opts?.error ? `<div class="alert alert-error" style="text-align: left;">${escapeHtml(opts.error)}</div>` : ''}
 
         <form method="POST" action="/admin/login" style="text-align: left;">
           <div class="form-group">
@@ -934,15 +952,15 @@ export function renderAdminDashboard({
                     .map(
                       (d) => `
                     <tr>
-                      <td><strong>${d.email}</strong></td>
+                      <td><strong>${escapeHtml(d.email)}</strong></td>
                       <td>
                         <span style="font-weight: 600; font-size: 0.8rem; color: ${d.status === 'confirmed' ? 'var(--accent-red)' : 'var(--accent-amber)'};">
-                          ${d.status}
+                          ${escapeHtml(d.status)}
                         </span>
                       </td>
                       <td>${new Date(d.requestedAt).toLocaleDateString()}</td>
                       <td><strong>${new Date(d.scheduledPurgeAt).toLocaleDateString()}</strong></td>
-                      <td><code>${String(d.token).substring(0, 10)}...</code></td>
+                      <td><code>${escapeHtml(String(d.token).substring(0, 10))}...</code></td>
                     </tr>
                   `
                     )
@@ -988,12 +1006,12 @@ export function renderAdminDashboard({
                     .map(
                       (e) => `
                     <tr>
-                      <td style="font-weight: 600; font-size: 0.8rem; color: var(--accent-red);">${e.eventType}</td>
-                      <td style="font-weight: 600; color: var(--text);">${e.eventName}</td>
-                      <td>${e.appVersion || 'v0.1.2'} · ${e.deviceInfo || 'Unknown'}</td>
+                      <td style="font-weight: 600; font-size: 0.8rem; color: var(--accent-red);">${escapeHtml(e.eventType)}</td>
+                      <td style="font-weight: 600; color: var(--text);">${escapeHtml(e.eventName)}</td>
+                      <td>${escapeHtml(e.appVersion || 'v1.0.0')} · ${escapeHtml(e.deviceInfo || 'Unknown')}</td>
                       <td>${new Date(e.createdAt).toLocaleTimeString()}</td>
                       <td>
-                        <code style="font-size: 0.75rem; max-width: 260px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.details || '-'}</code>
+                        <code style="font-size: 0.75rem; max-width: 260px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(e.details || '-')}</code>
                       </td>
                     </tr>
                   `
@@ -1037,12 +1055,12 @@ export function renderAdminDashboard({
                     .map(
                       (e) => `
                     <tr>
-                      <td style="font-weight: 600; color: var(--text);">${e.eventName}</td>
-                      <td><code>${e.userId || 'anonymous'}</code></td>
-                      <td>${e.deviceInfo || 'Unknown'}</td>
+                      <td style="font-weight: 600; color: var(--text);">${escapeHtml(e.eventName)}</td>
+                      <td><code>${escapeHtml(e.userId || 'anonymous')}</code></td>
+                      <td>${escapeHtml(e.deviceInfo || 'Unknown')}</td>
                       <td>${new Date(e.createdAt).toLocaleTimeString()}</td>
                       <td>
-                        <code style="font-size: 0.75rem; max-width: 260px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${e.details || '-'}</code>
+                        <code style="font-size: 0.75rem; max-width: 260px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(e.details || '-')}</code>
                       </td>
                     </tr>
                   `
@@ -1086,9 +1104,9 @@ export function renderAdminDashboard({
                     .map(
                       (u) => `
                     <tr>
-                      <td><code>${u.id}</code></td>
-                      <td>${u.email || 'guest@offline.local'}</td>
-                      <td>${u.provider || 'google'}</td>
+                      <td><code>${escapeHtml(u.id)}</code></td>
+                      <td>${escapeHtml(u.email || 'guest@offline.local')}</td>
+                      <td>${escapeHtml(u.provider || 'google')}</td>
                       <td>
                         <strong style="color: ${u.isPro === 1 ? 'var(--primary)' : 'var(--text-muted)'}; font-size: 0.8rem;">
                           ${u.isPro === 1 ? 'PRO' : 'FREE'}

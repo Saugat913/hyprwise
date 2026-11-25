@@ -1,10 +1,14 @@
-// AI Chat & Reasoning Routes with Server-Side Guardrails
+// AI Chat & Reasoning Routes with Server-Side Guardrails and Payload Limits
 
 import { Hono } from 'hono';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { type Bindings } from '../types';
 import { resolveUser, computeQuotaSnapshot } from '../middleware/auth';
 import { buildServerSystemPrompt } from '../services/gemini';
+
+const MAX_MESSAGES = 24;
+const MAX_TEXT_CHARS = 4000;
+const MAX_IMAGE_BASE64_CHARS = 6 * 1024 * 1024; // ~4.5 MB image binary
 
 export const aiRouter = new Hono<{ Bindings: Bindings }>();
 
@@ -20,7 +24,32 @@ aiRouter.post('/chat', async (c) => {
       quotaAlreadyConsumed,
     } = body;
 
-    const user = await resolveUser(c, true);
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return c.json({ error: 'invalid_request', message: 'messages array is required.' }, 400);
+    }
+    if (messages.length > MAX_MESSAGES) {
+      return c.json(
+        { error: 'payload_too_large', message: `At most ${MAX_MESSAGES} messages per request.` },
+        413
+      );
+    }
+
+    for (const m of messages) {
+      if (typeof m?.content === 'string' && m.content.length > MAX_TEXT_CHARS) {
+        return c.json(
+          { error: 'payload_too_large', message: 'Message exceeds maximum length.' },
+          413
+        );
+      }
+      if (typeof m?.imageBase64 === 'string' && m.imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
+        return c.json(
+          { error: 'payload_too_large', message: 'Receipt image exceeds maximum size.' },
+          413
+        );
+      }
+    }
+
+    const user = await resolveUser(c, true, true);
     const quota = user
       ? computeQuotaSnapshot(user)
       : {
@@ -35,9 +64,17 @@ aiRouter.post('/chat', async (c) => {
     let updatedUsed = quota.dailyAiQueriesUsed;
     let updatedLeft = quota.dailyAiQueriesLeft;
 
-    // Strict server-side quota enforcement for free users (5 queries per day)
+    // Strict server-side quota enforcement for free users (5 queries per day).
+    // A tool-synthesis follow-up may pass quotaAlreadyConsumed=true ONLY if a query was already
+    // consumed today (dailyAiQueriesUsed >= 1 && <= 5) and no new tools are requested.
     if (user && !isPro) {
-      if (!quotaAlreadyConsumed) {
+      const isValidToolFollowUp =
+        quotaAlreadyConsumed === true &&
+        (!tools || (Array.isArray(tools) && tools.length === 0)) &&
+        quota.dailyAiQueriesUsed >= 1 &&
+        quota.dailyAiQueriesUsed <= 5;
+
+      if (!isValidToolFollowUp) {
         if (quota.dailyAiQueriesUsed >= 5) {
           return c.json(
             {
@@ -59,19 +96,6 @@ aiRouter.post('/chat', async (c) => {
         )
           .bind(updatedUsed, quota.todayStr, user.id)
           .run();
-      } else if (quota.dailyAiQueriesUsed > 5) {
-        return c.json(
-          {
-            error: 'pro_required',
-            feature: 'assistant',
-            limitReached: true,
-            dailyAiQueriesUsed: quota.dailyAiQueriesUsed,
-            dailyAiQueriesLeft: 0,
-            message:
-              'You have reached your 5 free AI queries for today. Upgrade to Hyprwise Pro for unlimited intelligent financial analysis.',
-          },
-          403
-        );
       }
     }
 
@@ -89,9 +113,9 @@ aiRouter.post('/chat', async (c) => {
     }
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const formattedTools = tools && tools.length > 0 ? [{ functionDeclarations: tools }] : undefined;
+    const formattedTools =
+      Array.isArray(tools) && tools.length > 0 ? [{ functionDeclarations: tools }] : undefined;
 
-    // Build authoritative server-side system prompt with domain rules & anti-hallucination guardrails
     const systemPrompt = buildServerSystemPrompt({
       preferredLanguage,
       context,
@@ -108,7 +132,7 @@ aiRouter.post('/chat', async (c) => {
       },
     });
 
-    const rawContents = (messages || []).map((m: any) => {
+    const rawContents = messages.map((m: any) => {
       const parts: any[] = [];
       if (m.imageBase64) {
         parts.push({
@@ -119,7 +143,7 @@ aiRouter.post('/chat', async (c) => {
         });
       }
       if (m.content) {
-        parts.push({ text: m.content });
+        parts.push({ text: String(m.content) });
       }
       return {
         role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user',

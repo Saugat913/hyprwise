@@ -11,7 +11,12 @@ export interface Bindings {
   REVENUECAT_WEBHOOK_AUTH?: string;
   DISCORD_WEBHOOK_URL?: string;
   BUILD_WEBHOOK_SECRET?: string;
+  ADMIN_PASSWORD?: string;
+  ADMIN_AUTH_TOKEN?: string;
+  SESSION_SECRET?: string;
+  ALLOWED_ORIGINS?: string;
   ENFORCE_APP_CHECK?: string; // 'true' to strictly enforce App Check in production
+  ALLOW_INSECURE_DEV_AUTH?: string; // Only for local offline dev tests; unset/false in prod
   GA4_PROPERTY_ID?: string;   // Google Analytics 4 Property ID for Analytics Data API
 }
 
@@ -21,12 +26,11 @@ export interface UserRecord {
   displayName: string;
   photoUrl?: string | null;
   provider: string;
-  isPro: boolean;
-  proExpiresAt?: string | null;
+  isPro: number | boolean;
+  proExpiresAt?: number | string | null;
   dailyAiQueriesCount: number;
-  lastAiQueryDate: string;
-  createdAt: string;
-  updatedAt: string;
+  lastAiQueryDate: string | null;
+  createdAt: number | string;
 }
 
 export interface TelemetryEvent {
