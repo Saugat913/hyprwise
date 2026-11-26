@@ -26,6 +26,14 @@ name: Android Release Pipeline (Google Play Internal)
         required: false
         type: string
         default: ''
+      release_status:
+        description: 'Google Play Release Status (completed or draft)'
+        required: false
+        default: 'completed'
+        type: choice
+        options:
+          - completed
+          - draft
 
 permissions:
   contents: write
@@ -164,16 +172,48 @@ jobs:
           path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
-      - name: Deploy to Google Play Store
+      - name: Deploy to Google Play Store (via gplay)
         if: steps.versioning.outputs.has_play_key == 'true'
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
-          packageName: com.hypr.hyprwise
-          releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: ${{ steps.versioning.outputs.track }}
-          status: completed
-          mappingFile: build/app/outputs/mapping/release/mapping.txt
+        env:
+          PLAY_KEY: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          TRACK: ${{ steps.versioning.outputs.track }}
+          VERSION_NAME: ${{ steps.versioning.outputs.version_name }}
+          RELEASE_STATUS: ${{ inputs.release_status || 'completed' }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/tamtom/play-console-cli/main/install.sh | bash
+          export PATH="$HOME/.local/bin:$PATH"
+          KEY_FILE="$RUNNER_TEMP/play-service-account.json"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s' "$PLAY_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          gplay auth login --service-account "$KEY_FILE"
+          echo "Deploying Hyprwise $VERSION_NAME to track '$TRACK' (status: $RELEASE_STATUS)..."
+          if ! OUTPUT=$(gplay release \
+            --package com.hypr.hyprwise \
+            --track "$TRACK" \
+            --bundle build/app/outputs/bundle/release/app-release.aab \
+            --version-name "$VERSION_NAME" \
+            --status "$RELEASE_STATUS" \
+            --release-notes "Hyprwise $VERSION_NAME: local-first multi-currency finance & shift tracking, Gemini AI assistant with receipt OCR, and Pro subscriptions." \
+            --pretty 2>&1); then
+            echo "$OUTPUT"
+            if [ "$RELEASE_STATUS" = "completed" ] && echo "$OUTPUT" | grep -qi "draft"; then
+              echo "Play Console requires draft status for this track; retrying as draft..."
+              gplay release \
+                --package com.hypr.hyprwise \
+                --track "$TRACK" \
+                --bundle build/app/outputs/bundle/release/app-release.aab \
+                --version-name "$VERSION_NAME" \
+                --status draft \
+                --release-notes "Hyprwise $VERSION_NAME: local-first multi-currency finance & shift tracking, Gemini AI assistant with receipt OCR, and Pro subscriptions." \
+                --pretty
+            else
+              exit 1
+            fi
+          else
+            echo "$OUTPUT"
+          fi
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
