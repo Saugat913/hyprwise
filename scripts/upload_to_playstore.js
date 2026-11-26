@@ -373,7 +373,7 @@ async function run() {
     buildTrackBody('completed')
   );
 
-  if (trackRes.statusCode === 400 && /draft/i.test(trackRes.body)) {
+  if (trackRes.statusCode === 400 && (/draft/i.test(trackRes.body) || /FAILED_PRECONDITION/i.test(trackRes.body))) {
     console.log('\x1b[33mNotice: Play Console requires draft status for this track. Retrying with status="draft"...\x1b[0m');
     releaseStatus = 'draft';
     trackRes = await httpsRequest(
