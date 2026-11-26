@@ -9,6 +9,7 @@ import 'package:finance_tracker/core/config/app_config.dart';
 import 'package:finance_tracker/core/notifications/shift_notification_service.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
 import 'package:finance_tracker/core/widgets/widget_sync_service.dart';
+import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
@@ -58,10 +59,14 @@ Future<void> _initBackgroundServices() async {
     }
   }
 
-  // B. RevenueCat Purchases SDK
+  // B. RevenueCat Purchases SDK + live server Pro/quota sync
   try {
     if (getIt.isRegistered<SubscriptionService>()) {
-      await getIt<SubscriptionService>().initRevenueCat();
+      final subService = getIt<SubscriptionService>();
+      await subService.initRevenueCat();
+      if (getIt.isRegistered<AuthService>() && getIt<AuthService>().isAuthenticated) {
+        unawaited(subService.syncWithServer());
+      }
     }
   } catch (e) {
     if (kDebugMode) {

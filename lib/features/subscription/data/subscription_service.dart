@@ -55,6 +55,7 @@ class SubscriptionService extends ChangeNotifier {
   final FlutterSecureStorage _storage;
 
   bool _isPro = false;
+  bool _serverPro = false;
   bool _isSupporter = false;
   bool _everSupported = false;
   bool _hasActiveRevenueCatEntitlement = false;
@@ -333,7 +334,6 @@ class SubscriptionService extends ChangeNotifier {
         info.entitlements.all[entitlementPro];
 
     _hasActiveRevenueCatEntitlement = active;
-    _isPro = active;
     _isSupporter = hasSupporter;
 
     final tippedEver = info.allPurchasedProductIdentifiers.any(
@@ -346,8 +346,9 @@ class SubscriptionService extends ChangeNotifier {
     if (hasSupporter || tippedEver) {
       _everSupported = true;
       _storage.write(key: _everSupportedKey, value: 'true');
-      _isPro = true;
     }
+    // Preserve server-granted Pro (e.g. admin-provisioned accounts) alongside RevenueCat entitlements
+    _isPro = active || _serverPro || _isSupporter || _everSupported;
 
     if (proEntitlement?.expirationDate != null) {
       _proExpiryDate = DateTime.tryParse(proEntitlement!.expirationDate!);
@@ -413,6 +414,7 @@ class SubscriptionService extends ChangeNotifier {
         }
         if (status['isPro'] != null) {
           final serverPro = status['isPro'] as bool;
+          _serverPro = serverPro;
           // If RevenueCat reports an active entitlement, verify with server.
           if (_hasActiveRevenueCatEntitlement && !serverPro) {
             final userId = authService.currentUser?.id ??
@@ -424,8 +426,9 @@ class SubscriptionService extends ChangeNotifier {
             );
             return true;
           }
-          if (serverPro != _isPro) {
-            _isPro = serverPro;
+          final nextPro = _hasActiveRevenueCatEntitlement || _serverPro || _isSupporter || _everSupported;
+          if (nextPro != _isPro || authService.currentUser?.isPro != nextPro) {
+            _isPro = nextPro;
             await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
             await _storage.write(key: _proLegacyKey, value: _isPro ? 'true' : 'false');
             authService.updateProStatus(_isPro);
@@ -453,6 +456,7 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Updates pro state from canonical user authentication response and links RevenueCat appUserID
   Future<void> setServerProStatus(bool serverPro) async {
+    _serverPro = serverPro;
     if (_isConfigured && authService.isAuthenticated) {
       final userId = authService.currentUser?.id;
       if (userId != null && userId.isNotEmpty) {
@@ -464,14 +468,12 @@ class SubscriptionService extends ChangeNotifier {
         }
       }
     }
-    if (!_hasActiveRevenueCatEntitlement) {
-      _isPro = serverPro;
-      await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
-      await _storage.write(key: _proLegacyKey, value: _isPro ? 'true' : 'false');
-      authService.updateProStatus(_isPro);
-      _syncNotifiers();
-      notifyListeners();
-    }
+    _isPro = _hasActiveRevenueCatEntitlement || _serverPro || _isSupporter || _everSupported;
+    await _storage.write(key: _proKey, value: _isPro ? 'true' : 'false');
+    await _storage.write(key: _proLegacyKey, value: _isPro ? 'true' : 'false');
+    authService.updateProStatus(_isPro);
+    _syncNotifiers();
+    notifyListeners();
   }
 
   /// Resets local cached subscription state on sign-out
@@ -487,6 +489,7 @@ class SubscriptionService extends ChangeNotifier {
       }
     }
     _isPro = false;
+    _serverPro = false;
     _isSupporter = false;
     _everSupported = false;
     _hasActiveRevenueCatEntitlement = false;

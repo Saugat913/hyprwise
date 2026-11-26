@@ -235,9 +235,9 @@ class AuthService extends ChangeNotifier {
       return null;
     }
 
-    final String finalUserId = userId;
-    final String finalEmail = userEmail;
-    final String finalName = userName ?? finalEmail.split('@')[0];
+    String finalUserId = userId;
+    String finalEmail = userEmail;
+    String finalName = userName ?? finalEmail.split('@')[0];
 
     _isLoading = true;
     notifyListeners();
@@ -265,9 +265,16 @@ class AuthService extends ChangeNotifier {
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
         if (serverUser != null) {
+          final sId = serverUser['id'] as String?;
+          if (sId != null && sId.trim().isNotEmpty) {
+            finalUserId = sId.trim();
+          }
+          final sEmail = serverUser['email'] as String?;
+          if (sEmail != null && sEmail.trim().isNotEmpty) {
+            finalEmail = sEmail.trim().toLowerCase();
+          }
           isPro = serverUser['isPro'] as bool? ?? false;
         }
-        await _applyServerSyncResult(serverRes);
       } catch (_) {}
 
       ApiClient.instance.setAuthContext(userId: finalUserId, email: finalEmail);
@@ -290,6 +297,9 @@ class AuthService extends ChangeNotifier {
       );
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+      // Apply server Pro status & AI quota AFTER canonical _currentUser is set
+      await _applyServerSyncResult(serverRes);
 
       await _handlePostSignInSetup(userId: finalUserId, serverRes: serverRes, isPro: isPro, firebaseIsNew: firebaseIsNew);
 
@@ -448,7 +458,7 @@ class AuthService extends ChangeNotifier {
       userName = formatDisplayNameFromEmail(userEmail);
     }
 
-    final String finalUserId = userId;
+    String finalUserId = userId;
     String finalEmail = userEmail;
     String finalName = userName;
 
@@ -496,6 +506,10 @@ class AuthService extends ChangeNotifier {
         );
         final serverUser = serverRes?['user'] as Map<String, dynamic>?;
         if (serverUser != null) {
+          final sId = serverUser['id'] as String?;
+          if (sId != null && sId.trim().isNotEmpty) {
+            finalUserId = sId.trim();
+          }
           isPro = serverUser['isPro'] as bool? ?? false;
           final sName = serverUser['displayName'] as String?;
           if (sName != null &&
@@ -509,7 +523,6 @@ class AuthService extends ChangeNotifier {
             finalEmail = sEmail.trim().toLowerCase();
           }
         }
-        await _applyServerSyncResult(serverRes);
       } catch (_) {}
 
       ApiClient.instance.setAuthContext(userId: finalUserId, email: finalEmail);
@@ -531,6 +544,8 @@ class AuthService extends ChangeNotifier {
       );
       _currentUser = user;
       await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
+      await _applyServerSyncResult(serverRes);
 
       await _handlePostSignInSetup(userId: finalUserId, serverRes: serverRes, isPro: isPro, firebaseIsNew: firebaseIsNew);
 
