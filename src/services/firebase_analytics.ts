@@ -1,141 +1,149 @@
-// Firebase Analytics / Google Analytics Data API Service and Visual Chart Generator
-// Renders live analytics graphs directly into the Hyprwise Admin Dashboard.
+// Real Edge Telemetry & Activity Analytics Service for Hyprwise Admin Console
+// Computes genuine 7-day metrics directly from stored events — zero fabricated numbers.
+
+import { escapeHtml } from '../compliance_and_admin';
 
 export interface AnalyticsSummary {
-  activeUsers28d: number;
-  activeUsers7d: number;
-  activeUsers1d: number;
-  userSessions: number;
+  totalEvents7d: number;
+  uniqueActiveUsers7d: number;
+  crashes7d: number;
   topEvents: { name: string; count: number; percentage: number }[];
-  dailyTrend: { date: string; users: number; events: number }[];
+  dailyTrend: { date: string; events: number; crashes: number }[];
   isConfigured: boolean;
 }
 
 export class FirebaseAnalyticsService {
-  /**
-   * Fetches analytics summary from Google Analytics Data API or live Edge telemetry
-   */
   static async getAnalyticsSummary(opts: {
     propertyId?: string;
-    clientEmail?: string;
-    events: any[];
+    events: Array<{
+      eventName?: string;
+      eventType?: string;
+      userId?: string | null;
+      createdAt?: number;
+    }>;
     totalUsers: number;
   }): Promise<AnalyticsSummary> {
-    const { propertyId, events, totalUsers } = opts;
+    const { propertyId, events } = opts;
 
-    // Build event frequency map from collected operational telemetry
+    const now = new Date();
+    const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recentEvents = events.filter((e) => Number(e.createdAt || 0) >= sevenDaysAgoMs);
+
+    const uniqueUsers = new Set<string>();
     const eventCounts: Record<string, number> = {};
-    for (const e of events) {
-      const name = e.eventName || 'unknown';
+    let crashes7d = 0;
+
+    for (const e of recentEvents) {
+      if (e.userId && e.userId !== 'system' && e.userId !== 'anonymous') {
+        uniqueUsers.add(e.userId);
+      }
+      if (e.eventType === 'crash' || e.eventType === 'exception') {
+        crashes7d++;
+      }
+      const name = String(e.eventName || 'unknown').slice(0, 64);
       eventCounts[name] = (eventCounts[name] || 0) + 1;
     }
 
     const sortedEvents = Object.entries(eventCounts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
+      .slice(0, 6);
 
-    const totalEventCount = events.length || 1;
+    const totalRecent = recentEvents.length || 1;
     const topEvents = sortedEvents.map(([name, count]) => ({
       name,
       count,
-      percentage: Math.round((count / totalEventCount) * 100),
+      percentage: Math.round((count / totalRecent) * 100),
     }));
 
-    // If no events recorded yet, provide realistic domain starter distribution
-    if (topEvents.length === 0) {
-      topEvents.push(
-        { name: 'shift_started', count: 12, percentage: 35 },
-        { name: 'transaction_added', count: 10, percentage: 29 },
-        { name: 'shift_ended', count: 8, percentage: 24 },
-        { name: 'bill_ocr_scan', count: 4, percentage: 12 }
-      );
+    // Build genuine 7-day daily buckets from event.createdAt
+    const dayBucketEvents = new Map<string, number>();
+    const dayBucketCrashes = new Map<string, number>();
+    for (const e of recentEvents) {
+      const ts = Number(e.createdAt || 0);
+      if (!ts) continue;
+      const dayKey = new Date(ts).toISOString().slice(0, 10);
+      dayBucketEvents.set(dayKey, (dayBucketEvents.get(dayKey) || 0) + 1);
+      if (e.eventType === 'crash' || e.eventType === 'exception') {
+        dayBucketCrashes.set(dayKey, (dayBucketCrashes.get(dayKey) || 0) + 1);
+      }
     }
 
-    // Build 7-day daily trend
-    const dailyTrend: { date: string; users: number; events: number }[] = [];
-    const now = new Date();
+    const dailyTrend: { date: string; events: number; crashes: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().slice(5, 10); // MM-DD
-      const dateFull = d.toISOString().slice(0, 10);
-      const dayEvents = events.filter((e) => e.timestamp && e.timestamp.startsWith(dateFull)).length;
+      d.setUTCDate(d.getUTCDate() - i);
+      const dayFull = d.toISOString().slice(0, 10);
       dailyTrend.push({
-        date: dateStr,
-        users: Math.max(1, Math.round(totalUsers * (0.4 + (i * 0.08) % 0.5))),
-        events: dayEvents || Math.round(5 + (i * 3) % 11),
+        date: dayFull.slice(5), // MM-DD
+        events: dayBucketEvents.get(dayFull) || 0,
+        crashes: dayBucketCrashes.get(dayFull) || 0,
       });
     }
 
     return {
-      activeUsers28d: Math.max(totalUsers, 1),
-      activeUsers7d: Math.max(Math.round(totalUsers * 0.75), 1),
-      activeUsers1d: Math.max(Math.round(totalUsers * 0.35), 1),
-      userSessions: Math.max(totalUsers * 3, 4),
+      totalEvents7d: recentEvents.length,
+      uniqueActiveUsers7d: uniqueUsers.size,
+      crashes7d,
       topEvents,
       dailyTrend,
-      isConfigured: !!propertyId,
+      isConfigured: Boolean(propertyId),
     };
   }
 
-  /**
-   * Generates a modern SVG visual bar and area graph for the Admin Dashboard
-   */
   static renderAnalyticsChartsHtml(summary: AnalyticsSummary): string {
     const trend = summary.dailyTrend;
-    const maxUsers = Math.max(...trend.map((t) => t.users), 10);
-    const chartHeight = 120;
+    const maxVal = Math.max(...trend.map((t) => t.events), 4);
+    const chartHeight = 132;
     const chartWidth = 460;
     const colWidth = chartWidth / trend.length;
 
-    // SVG Bar Chart for Daily Activity
     const barsSvg = trend
       .map((t, idx) => {
-        const h = Math.max(6, Math.round((t.users / maxUsers) * (chartHeight - 30)));
-        const x = idx * colWidth + 12;
-        const y = chartHeight - h - 18;
+        const h = t.events === 0 ? 3 : Math.max(8, Math.round((t.events / maxVal) * (chartHeight - 36)));
+        const x = idx * colWidth + 14;
+        const barW = colWidth - 28;
+        const y = chartHeight - h - 20;
+        const fill =
+          t.crashes > 0 ? 'var(--red)' : t.events > 0 ? 'var(--brand)' : 'var(--border)';
         return `
-          <g class="chart-bar-group">
-            <rect x="${x}" y="${y}" width="${colWidth - 24}" height="${h}" rx="4" fill="var(--primary)" opacity="0.85" />
-            <text x="${x + (colWidth - 24) / 2}" y="${y - 4}" text-anchor="middle" font-size="9" fill="var(--text-muted)" font-weight="600">${t.users}</text>
-            <text x="${x + (colWidth - 24) / 2}" y="${chartHeight - 4}" text-anchor="middle" font-size="9" fill="var(--text-dim)">${t.date}</text>
+          <g>
+            <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="${fill}" />
+            <text x="${x + barW / 2}" y="${y - 5}" text-anchor="middle" font-size="10" font-family="var(--font-mono)" fill="var(--muted)" font-weight="600">${t.events}</text>
+            <text x="${x + barW / 2}" y="${chartHeight - 4}" text-anchor="middle" font-size="9.5" font-family="var(--font-mono)" fill="var(--muted)">${escapeHtml(t.date)}</text>
           </g>
         `;
       })
       .join('');
 
-    // Event distribution horizontal progress bars
-    const eventBarsHtml = summary.topEvents
-      .map(
-        (e) => `
-        <div style="margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 3px;">
-            <span style="font-weight: 600; color: var(--text);">${e.name}</span>
-            <span style="color: var(--text-dim);">${e.count} (${e.percentage}%)</span>
+    const eventBarsHtml =
+      summary.topEvents.length === 0
+        ? `<div class="empty-inline">No telemetry events recorded in the past 7 days.</div>`
+        : summary.topEvents
+            .map(
+              (e) => `
+          <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; gap: 8px;">
+              <span style="font-weight: 600; color: var(--ink); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis;">${escapeHtml(e.name)}</span>
+              <span style="color: var(--muted); font-family: var(--font-mono); white-space: nowrap;">${e.count} (${e.percentage}%)</span>
+            </div>
+            <div style="background: var(--fill); height: 6px; border-radius: 99px; overflow: hidden;">
+              <div style="background: var(--ink); width: ${e.percentage}%; height: 100%; border-radius: 99px;"></div>
+            </div>
           </div>
-          <div style="background: var(--bg-card); height: 6px; border-radius: 3px; overflow: hidden; border: 1px solid var(--border);">
-            <div style="background: var(--primary); width: ${e.percentage}%; height: 100%; border-radius: 3px;"></div>
-          </div>
-        </div>
-      `
-      )
-      .join('');
+        `
+            )
+            .join('');
 
     return `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 24px;">
-        <!-- Daily User Activity Chart -->
-        <div class="content-card" style="padding: 18px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <div class="grid-2" style="margin-bottom: 20px;">
+        <div class="card">
+          <div class="card-head">
             <div>
-              <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
-                Firebase Analytics · 7-Day Active Users
-              </div>
-              <div style="font-size: 1.15rem; font-weight: 800; color: var(--text);">
-                ${summary.activeUsers7d} Active Users this week
-              </div>
+              <div class="eyebrow">7-Day Edge Telemetry Volume</div>
+              <div class="card-title">${summary.totalEvents7d} events · ${summary.uniqueActiveUsers7d} active users</div>
             </div>
-            <span style="font-size: 0.7rem; background: var(--surface); padding: 3px 8px; border-radius: 12px; border: 1px solid var(--border); color: var(--primary); font-weight: 600;">
-              ${summary.isConfigured ? 'GA4 Connected' : 'Edge Stream'}
+            <span class="badge ${summary.isConfigured ? 'badge-green' : 'badge-neutral'}">
+              ${summary.isConfigured ? 'GA4 + D1' : 'Live D1 Stream'}
             </span>
           </div>
           <svg viewBox="0 0 ${chartWidth} ${chartHeight}" style="width: 100%; height: auto; display: block; overflow: visible;">
@@ -143,14 +151,17 @@ export class FirebaseAnalyticsService {
           </svg>
         </div>
 
-        <!-- Top Event Distribution -->
-        <div class="content-card" style="padding: 18px;">
-          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px;">
-            Top Domain Events & Actions
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="eyebrow">Top App Events (7d)</div>
+              <div class="card-title">Action Distribution</div>
+            </div>
+            <span class="badge ${summary.crashes7d > 0 ? 'badge-red' : 'badge-green'}">
+              ${summary.crashes7d} crashes
+            </span>
           </div>
-          <div>
-            ${eventBarsHtml}
-          </div>
+          <div>${eventBarsHtml}</div>
         </div>
       </div>
     `;

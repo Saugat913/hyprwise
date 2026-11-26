@@ -266,3 +266,81 @@ export async function verifySessionToken(
     return null;
   }
 }
+
+export interface AdminSessionClaims {
+  sub: 'admin';
+  csrf: string;
+  iat: number;
+  exp: number;
+}
+
+export async function signAdminSessionToken(
+  secret: string,
+  ttlSeconds = 60 * 60 * 12
+): Promise<{ token: string; csrf: string }> {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const csrfBytes = new Uint8Array(24);
+  crypto.getRandomValues(csrfBytes);
+  const csrf = uint8ArrayToBase64Url(csrfBytes);
+
+  const headerB64 = uint8ArrayToBase64Url(
+    new TextEncoder().encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  );
+  const payloadB64 = uint8ArrayToBase64Url(
+    new TextEncoder().encode(
+      JSON.stringify({
+        sub: 'admin',
+        scope: 'admin_console',
+        csrf,
+        iss: 'hyprwise-admin',
+        iat: nowSec,
+        exp: nowSec + ttlSeconds,
+      })
+    )
+  );
+  const key = await importHmacKey(secret);
+  const sig = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${headerB64}.${payloadB64}`)
+  );
+  const sigB64 = uint8ArrayToBase64Url(new Uint8Array(sig));
+  return { token: `${headerB64}.${payloadB64}.${sigB64}`, csrf };
+}
+
+export async function verifyAdminSessionToken(
+  token: string,
+  secret: string
+): Promise<AdminSessionClaims | null> {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [headerB64, payloadB64, sigB64] = parts;
+    const header = decodeJsonPart<{ alg?: string }>(headerB64);
+    const payload = decodeJsonPart<any>(payloadB64);
+    if (!header || !payload || header.alg !== 'HS256') return null;
+    if (payload.iss !== 'hyprwise-admin' || payload.sub !== 'admin') return null;
+    if (typeof payload.csrf !== 'string' || payload.csrf.length < 16) return null;
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (typeof payload.exp !== 'number' || payload.exp <= nowSec) return null;
+
+    const key = await importHmacKey(secret);
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      base64UrlToUint8Array(sigB64),
+      new TextEncoder().encode(`${headerB64}.${payloadB64}`)
+    );
+    if (!valid) return null;
+
+    return {
+      sub: 'admin',
+      csrf: payload.csrf,
+      iat: Number(payload.iat) || nowSec,
+      exp: Number(payload.exp),
+    };
+  } catch {
+    return null;
+  }
+}

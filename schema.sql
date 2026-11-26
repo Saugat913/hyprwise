@@ -49,3 +49,18 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   updatedAt INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+  id TEXT PRIMARY KEY,
+  action TEXT NOT NULL,
+  target TEXT,
+  details TEXT,
+  ipAddress TEXT,
+  createdAt INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+CREATE INDEX IF NOT EXISTS idx_users_ispro ON users (isPro);
+CREATE INDEX IF NOT EXISTS idx_telemetry_created ON telemetry_events (createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_telemetry_type ON telemetry_events (eventType);
+CREATE INDEX IF NOT EXISTS idx_deletions_status ON account_deletions (status);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_logs (createdAt DESC);

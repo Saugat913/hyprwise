@@ -27,9 +27,49 @@ export { Bindings };
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Lightweight per-IP sliding window rate limiter for public write endpoints
+const publicRateBuckets = new Map<string, number[]>();
+function isPublicRateLimited(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const prev = (publicRateBuckets.get(key) || []).filter((t) => now - t < windowMs);
+  if (prev.length >= maxRequests) {
+    publicRateBuckets.set(key, prev);
+    return true;
+  }
+  prev.push(now);
+  publicRateBuckets.set(key, prev);
+  if (publicRateBuckets.size > 2000) {
+    publicRateBuckets.clear();
+  }
+  return false;
+}
+
+const SENSITIVE_KEY_PATTERN = /(password|passwd|secret|token|authorization|cookie|apikey|api_key|cardnumber|cvv|pin)/i;
+function redactTelemetryDetails(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw === 'string') {
+    return raw
+      .replace(/(bearer\s+)[a-z0-9._-]+/gi, '$1[REDACTED]')
+      .replace(/((?:password|token|secret|apikey)\s*[:=]\s*)["']?[^\s,"'}]+["']?/gi, '$1[REDACTED]')
+      .slice(0, 2000);
+  }
+  if (typeof raw === 'object') {
+    try {
+      const cleaned: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+        cleaned[k] = SENSITIVE_KEY_PATTERN.test(k) ? '[REDACTED]' : v;
+      }
+      return JSON.stringify(cleaned).slice(0, 2000);
+    } catch {
+      return null;
+    }
+  }
+  return String(raw).slice(0, 2000);
+}
+
 const app = new Hono<{ Bindings: Bindings }>();
 
-// Global request logger & security headers middleware
+// Global request logger & strict security headers middleware
 app.use('*', logger());
 app.use('*', async (c, next) => {
   await next();
@@ -40,11 +80,16 @@ app.use('*', async (c, next) => {
   if (c.req.url.startsWith('https://')) {
     c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
+  if (c.req.path.startsWith('/admin')) {
+    c.header('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    c.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    c.header('Pragma', 'no-cache');
+  }
   const contentType = c.res.headers.get('Content-Type') || '';
   if (contentType.includes('text/html')) {
     c.header(
       'Content-Security-Policy',
-      "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
+      "default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
     );
   }
 });
@@ -86,6 +131,13 @@ app.get('/health', (c) => {
 // ==========================================
 // 2. Brand Assets & Public Pages
 // ==========================================
+app.get('/robots.txt', (c) =>
+  c.text('User-agent: *\nDisallow: /admin\nDisallow: /api/\n', 200, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'public, max-age=86400',
+  })
+);
+
 app.get('/', (c) => c.html(renderLandingPage()));
 
 app.get('/brand/favicon.svg', (c) =>
@@ -135,9 +187,16 @@ app.get('/terms-of-service', (c) => c.html(renderTermsOfServicePage()));
 app.get('/delete-account', (c) => c.html(renderAccountDeletionPage()));
 app.get('/account-deletion', (c) => c.html(renderAccountDeletionPage()));
 
-// Handle web account deletion requests (30-day grace window)
+// Handle web account deletion requests (30-day grace window, rate-limited per IP)
 app.post('/delete-account', async (c) => {
   try {
+    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
+    if (isPublicRateLimited(`del:${ip}`, 5, 15 * 60 * 1000)) {
+      return c.html(
+        renderAccountDeletionPage({ error: 'Too many requests. Please wait a few minutes and try again.' }),
+        429
+      );
+    }
     const body = await c.req.parseBody();
     const email = String(body['email'] || body['identifier'] || '').trim().toLowerCase();
     const reason = String(body['reason'] || '').trim().slice(0, 200) || null;
@@ -236,6 +295,13 @@ app.get('/delete-account/confirm', async (c) => {
 
 app.post('/delete-account/cancel', async (c) => {
   try {
+    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
+    if (isPublicRateLimited(`del-cancel:${ip}`, 10, 15 * 60 * 1000)) {
+      return c.html(
+        renderAccountDeletionPage({ error: 'Too many requests. Please wait a few minutes and try again.' }),
+        429
+      );
+    }
     const body = await c.req.parseBody();
     const email = String(body['email'] || '').trim().toLowerCase();
     if (!email || !EMAIL_REGEX.test(email)) {
@@ -350,13 +416,7 @@ app.post('/api/telemetry/event', async (c) => {
     const userId = body.userId ? String(body.userId).slice(0, 120) : null;
     const deviceInfo = body.deviceInfo ? String(body.deviceInfo).slice(0, 120) : null;
     const appVersion = body.appVersion ? String(body.appVersion).slice(0, 40) : null;
-    const detailsStr =
-      body.details != null
-        ? (typeof body.details === 'string' ? body.details : JSON.stringify(body.details)).slice(
-            0,
-            2000
-          )
-        : null;
+    const detailsStr = redactTelemetryDetails(body.details);
 
     const now = Date.now();
     const id = `evt_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
