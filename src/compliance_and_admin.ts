@@ -51,17 +51,17 @@ export const HYPRWISE_SHARED_CSS = `
     --hero: #141417;
     --ink: #0F0F11;
     --muted: #59615D;
-    --border: #E6E8E7;
-    --fill: #EDEEED;
+    --border: #E5E7EB;
+    --fill: #F1F2F3;
     --brand: #FF6500;
     --brand-text: #B84400;
-    --brand-bg: #FFF0E6;
+    --brand-bg: #FFF3EB;
     --green: #1F7A45;
-    --green-bg: #E3F3EA;
+    --green-bg: #ECF7F0;
     --red: #B42318;
-    --red-bg: #FDECEB;
+    --red-bg: #FEF1F0;
     --amber: #9A5B00;
-    --amber-bg: #FFF1D6;
+    --amber-bg: #FEF6E7;
     --radius: 12px;
     --radius-sm: 8px;
     --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -72,7 +72,7 @@ export const HYPRWISE_SHARED_CSS = `
     background-color: var(--bg);
     color: var(--ink);
     font-family: var(--font);
-    line-height: 1.6;
+    line-height: 1.65;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -80,213 +80,306 @@ export const HYPRWISE_SHARED_CSS = `
   }
 `;
 
-// Public HTML Wrapper (Hyprwise WCAG AA Palette, 12px radius, ZERO admin links/icons)
+// Public HTML Wrapper — clean editorial architecture, ZERO decorative pills, ZERO admin links
 export function wrapHtml({
   title,
   bodyContent,
   activeNav = '',
+  wide = false,
 }: {
   title: string;
   bodyContent: string;
   activeNav?: '' | 'privacy' | 'terms' | 'delete';
+  wide?: boolean;
 }): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)} | Hyprwise</title>
+  <title>${escapeHtml(title)} — Hyprwise</title>
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     ${HYPRWISE_SHARED_CSS}
     header {
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 50;
     }
     .nav-container {
-      max-width: 1000px;
+      max-width: 1040px;
       margin: 0 auto;
-      padding: 14px 24px;
+      padding: 15px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 16px;
     }
     .logo {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 10px;
       text-decoration: none;
       color: var(--ink);
       font-weight: 800;
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       letter-spacing: -0.03em;
     }
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 24px;
     }
     .nav-link {
       color: var(--muted);
       text-decoration: none;
       font-size: 0.875rem;
       font-weight: 600;
-      padding: 7px 12px;
-      border-radius: var(--radius-sm);
-      transition: background 0.15s ease, color 0.15s ease;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s ease, border-color 0.15s ease;
     }
-    .nav-link:hover {
-      color: var(--ink);
-      background: var(--fill);
-    }
+    .nav-link:hover { color: var(--ink); }
     .nav-link.active {
       color: var(--ink);
-      background: var(--fill);
+      border-bottom-color: var(--brand);
     }
+
     main {
       flex: 1;
-      max-width: 920px;
+      max-width: ${wide ? '1040px' : '820px'};
       width: 100%;
       margin: 0 auto;
-      padding: 36px 24px 68px;
+      padding: 40px 24px 80px;
     }
-    .content-card {
+
+    /* ===== LANDING HERO & SECTIONS ===== */
+    .hero-block {
+      background: var(--hero);
+      color: #FFFFFF;
+      border-radius: 16px;
+      padding: 52px 44px;
+      margin-bottom: 48px;
+      border: 1px solid #232329;
+    }
+    .hero-brand-mark { margin-bottom: 20px; }
+    .hero-title {
+      color: #FFFFFF;
+      font-size: 2.35rem;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      max-width: 680px;
+      margin-bottom: 16px;
+    }
+    .hero-lead {
+      color: #A1A3B0;
+      font-size: 1.02rem;
+      line-height: 1.65;
+      max-width: 620px;
+      margin-bottom: 28px;
+    }
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .section-block { margin-bottom: 48px; }
+    .section-block:last-child { margin-bottom: 0; }
+    .section-header { margin-bottom: 20px; }
+    .section-header h2 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      margin: 0 0 6px;
+    }
+    .section-header p {
+      font-size: 0.94rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .feature-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 32px;
+      padding: 24px;
     }
-    .nav-card {
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 8px;
+    }
+    .feature-card p {
+      font-size: 0.885rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .trust-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .trust-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 22px 24px;
       text-decoration: none;
-      display: block;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.14s ease;
+    }
+    .trust-row:last-child { border-bottom: none; }
+    .trust-row:hover { background: #FAFAFB; }
+    .trust-row h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 4px;
+    }
+    .trust-row p {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin: 0;
+    }
+    .trust-arrow {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .trust-arrow-danger { color: var(--red); }
+
+    /* ===== LEGAL & PORTAL DOCUMENTS ===== */
+    .doc-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 22px;
-      transition: border-color 0.15s ease, transform 0.15s ease;
+      padding: 40px 44px;
     }
-    .nav-card:hover {
-      border-color: var(--ink);
-      transform: translateY(-1px);
+    .doc-header {
+      padding-bottom: 24px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border);
     }
-    h1 {
+    .doc-header h1 {
       font-size: 2rem;
       font-weight: 800;
       letter-spacing: -0.03em;
-      margin-bottom: 8px;
       color: var(--ink);
+      margin-bottom: 8px;
+      line-height: 1.2;
     }
-    .subtitle {
+    .doc-meta {
       color: var(--muted);
-      font-size: 0.9375rem;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      font-size: 0.875rem;
+      margin: 0;
     }
-    .section-eyebrow {
-      color: var(--brand-text);
-      font-size: 0.72rem;
+    .doc-card h2 {
+      font-size: 1.15rem;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 6px;
-      display: block;
-    }
-    h2 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin: 28px 0 10px;
+      margin: 30px 0 10px;
       color: var(--ink);
       letter-spacing: -0.015em;
     }
-    h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      margin: 16px 0 8px;
-      color: var(--ink);
-    }
-    p, ul {
+    .doc-card p, .doc-card ul {
       color: var(--muted);
-      font-size: 0.9375rem;
+      font-size: 0.94rem;
       margin-bottom: 14px;
-      line-height: 1.7;
+      line-height: 1.72;
     }
-    ul { padding-left: 20px; }
-    li { margin-bottom: 6px; }
+    .doc-card ul { padding-left: 20px; }
+    .doc-card li { margin-bottom: 7px; }
     strong { color: var(--ink); font-weight: 600; }
-    code {
-      font-family: var(--font-mono);
-      background: var(--fill);
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-size: 0.85em;
-      color: var(--ink);
-      border: 1px solid var(--border);
-    }
-    .callout {
-      background: var(--fill);
+    a.inline-link { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+    a.inline-link:hover { color: var(--brand-text); }
+    .mono-text { font-family: var(--font-mono); font-size: 0.86em; color: var(--ink); }
+
+    .note-box {
+      background: #FAFAFB;
       border: 1px solid var(--border);
       border-left: 3px solid var(--ink);
       border-radius: var(--radius-sm);
-      padding: 14px 18px;
-      margin: 20px 0;
+      padding: 16px 20px;
+      margin: 22px 0;
     }
-    .callout p { margin: 0; color: var(--ink); font-size: 0.9rem; }
-    .callout-success { border-left-color: var(--green); background: var(--green-bg); border-color: #BFE6CE; }
-    .callout-warning { border-left-color: var(--amber); background: var(--amber-bg); border-color: #F3DBA8; }
-    .callout-danger { border-left-color: var(--red); background: var(--red-bg); border-color: #F5C2BE; }
+    .note-box p { margin: 0; color: var(--ink); font-size: 0.9rem; line-height: 1.65; }
+    .note-box-green { border-left-color: var(--green); background: var(--green-bg); border-color: #CFE9D9; }
+    .note-box-amber { border-left-color: var(--amber); background: var(--amber-bg); border-color: #F2DFB6; }
+
     .data-table-container {
       overflow-x: auto;
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      margin: 16px 0 22px;
+      border-radius: 10px;
+      margin: 18px 0 24px;
     }
     table.flat-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; }
     table.flat-table th {
-      background: var(--fill);
+      background: #FAFAFB;
       color: var(--ink);
       font-weight: 700;
-      padding: 12px 14px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border);
       white-space: nowrap;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
     table.flat-table td {
-      padding: 12px 14px;
+      padding: 13px 16px;
       border-bottom: 1px solid var(--border);
       color: var(--muted);
+      vertical-align: top;
     }
     table.flat-table tr:last-child td { border-bottom: none; }
+
+    /* ===== BUTTONS & FORMS ===== */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       padding: 10px 18px;
-      border-radius: var(--radius);
+      border-radius: var(--radius-sm);
       font-weight: 700;
       font-size: 0.875rem;
       text-decoration: none;
       cursor: pointer;
       border: 1px solid transparent;
+      font-family: inherit;
       transition: background 0.15s ease, border-color 0.15s ease;
     }
     .btn-primary { background: var(--ink); color: #FFFFFF; }
-    .btn-primary:hover { background: #262629; }
+    .btn-primary:hover { background: #26262B; }
+    .btn-light { background: #FFFFFF; color: var(--ink); }
+    .btn-light:hover { background: #ECEEF0; }
+    .btn-ghost-dark { background: transparent; color: #E5E7EB; border-color: #34343C; }
+    .btn-ghost-dark:hover { background: #1F1F24; color: #FFFFFF; }
     .btn-danger { background: var(--red); color: #FFFFFF; }
     .btn-danger:hover { background: #961D14; }
     .btn-outline { background: var(--surface); border-color: var(--border); color: var(--ink); }
     .btn-outline:hover { background: var(--fill); }
+
     .form-group { margin-bottom: 16px; }
     label {
       display: block;
@@ -300,7 +393,7 @@ export function wrapHtml({
       padding: 10px 14px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: var(--radius-sm);
       color: var(--ink);
       font-family: inherit;
       font-size: 0.9rem;
@@ -308,49 +401,48 @@ export function wrapHtml({
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--ink);
-      box-shadow: 0 0 0 3px rgba(15, 15, 17, 0.10);
+      box-shadow: 0 0 0 3px rgba(15, 15, 17, 0.08);
     }
     .alert {
       padding: 14px 18px;
-      border-radius: var(--radius);
-      margin-bottom: 20px;
-      font-size: 0.875rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 22px;
+      font-size: 0.885rem;
       line-height: 1.55;
     }
-    .alert-success { background: var(--green-bg); border: 1px solid #BFE6CE; color: var(--green); }
+    .alert-success { background: var(--green-bg); border: 1px solid #CFE9D9; color: var(--green); }
     .alert-error { background: var(--red-bg); border: 1px solid #F5C2BE; color: var(--red); }
-    .status-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      margin-right: 6px;
-    }
+
+    /* ===== FOOTER ===== */
     footer {
       border-top: 1px solid var(--border);
-      padding: 26px 24px;
+      padding: 28px 24px;
       background: var(--surface);
       margin-top: auto;
     }
     .footer-container {
-      max-width: 1000px;
+      max-width: 1040px;
       margin: 0 auto;
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
       color: var(--muted);
-      font-size: 0.825rem;
+      font-size: 0.84rem;
     }
-    .footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
+    .footer-links { display: flex; gap: 22px; flex-wrap: wrap; }
     .footer-links a { color: var(--muted); text-decoration: none; font-weight: 500; }
     .footer-links a:hover { color: var(--ink); }
-    @media (max-width: 640px) {
-      .content-card { padding: 22px 18px; }
-      h1 { font-size: 1.65rem; }
-      .nav-link { font-size: 0.8rem; padding: 6px 9px; }
+
+    @media (max-width: 780px) {
+      .hero-block { padding: 36px 24px; }
+      .hero-title { font-size: 1.8rem; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .trust-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .doc-card { padding: 26px 20px; }
+      .doc-header h1 { font-size: 1.65rem; }
+      .nav-links { gap: 16px; }
     }
   </style>
 </head>
@@ -358,7 +450,7 @@ export function wrapHtml({
   <header>
     <div class="nav-container">
       <a href="/" class="logo">
-        ${getHyprwiseIconSvg(28)}
+        ${getHyprwiseIconSvg(26)}
         <span>hyprwise</span>
       </a>
       <nav class="nav-links" aria-label="Primary">
@@ -373,12 +465,11 @@ export function wrapHtml({
   </main>
   <footer>
     <div class="footer-container">
-      <div>© 2026 Hyprwise · <code>com.hypr.hyprwise</code></div>
+      <div>© 2026 Hyprwise · Personal Finance &amp; Shift Tracking</div>
       <div class="footer-links">
         <a href="/privacy">Privacy Policy</a>
         <a href="/terms">Terms of Service</a>
         <a href="/delete-account">Account Deletion</a>
-        <a href="/health">Status</a>
       </div>
     </div>
   </footer>
@@ -389,26 +480,27 @@ export function wrapHtml({
 // 1. Privacy Policy Page
 export function renderPrivacyPolicyPage(): string {
   const content = `
-    <div class="content-card">
-      <span class="section-eyebrow">Google Play &amp; Apple Data Safety</span>
-      <h1>Hyprwise Privacy Policy</h1>
-      <p class="subtitle">Effective Date: January 1, 2026 · Last Updated: November 26, 2026 · Version 1.4.0</p>
-
-      <div class="callout callout-success">
-        <p><strong>Core Privacy Guarantee:</strong> Hyprwise is engineered local-first. Your financial logs, hourly shift rates, bank accounts, and budgets live in an on-device SQLite database via Drift. We never sell, monetize, or broker your personal financial records to third-party advertisers.</p>
+    <article class="doc-card">
+      <div class="doc-header">
+        <h1>Privacy Policy</h1>
+        <p class="doc-meta">Effective January 1, 2026 · Last updated November 26, 2026 · Application ID: <span class="mono-text">com.hypr.hyprwise</span></p>
       </div>
 
-      <h2>1. Overview &amp; Scope</h2>
+      <div class="note-box note-box-green">
+        <p><strong>Local-First Guarantee:</strong> Hyprwise stores your financial accounts, transactions, shift logs, hourly rates, and budgets directly on your device in an encrypted SQLite database. We never sell, rent, or broker your personal financial data.</p>
+      </div>
+
+      <h2>1. Scope</h2>
       <p>
-        This Privacy Policy outlines how Hyprwise ("we", "our", or "the App", Android &amp; iOS Application ID: <code>com.hypr.hyprwise</code>) collects, handles, stores, and protects user information across mobile platforms and edge server infrastructure.
+        This Privacy Policy explains how Hyprwise ("we", "our", or "the App") collects, processes, and protects information across our Android and iOS mobile applications and supporting cloud services.
       </p>
 
-      <h2>2. Data Collection &amp; Processing Architecture</h2>
+      <h2>2. Data Architecture</h2>
       <div class="data-table-container">
         <table class="flat-table">
           <thead>
             <tr>
-              <th>Data Category</th>
+              <th>Category</th>
               <th>Storage Location</th>
               <th>Security Controls</th>
               <th>Purpose</th>
@@ -417,63 +509,63 @@ export function renderPrivacyPolicyPage(): string {
           <tbody>
             <tr>
               <td><strong>Financial Accounts &amp; Shifts</strong></td>
-              <td>On-device local SQLite (Drift)</td>
-              <td>OS app sandbox encryption</td>
-              <td>Shift wage tracking, dual-currency budgeting, balance forecasting</td>
+              <td>On-device SQLite (Drift)</td>
+              <td>OS sandbox storage encryption</td>
+              <td>Shift wage tracking, multi-currency budgeting, balance forecasting</td>
             </tr>
             <tr>
-              <td><strong>Authentication Profile</strong></td>
-              <td>Firebase Auth &amp; Edge D1</td>
-              <td>TLS 1.3 &amp; RS256 JWKS / HMAC-SHA256 verification</td>
-              <td>Cross-device sync and Pro subscription restoration</td>
+              <td><strong>Account Profile</strong></td>
+              <td>Firebase Auth &amp; Cloudflare D1</td>
+              <td>TLS 1.3, RS256 JWKS &amp; HMAC-SHA256 verification</td>
+              <td>Sign-in, cross-device sync, and Pro entitlement restoration</td>
             </tr>
             <tr>
               <td><strong>Optional Cloud Backups</strong></td>
               <td>Cloudflare D1 (Pro opt-in)</td>
-              <td>Verified token isolation over HTTPS</td>
-              <td>Disaster recovery &amp; multi-device backup</td>
+              <td>Authenticated per-user isolation over HTTPS</td>
+              <td>Multi-device sync and backup recovery</td>
             </tr>
             <tr>
               <td><strong>Receipt OCR Scans</strong></td>
-              <td>Transient memory buffer</td>
-              <td>Ephemeral single-request inference</td>
-              <td>Gemini 2.5 Flash receipt extraction (not retained)</td>
+              <td>Ephemeral request memory</td>
+              <td>Single-request processing; images are not retained</td>
+              <td>Extracting line items and totals via Gemini 2.5 Flash</td>
             </tr>
             <tr>
-              <td><strong>Redacted Diagnostics</strong></td>
-              <td>Hyprwise Edge Telemetry</td>
-              <td>Sensitive fields redacted, zero secrets</td>
-              <td>Unhandled crash capture and reliability fixes</td>
+              <td><strong>Diagnostics</strong></td>
+              <td>Hyprwise Telemetry</td>
+              <td>Automatic redaction of tokens and credentials</td>
+              <td>Crash resolution and app stability monitoring</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <h2>3. AI Assistant &amp; Receipt Scanning Protocol</h2>
+      <h2>3. AI Assistant &amp; Receipt Scanning</h2>
       <ul>
-        <li><strong>Zero Training Retention:</strong> Receipt images and prompt transcripts sent to the AI proxy are never used to train public machine learning models.</li>
-        <li><strong>Strict Financial Boundary:</strong> The AI assistant is restricted exclusively to personal financial records and shift scheduling.</li>
-        <li><strong>Local Confirmation:</strong> Financial actions generated by AI execute directly against your local Drift database with explicit confirmation cards.</li>
+        <li><strong>No Model Training:</strong> Receipt photos and financial queries are never used to train third-party machine learning models.</li>
+        <li><strong>Scoped Assistance:</strong> HyprAI operates strictly on your personal finance and shift scheduling workflows.</li>
+        <li><strong>User Confirmation:</strong> AI-suggested transactions or shifts are written locally only after your confirmation.</li>
       </ul>
 
-      <h2>4. Third-Party Infrastructure Providers</h2>
+      <h2>4. Infrastructure Subprocessors</h2>
       <ul>
-        <li><strong>Google Firebase (Authentication &amp; App Check):</strong> Handles federated Google/Apple sign-in and device integrity verification.</li>
-        <li><strong>Google Gemini 2.5 Flash:</strong> Powers bill OCR scanning and financial reasoning.</li>
-        <li><strong>RevenueCat, Google Play Billing &amp; Apple IAP:</strong> Manages Hyprwise Pro subscriptions; payment cards are never visible to Hyprwise.</li>
-        <li><strong>Cloudflare Workers &amp; D1:</strong> Edge infrastructure hosting API endpoints, legal portals, and optional Pro sync records.</li>
+        <li><strong>Google Firebase:</strong> Federated Google/Apple authentication and App Check integrity verification.</li>
+        <li><strong>Google Gemini:</strong> Receipt OCR parsing and conversational budget analysis.</li>
+        <li><strong>RevenueCat, Google Play &amp; Apple App Store:</strong> Subscription billing and receipt validation; payment card details are never accessible to Hyprwise.</li>
+        <li><strong>Cloudflare Workers &amp; D1:</strong> Edge API hosting, legal portals, and opt-in Pro backup storage.</li>
       </ul>
 
-      <h2>5. User Rights &amp; Account Deletion</h2>
-      <div class="callout callout-warning">
-        <p><strong>Deletion Options:</strong> You may permanently delete your account immediately inside the app (<em>Settings → Danger Zone → Delete Account</em>) or submit a web deletion request at <a href="/delete-account" style="color: var(--ink); font-weight: 700;">/delete-account</a> with a 30-day cancellable grace period.</p>
+      <h2>5. Account &amp; Data Deletion</h2>
+      <div class="note-box note-box-amber">
+        <p>You can delete your account immediately inside the mobile app under <strong>Settings → Danger Zone → Delete Account</strong>, or submit a request via the <a href="/delete-account" class="inline-link">Account Deletion Portal</a> with a 30-day cancellable grace period.</p>
       </div>
 
-      <h2>6. Contact &amp; Privacy Officer</h2>
+      <h2>6. Contact</h2>
       <p>
-        For privacy inquiries or data safety requests: <code>privacy@hyprwise.app</code>
+        For privacy inquiries or data access requests, contact <a href="mailto:privacy@hyprwise.app" class="inline-link">privacy@hyprwise.app</a>.
       </p>
-    </div>
+    </article>
   `;
   return wrapHtml({ title: 'Privacy Policy', bodyContent: content, activeNav: 'privacy' });
 }
@@ -481,36 +573,43 @@ export function renderPrivacyPolicyPage(): string {
 // 2. Terms of Service Page
 export function renderTermsOfServicePage(): string {
   const content = `
-    <div class="content-card">
-      <span class="section-eyebrow">Legal Terms</span>
-      <h1>Hyprwise Terms of Service</h1>
-      <p class="subtitle">Effective Date: January 1, 2026 · Last Updated: November 26, 2026 · Version 1.4.0</p>
+    <article class="doc-card">
+      <div class="doc-header">
+        <h1>Terms of Service</h1>
+        <p class="doc-meta">Effective January 1, 2026 · Last updated November 26, 2026 · Application ID: <span class="mono-text">com.hypr.hyprwise</span></p>
+      </div>
 
       <h2>1. Acceptance of Terms</h2>
       <p>
-        By creating an account, downloading, or using Hyprwise (<code>com.hypr.hyprwise</code>), you agree to these Terms of Service.
+        By downloading, accessing, or using Hyprwise, you agree to be bound by these Terms of Service and our <a href="/privacy" class="inline-link">Privacy Policy</a>.
       </p>
 
-      <h2>2. Financial Information Disclaimer</h2>
-      <div class="callout">
-        <p><strong>Informational Tool Only:</strong> Hyprwise assists with personal budgeting, shift wage estimation, and multi-currency tracking. It does not provide formal financial, investment, tax, or legal advice.</p>
+      <h2>2. Informational Purpose Only</h2>
+      <div class="note-box">
+        <p>Hyprwise is a personal productivity tool for budgeting, multi-currency tracking, and shift wage estimation. It does not constitute formal financial, tax, accounting, or legal advice.</p>
       </div>
 
-      <h2>3. Subscriptions &amp; Billing (Hyprwise Pro)</h2>
+      <h2>3. Hyprwise Pro Subscriptions</h2>
       <ul>
-        <li><strong>Billing Cycle:</strong> Recurring subscriptions renew automatically unless cancelled at least 24 hours before period end via Google Play or Apple App Store settings.</li>
-        <li><strong>Refunds:</strong> Managed according to Google Play or Apple App Store policies.</li>
+        <li><strong>Renewal:</strong> Recurring subscriptions renew automatically unless cancelled at least 24 hours before the end of the current billing period through Google Play or Apple App Store settings.</li>
+        <li><strong>Refunds:</strong> Billing disputes and refunds are handled directly by Google Play or Apple under their respective store policies.</li>
       </ul>
 
       <h2>4. Acceptable Use</h2>
-      <p>You agree not to abuse, reverse engineer, or attempt unauthorized access against Hyprwise edge infrastructure or other users' records.</p>
+      <p>
+        You agree not to misuse, reverse engineer, disrupt, or attempt unauthorized access to Hyprwise servers, APIs, or another user's data.
+      </p>
 
-      <h2>5. Termination &amp; Data Deletion</h2>
-      <p>You may delete your account anytime in-app or via <a href="/delete-account" style="color: var(--ink); font-weight: 700;">/delete-account</a>.</p>
+      <h2>5. Account Termination</h2>
+      <p>
+        You may stop using Hyprwise and permanently delete your server account at any time in-app or via the <a href="/delete-account" class="inline-link">Account Deletion Portal</a>.
+      </p>
 
       <h2>6. Legal Contact</h2>
-      <p>Questions regarding these terms: <code>legal@hyprwise.app</code></p>
-    </div>
+      <p>
+        Questions regarding these terms may be sent to <a href="mailto:legal@hyprwise.app" class="inline-link">legal@hyprwise.app</a>.
+      </p>
+    </article>
   `;
   return wrapHtml({ title: 'Terms of Service', bodyContent: content, activeNav: 'terms' });
 }
@@ -524,21 +623,22 @@ export function renderAccountDeletionPage(opts?: {
   token?: string;
 }): string {
   const content = `
-    <div class="content-card">
-      <span class="section-eyebrow" style="color: var(--red);">Google Play &amp; Apple Data Safety Portal</span>
-      <h1>Account &amp; Data Deletion</h1>
-      <p class="subtitle">Request permanent erasure of your Hyprwise account, cloud sync vaults, and server records.</p>
+    <article class="doc-card">
+      <div class="doc-header">
+        <h1>Account &amp; Data Deletion</h1>
+        <p class="doc-meta">Permanently erase your Hyprwise account profile, cloud sync backups, and server records.</p>
+      </div>
 
       ${
         opts?.status === 'email_sent'
           ? `
           <div class="alert alert-success">
-            <strong>Deletion Request Recorded:</strong>
+            <strong>Deletion Request Recorded</strong>
             <p style="margin: 6px 0 0; color: inherit;">
               A deletion request has been registered for <strong>${escapeHtml(opts.email)}</strong>${opts.token ? ` — <a href="/delete-account/confirm?token=${encodeURIComponent(opts.token)}" style="color: inherit; font-weight: 700; text-decoration: underline;">confirm deletion now</a>` : ''}.
             </p>
             <p style="margin: 6px 0 0; font-size: 0.85rem; color: inherit;">
-              Confirmation activates a <strong>30-day grace period</strong> during which you can cancel anytime before permanent erasure.
+              Once confirmed, a 30-day grace window begins during which you may cancel at any time before permanent erasure.
             </p>
           </div>
         `
@@ -549,7 +649,7 @@ export function renderAccountDeletionPage(opts?: {
         opts?.status === 'confirmed'
           ? `
           <div class="alert alert-success">
-            <strong>Deletion Confirmed — 30-Day Grace Window Active</strong>
+            <strong>Deletion Confirmed</strong>
             <p style="margin: 6px 0 0; color: inherit;">
               Account deletion for <strong>${escapeHtml(opts.email)}</strong> is scheduled for permanent purge on <strong>${escapeHtml(opts.scheduledPurgeDate || 'in 30 days')}</strong>.
             </p>
@@ -562,9 +662,9 @@ export function renderAccountDeletionPage(opts?: {
         opts?.status === 'cancelled'
           ? `
           <div class="alert alert-success">
-            <strong>Deletion Cancelled:</strong>
+            <strong>Deletion Cancelled</strong>
             <p style="margin: 6px 0 0; color: inherit;">
-              Pending deletion requests for <strong>${escapeHtml(opts.email)}</strong> have been cancelled. Your account remains active.
+              Pending deletion requests for <strong>${escapeHtml(opts.email)}</strong> have been cancelled and your account remains active.
             </p>
           </div>
         `
@@ -577,30 +677,30 @@ export function renderAccountDeletionPage(opts?: {
           : ''
       }
 
-      <div class="callout callout-warning">
-        <p><strong>30-Day Protected Deletion:</strong> Submitting your email creates a verification step followed by a 30-day grace period before permanent server purge. For immediate deletion, open Hyprwise → <em>Settings → Danger Zone → Delete Account</em>.</p>
+      <div class="note-box note-box-amber">
+        <p><strong>30-Day Grace Period:</strong> Web deletion requests enter a 30-day window before permanent server erasure. For immediate deletion, open Hyprwise and go to <strong>Settings → Danger Zone → Delete Account</strong>.</p>
       </div>
 
       <h2>Request Account Deletion</h2>
-      <form method="POST" action="/delete-account" style="margin-bottom: 28px;">
+      <form method="POST" action="/delete-account" style="margin-bottom: 32px;">
         <div class="form-group">
           <label for="email">Account Email Address</label>
           <input type="email" id="email" name="email" required placeholder="name@example.com" value="${escapeHtml(opts?.email || '')}">
         </div>
 
         <div class="form-group">
-          <label for="reason">Reason for Deletion (Optional)</label>
+          <label for="reason">Reason for Leaving (Optional)</label>
           <select id="reason" name="reason">
             <option value="no_longer_needed">No longer needed</option>
             <option value="switching_device">Switching devices</option>
             <option value="privacy_preference">Privacy preferences</option>
-            <option value="other">Other reason</option>
+            <option value="other">Other</option>
           </select>
         </div>
 
         <div class="form-group">
           <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-weight: 500; color: var(--muted);">
-            <input type="checkbox" required style="width: 17px; height: 17px; margin-top: 2px; accent-color: var(--ink);">
+            <input type="checkbox" required style="width: 16px; height: 16px; margin-top: 3px; accent-color: var(--ink); flex-shrink: 0;">
             <span>I understand that confirming this request schedules permanent deletion of my server account and cloud backups after 30 days.</span>
           </label>
         </div>
@@ -608,15 +708,15 @@ export function renderAccountDeletionPage(opts?: {
         <button type="submit" class="btn btn-danger">Request Account Deletion</button>
       </form>
 
-      <div style="border-top: 1px solid var(--border); padding-top: 22px;">
+      <div style="border-top: 1px solid var(--border); padding-top: 24px;">
         <h2 style="margin-top: 0;">Cancel a Pending Deletion</h2>
-        <p style="font-size: 0.875rem;">Changed your mind during the 30-day window? Cancel your request below:</p>
+        <p style="font-size: 0.885rem;">Enter your email address below to cancel an active deletion request before the 30-day purge date:</p>
         <form method="POST" action="/delete-account/cancel" style="display: flex; gap: 10px; flex-wrap: wrap;">
           <input type="email" name="email" required placeholder="Registered email address" style="flex: 1; min-width: 240px;" value="${escapeHtml(opts?.email || '')}">
-          <button type="submit" class="btn btn-outline">Cancel Pending Deletion</button>
+          <button type="submit" class="btn btn-outline">Cancel Request</button>
         </form>
       </div>
-    </div>
+    </article>
   `;
   return wrapHtml({ title: 'Delete Account', bodyContent: content, activeNav: 'delete' });
 }

@@ -1,64 +1,92 @@
-// Public landing page for Hyprwise Legal & Compliance Portal.
-// Strictly contains NO admin links, icons, or buttons (admin is path-only at /admin).
+// Public landing page for Hyprwise.
+// Clean editorial product & trust portal — zero decorative pills, strictly NO /admin links.
 
 import { getHyprwiseIconSvg } from '../brand_assets';
 import { wrapHtml } from '../compliance_and_admin';
 
 export function renderLandingPage(): string {
   const bodyContent = `
-    <div style="max-width: 820px; margin: 0 auto;">
-      <!-- Obsidian Hero Banner matching Hyprwise Mobile App -->
-      <div style="background: var(--hero); color: #FFFFFF; border-radius: var(--radius); padding: 36px 28px; text-align: center; margin-bottom: 24px; border: 1px solid #27272A;">
-        <div style="display: inline-block; margin-bottom: 16px;">
-          ${getHyprwiseIconSvg(56)}
-        </div>
-        <h1 style="color: #FFFFFF; font-size: 2.1rem; margin-bottom: 8px; letter-spacing: -0.03em;">hyprwise</h1>
-        <p style="color: #9B9BA6; max-width: 560px; margin: 0 auto 18px; font-size: 0.975rem;">
-          Local-first personal finance, shift wage management &amp; dual-currency budget intelligence.
-        </p>
-        <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 6px 14px; border-radius: 99px; font-size: 0.8rem; color: #E4E4E7;">
-          <span class="status-dot" style="margin: 0;"></span>
-          <span>Edge Services Operational</span>
-          <span style="color: #71717A;">·</span>
-          <span style="font-family: var(--font-mono); font-size: 0.78rem;">com.hypr.hyprwise</span>
+    <!-- Editorial Hero -->
+    <section class="hero-block">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <div class="hero-brand-mark">${getHyprwiseIconSvg(40)}</div>
+          <h1 class="hero-title">Personal finance and shift tracking, built local-first.</h1>
+          <p class="hero-lead">
+            Track accounts, dual-currency expenses, work shifts, hourly wages, and savings goals in one calm workspace. Your data stays on your device by default — with optional encrypted cloud backup when you want it.
+          </p>
+          <div class="hero-actions">
+            <a href="/privacy" class="btn btn-light">Privacy &amp; Data Safety</a>
+            <a href="/terms" class="btn btn-ghost-dark">Terms of Service</a>
+          </div>
         </div>
       </div>
+    </section>
 
-      <!-- Compliance & User Rights Cards -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 24px;">
-        <a href="/privacy" class="nav-card">
-          <span class="section-eyebrow" style="color: var(--green);">Data Safety</span>
-          <h2 style="font-size: 1.1rem; margin: 0 0 6px; color: var(--ink);">Privacy Policy →</h2>
-          <p style="font-size: 0.85rem; margin: 0;">
-            On-device Drift SQLite vault. Zero data sale, zero ad tracking, and transparent cloud controls.
+    <!-- Core Pillars -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2>Built for everyday clarity</h2>
+        <p>Focused financial and work tracking without clutter, ads, or third-party data brokering.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>Multi-Account Ledger</h3>
+          <p>
+            Manage bank accounts, wallets, budgets, debts, and recurring transactions with multi-currency conversion and instant balance totals.
           </p>
+        </div>
+        <div class="feature-card">
+          <h3>Shift &amp; Wage Intelligence</h3>
+          <p>
+            Schedule shifts across multiple jobs, calculate regular and overtime pay automatically, and forecast upcoming paychecks directly alongside your cash flow.
+          </p>
+        </div>
+        <div class="feature-card">
+          <h3>On-Device SQLite Vault</h3>
+          <p>
+            Every record is stored locally in your device's encrypted sandbox for 100% offline speed. Optional Hyprwise Pro sync uses verified Firebase authentication over TLS 1.3.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trust, Compliance & User Rights -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2>Trust &amp; Legal Center</h2>
+        <p>Transparent policies and self-service data controls for Android and iOS users.</p>
+      </div>
+      <div class="trust-list">
+        <a href="/privacy" class="trust-row">
+          <div>
+            <h3>Privacy Policy</h3>
+            <p>How local storage, optional Pro cloud sync, receipt OCR, and crash diagnostics are handled.</p>
+          </div>
+          <span class="trust-arrow">Read policy →</span>
         </a>
-
-        <a href="/terms" class="nav-card">
-          <span class="section-eyebrow">Legal</span>
-          <h2 style="font-size: 1.1rem; margin: 0 0 6px; color: var(--ink);">Terms of Service →</h2>
-          <p style="font-size: 0.85rem; margin: 0;">
-            Software license, wage calculation disclaimers, and RevenueCat subscription terms.
-          </p>
+        <a href="/terms" class="trust-row">
+          <div>
+            <h3>Terms of Service</h3>
+            <p>Software license, informational disclaimers, and Google Play / Apple subscription terms.</p>
+          </div>
+          <span class="trust-arrow">Read terms →</span>
         </a>
-
-        <a href="/delete-account" class="nav-card">
-          <span class="section-eyebrow" style="color: var(--red);">User Rights</span>
-          <h2 style="font-size: 1.1rem; margin: 0 0 6px; color: var(--ink);">Delete Account →</h2>
-          <p style="font-size: 0.85rem; margin: 0;">
-            Google Play &amp; Apple compliant account and cloud backup erasure portal.
-          </p>
+        <a href="/delete-account" class="trust-row">
+          <div>
+            <h3>Account &amp; Data Deletion</h3>
+            <p>Request permanent erasure of your Hyprwise server account and cloud backups with a 30-day grace period.</p>
+          </div>
+          <span class="trust-arrow trust-arrow-danger">Manage deletion →</span>
         </a>
       </div>
-
-      <div class="content-card" style="padding: 24px;">
-        <span class="section-eyebrow">Architecture</span>
-        <h3 style="margin-top: 0; margin-bottom: 8px;">Local-First Financial Vault</h3>
-        <p style="font-size: 0.875rem; margin: 0;">
-          All accounts, shift logs, hourly rates, debts, and savings goals stay in your device's encrypted sandbox so Hyprwise works 100% offline. Optional Pro cloud sync uses verified Firebase authentication over TLS 1.3.
-        </p>
-      </div>
-    </div>
+    </section>
   `;
-  return wrapHtml({ title: 'Personal Finance & Shift Tracker', bodyContent, activeNav: '' });
+
+  return wrapHtml({
+    title: 'Personal Finance & Shift Tracker',
+    bodyContent,
+    activeNav: '',
+    wide: true,
+  });
 }

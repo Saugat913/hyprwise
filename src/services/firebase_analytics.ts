@@ -177,15 +177,15 @@ export class FirebaseAnalyticsService {
             )
             .join('');
 
-    const versionPills =
+    const versionSummary =
       summary.appVersions.length === 0
         ? ''
-        : `<div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
-            <span class="muted" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Versions:</span>
+        : `<div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 0.76rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px;">
+            <span style="font-weight: 700; color: var(--ink);">App Versions:</span>
             ${summary.appVersions
               .map(
                 (v) =>
-                  `<span class="badge badge-neutral">${escapeHtml(v.version)} · ${v.percentage}%</span>`
+                  `<span class="mono">${escapeHtml(v.version)} (${v.percentage}%)</span>`
               )
               .join('')}
           </div>`;
@@ -198,7 +198,7 @@ export class FirebaseAnalyticsService {
               <div class="eyebrow">7-Day Edge Telemetry</div>
               <div class="card-title">${summary.totalEvents7d} events · ${summary.uniqueActiveUsers7d} active users</div>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
               <span class="legend-dot"><i style="background:#141417;"></i>Events</span>
               <span class="legend-dot"><i style="background:#B42318;"></i>Crashes</span>
             </div>
@@ -215,12 +215,12 @@ export class FirebaseAnalyticsService {
               <div class="eyebrow">App Telemetry Breakdown</div>
               <div class="card-title">Top Events &amp; Stability</div>
             </div>
-            <span class="badge ${summary.crashes7d > 0 ? 'badge-red' : 'badge-green'}">
+            <span class="mono" style="font-size: 0.78rem; font-weight: 700; color: ${summary.crashes7d > 0 ? 'var(--red)' : 'var(--green)'};">
               ${escapeHtml(summary.crashFreeRate)} crash-free
             </span>
           </div>
           <div style="flex: 1;">${eventBarsHtml}</div>
-          ${versionPills}
+          ${versionSummary}
         </div>
       </div>
     `;

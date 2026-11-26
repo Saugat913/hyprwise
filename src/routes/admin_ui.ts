@@ -978,8 +978,9 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
             <div style="font-weight: 700; font-size: 0.84rem;">${escapeHtml(h.label)}</div>
             <div class="muted" style="font-size: 0.75rem;">${escapeHtml(h.detail)}</div>
           </div>
-          <span class="badge ${h.ok ? 'badge-green' : h.critical ? 'badge-red' : 'badge-amber'}">
-            ${h.ok ? 'ONLINE' : h.critical ? 'ACTION' : 'OPTIONAL'}
+          <span class="mono" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 700; color: ${h.ok ? 'var(--green)' : h.critical ? 'var(--red)' : 'var(--amber)'}; white-space: nowrap;">
+            <span class="status-dot ${h.ok ? 'dot-green' : 'dot-red'}" style="${!h.ok && !h.critical ? 'background: var(--amber); box-shadow: none;' : ''}"></span>
+            ${h.ok ? 'Active' : h.critical ? 'Required' : 'Optional'}
           </span>
         </div>`
       )
@@ -994,9 +995,9 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
               (a) => `
           <div class="health-row">
             <div style="min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <span class="badge badge-neutral">${escapeHtml(a.action)}</span>
-                <span class="mono" style="font-weight: 600; color: var(--ink);">${escapeHtml(a.target || '—')}</span>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span class="mono" style="font-weight: 700; font-size: 0.76rem; color: var(--ink);">${escapeHtml(a.action)}</span>
+                <span class="mono muted">${escapeHtml(a.target || '—')}</span>
               </div>
               <div class="muted" style="margin-top: 2px; font-size: 0.74rem;">${escapeHtml(a.details || '')}</div>
             </div>
@@ -1010,7 +1011,7 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
         <div class="kpi-card">
           <div class="kpi-top">
             <div class="eyebrow" style="margin: 0;">Users &amp; Pro</div>
-            <span class="badge badge-brand">${escapeHtml(p.metrics.conversionRate)} Pro</span>
+            <span class="mono" style="font-size: 0.74rem; font-weight: 700; color: var(--brand-text);">${escapeHtml(p.metrics.conversionRate)} Pro</span>
           </div>
           <div class="kpi-val">${p.metrics.totalUsers}</div>
           <div class="progress-track"><div class="progress-fill" style="width: ${Math.max(proPct, p.metrics.activeProUsers > 0 ? 4 : 0)}%; background: var(--brand);"></div></div>
@@ -1029,7 +1030,7 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
         <div class="kpi-card">
           <div class="kpi-top">
             <div class="eyebrow" style="margin: 0;">App Stability (7d)</div>
-            <span class="badge ${p.metrics.totalExceptions > 0 ? 'badge-red' : 'badge-green'}">${escapeHtml(p.metrics.crashFreeRate)}</span>
+            <span class="mono" style="font-size: 0.74rem; font-weight: 700; color: ${p.metrics.totalExceptions > 0 ? 'var(--red)' : 'var(--green)'};">${escapeHtml(p.metrics.crashFreeRate)}</span>
           </div>
           <div class="kpi-val" style="color: ${p.metrics.totalExceptions > 0 ? 'var(--red)' : 'var(--green)'};">${p.metrics.totalExceptions}</div>
           <div class="kpi-sub">crashes/errors · ${p.metrics.totalEvents} total events</div>
@@ -1038,7 +1039,7 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
         <div class="kpi-card">
           <div class="kpi-top">
             <div class="eyebrow" style="margin: 0;">AI Queries Today</div>
-            <span class="badge badge-neutral">Gemini 2.5</span>
+            <span class="muted" style="font-size: 0.74rem;">Gemini 2.5</span>
           </div>
           <div class="kpi-val">${p.metrics.aiQueriesToday}</div>
           <div class="kpi-sub">${p.metrics.pendingDeletions} pending account deletions</div>
@@ -1308,10 +1309,10 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
       <details class="collapsible-card" ${p.openCreate || p.metrics.totalUsers === 0 ? 'open' : ''}>
         <summary>
           <span style="display: inline-flex; align-items: center; gap: 8px;">
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 7px; background: var(--brand-bg); color: var(--brand-text);">${ICONS.plus}</span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: var(--fill); color: var(--ink);">${ICONS.plus}</span>
             Provision New User or Grant Pro Subscription
           </span>
-          <span class="badge badge-brand">Auto-links on Google / Apple sign-in</span>
+          <span class="muted" style="font-weight: 500; font-size: 0.78rem;">Auto-links on Google / Apple sign-in</span>
         </summary>
         <div class="collapsible-body">
           <form method="POST" action="/admin/users/upsert">
@@ -1510,7 +1511,7 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
         <div class="kpi-card" style="padding: 15px;">
           <div class="kpi-top">
             <span class="mono" style="font-weight: 700; color: var(--ink);">${escapeHtml(t.table)}</span>
-            <span class="badge badge-neutral">D1</span>
+            <span class="muted" style="font-size: 0.72rem;">rows</span>
           </div>
           <div class="kpi-val" style="font-size: 1.45rem;">${t.rows}</div>
           <div class="kpi-sub">${escapeHtml(t.description)}</div>
@@ -1877,7 +1878,6 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
       <span style="display: inline-flex; align-items: center; gap: 9px; font-weight: 800;">
         ${getHyprwiseIconSvg(24)}
         <span>hyprwise</span>
-        <span class="sb-ops-pill">Ops</span>
       </span>
       <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #C7C9D3;">
         ${ICONS.menu} Menu
@@ -1899,20 +1899,19 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
         <a href="/admin" class="sb-brand-row">
           ${getHyprwiseIconSvg(26)}
           <span class="sb-brand-name">hyprwise</span>
-          <span class="sb-ops-pill">Ops</span>
+          <span style="margin-left: auto; font-size: 0.74rem; color: #7D8090; font-weight: 600;">Console</span>
         </a>
-        <div class="sb-status">
-          <span class="status-dot ${p.dbConnected ? 'dot-green' : 'dot-red'}"></span>
-          <span>${p.dbConnected ? 'Edge Online · D1 OK' : 'D1 Disconnected'}</span>
-        </div>
       </div>
 
       <nav class="sb-nav">${navGroupsHtml}</nav>
 
       <div class="sb-footer">
         <div class="sb-meta">
-          <span>HMAC-SHA256</span>
-          <span>CSP Strict</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span class="status-dot ${p.dbConnected ? 'dot-green' : 'dot-red'}"></span>
+            ${p.dbConnected ? 'Edge &amp; D1 Online' : 'D1 Offline'}
+          </span>
+          <span>TLS · CSRF</span>
         </div>
         <form method="POST" action="/admin/logout" style="margin: 0;">
           ${csrfInput}
