@@ -1,4 +1,6 @@
 // Production Admin Console Routes (Path-only at /admin, HMAC-SHA256 Session + CSRF + Rate Limit + Audit Log)
+// Supports full server data editing (profiles, Pro subscriptions, preferences, AI quotas, Cloud Sync JSON vaults),
+// live app system monitoring, CSV/JSON exports, deletion compliance queue, and Danger Zone wipes.
 
 import { Hono, type Context } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
@@ -26,9 +28,13 @@ import {
   renderAdminDashboard,
   renderAdminLoginPage,
   type AdminAuditRow,
+  type AdminBackupInspect,
   type AdminBackupView,
   type AdminHealthCheck,
+  type AdminPrefRow,
   type AdminTab,
+  type AdminTableStat,
+  type AdminUserInspect,
   type AdminUserView,
 } from './admin_ui';
 
@@ -36,10 +42,12 @@ export const adminRouter = new Hono<{ Bindings: Bindings }>();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_VAULT_EDIT_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TABS = new Set<AdminTab>([
   'overview',
   'users',
   'backups',
+  'data',
   'deletions',
   'telemetry',
   'audit',
@@ -125,7 +133,7 @@ async function requireAdminAndCsrf(
   return { ok: true };
 }
 
-async function ensureAuditTable(db?: D1Database): Promise<void> {
+async function ensureAdminTables(db?: D1Database): Promise<void> {
   if (!db) return;
   try {
     await db
@@ -140,6 +148,17 @@ async function ensureAuditTable(db?: D1Database): Promise<void> {
         )`
       )
       .run();
+    await db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS user_preferences (
+          userId TEXT PRIMARY KEY,
+          locale TEXT,
+          baseCurrency TEXT,
+          onboarded INTEGER DEFAULT 1,
+          updatedAt INTEGER
+        )`
+      )
+      .run();
   } catch (_) {}
 }
 
@@ -151,7 +170,7 @@ async function recordAdminAudit(
 ): Promise<void> {
   if (!c.env?.DB) return;
   try {
-    await ensureAuditTable(c.env.DB);
+    await ensureAdminTables(c.env.DB);
     const id = `aud_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
     await c.env.DB.prepare(
       `INSERT INTO admin_audit_logs (id, action, target, details, ipAddress, createdAt)
@@ -160,6 +179,28 @@ async function recordAdminAudit(
       .bind(id, action, target, details, clientIp(c), Date.now())
       .run();
   } catch (_) {}
+}
+
+function summarizeSyncPayload(payloadStr: string): Array<{ key: string; count: string }> {
+  try {
+    const parsed = JSON.parse(payloadStr);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return [{ key: 'root', count: Array.isArray(parsed) ? `${parsed.length} items` : typeof parsed }];
+    }
+    const items: Array<{ key: string; count: string }> = [];
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (Array.isArray(v)) {
+        items.push({ key: k, count: `${v.length}` });
+      } else if (v && typeof v === 'object') {
+        items.push({ key: k, count: `${Object.keys(v as object).length} keys` });
+      } else if (v !== null && v !== undefined) {
+        items.push({ key: k, count: String(v).slice(0, 24) });
+      }
+    }
+    return items.slice(0, 14);
+  } catch {
+    return [{ key: 'raw', count: 'non-JSON payload' }];
+  }
 }
 
 function resolvePlanSubscription(
@@ -190,15 +231,24 @@ function resolvePlanSubscription(
   }
 }
 
-function redirectTab(tab: AdminTab, params: { ok?: string; err?: string }): string {
+function redirectTab(
+  tab: AdminTab,
+  params: { ok?: string; err?: string; inspect?: string }
+): string {
   const qs = new URLSearchParams({ tab });
+  if (params.inspect) qs.set('inspect', params.inspect);
   if (params.ok) qs.set('ok', params.ok);
   if (params.err) qs.set('err', params.err);
   return `/admin?${qs.toString()}`;
 }
 
+function csvCell(v: unknown): string {
+  const s = String(v ?? '').replace(/"/g, '""');
+  return `"${s}"`;
+}
+
 // ==========================================
-// GET /admin — Login or Production Console
+// GET /admin — Login or Modern Operations Console
 // ==========================================
 adminRouter.get('/', async (c) => {
   const session = await resolveAdminSession(c);
@@ -210,13 +260,20 @@ adminRouter.get('/', async (c) => {
   const tab: AdminTab = ALLOWED_TABS.has(rawTab) ? rawTab : 'overview';
   const searchQuery = (c.req.query('q') || '').trim();
   const tierFilter = (c.req.query('tier') || 'all').trim();
+  const eventTypeFilter = (c.req.query('etype') || 'all').trim();
+  const inspectId = (c.req.query('inspect') || '').trim();
+  const openCreate = c.req.query('new') === '1';
   const flashOk = c.req.query('ok') || undefined;
   const flashErr = c.req.query('err') || undefined;
 
   let rawUsers: any[] = [];
   let backups: AdminBackupView[] = [];
+  let prefsList: AdminPrefRow[] = [];
   let deletions: any[] = [];
   let auditLogs: AdminAuditRow[] = [];
+  let tableStats: AdminTableStat[] = [];
+  let inspectedUser: AdminUserInspect | null = null;
+  let inspectedBackup: AdminBackupInspect | null = null;
   let dbConnected = false;
 
   const allEvents = [...memoryEvents];
@@ -224,35 +281,58 @@ adminRouter.get('/', async (c) => {
 
   if (c.env?.DB) {
     try {
-      await ensureAuditTable(c.env.DB);
+      await ensureAdminTables(c.env.DB);
       dbConnected = true;
 
-      const [uRes, bRes, dRes, tRes, aRes] = await Promise.all([
-        c.env.DB.prepare('SELECT * FROM users ORDER BY createdAt DESC LIMIT 500').all(),
-        c.env.DB.prepare(
-          `SELECT s.userId, u.email, s.version, LENGTH(s.payload) AS sizeBytes, s.lastSyncedAt
-           FROM sync_records s
-           LEFT JOIN users u ON u.id = s.userId
-           ORDER BY s.lastSyncedAt DESC LIMIT 200`
-        ).all(),
-        c.env.DB.prepare(
-          'SELECT * FROM account_deletions ORDER BY requestedAt DESC LIMIT 100'
-        ).all(),
-        c.env.DB.prepare(
-          'SELECT * FROM telemetry_events ORDER BY createdAt DESC LIMIT 200'
-        ).all(),
-        c.env.DB.prepare(
-          'SELECT * FROM admin_audit_logs ORDER BY createdAt DESC LIMIT 100'
-        ).all(),
-      ]);
+      const [uRes, bRes, pRes, dRes, tRes, aRes, cntUsers, cntSync, cntPrefs, cntTel, cntDel, cntAud] =
+        await Promise.all([
+          c.env.DB.prepare('SELECT * FROM users ORDER BY createdAt DESC LIMIT 500').all(),
+          c.env.DB.prepare(
+            `SELECT s.userId, u.email, u.displayName, s.version, LENGTH(s.payload) AS sizeBytes, s.lastSyncedAt
+             FROM sync_records s
+             LEFT JOIN users u ON u.id = s.userId
+             ORDER BY s.lastSyncedAt DESC LIMIT 200`
+          ).all(),
+          c.env.DB.prepare(
+            `SELECT p.userId, u.email, u.displayName, p.locale, p.baseCurrency, p.onboarded, p.updatedAt
+             FROM user_preferences p
+             LEFT JOIN users u ON u.id = p.userId
+             ORDER BY p.updatedAt DESC LIMIT 300`
+          ).all(),
+          c.env.DB.prepare(
+            'SELECT * FROM account_deletions ORDER BY requestedAt DESC LIMIT 100'
+          ).all(),
+          c.env.DB.prepare(
+            'SELECT * FROM telemetry_events ORDER BY createdAt DESC LIMIT 300'
+          ).all(),
+          c.env.DB.prepare(
+            'SELECT * FROM admin_audit_logs ORDER BY createdAt DESC LIMIT 150'
+          ).all(),
+          c.env.DB.prepare('SELECT COUNT(*) AS c FROM users').first<any>(),
+          c.env.DB.prepare('SELECT COUNT(*) AS c FROM sync_records').first<any>(),
+          c.env.DB.prepare('SELECT COUNT(*) AS c FROM user_preferences').first<any>(),
+          c.env.DB.prepare('SELECT COUNT(*) AS c FROM telemetry_events').first<any>(),
+          c.env.DB.prepare('SELECT COUNT(*) AS c FROM account_deletions').first<any>(),
+          c.env.DB.prepare('SELECT COUNT(*) AS c FROM admin_audit_logs').first<any>(),
+        ]);
 
       rawUsers = (uRes.results || []) as any[];
       backups = ((bRes.results || []) as any[]).map((b) => ({
         userId: String(b.userId),
         email: b.email ? String(b.email) : null,
+        displayName: b.displayName ? String(b.displayName) : null,
         version: Number(b.version || 1),
         sizeBytes: Number(b.sizeBytes || 0),
         lastSyncedAt: Number(b.lastSyncedAt || 0),
+      }));
+      prefsList = ((pRes.results || []) as any[]).map((p) => ({
+        userId: String(p.userId),
+        email: p.email ? String(p.email) : null,
+        displayName: p.displayName ? String(p.displayName) : null,
+        locale: p.locale ? String(p.locale) : '',
+        baseCurrency: p.baseCurrency ? String(p.baseCurrency) : '',
+        onboarded: Boolean(p.onboarded),
+        updatedAt: Number(p.updatedAt || 0),
       }));
       deletions = (dRes.results || []) as any[];
       auditLogs = ((aRes.results || []) as any[]).map((a) => ({
@@ -263,6 +343,15 @@ adminRouter.get('/', async (c) => {
         ipAddress: a.ipAddress ? String(a.ipAddress) : null,
         createdAt: Number(a.createdAt || 0),
       }));
+
+      tableStats = [
+        { table: 'users', rows: Number(cntUsers?.c || 0), description: 'Accounts, Pro tier & AI quotas' },
+        { table: 'sync_records', rows: Number(cntSync?.c || 0), description: 'Cloud sync backup JSON vaults' },
+        { table: 'user_preferences', rows: Number(cntPrefs?.c || 0), description: 'Base currency, locale & onboarding' },
+        { table: 'telemetry_events', rows: Number(cntTel?.c || 0), description: 'App crashes, exceptions & actions' },
+        { table: 'account_deletions', rows: Number(cntDel?.c || 0), description: '30-day compliance deletion queue' },
+        { table: 'admin_audit_logs', rows: Number(cntAud?.c || 0), description: 'Immutable console operation log' },
+      ];
 
       const seenIds = new Set(allEvents.map((e) => e.id));
       for (const row of (tRes.results || []) as any[]) {
@@ -280,11 +369,44 @@ adminRouter.get('/', async (c) => {
         }
       }
       allEvents.sort((a, b) => b.createdAt - a.createdAt);
+
+      // Load deep inspector payload when viewing a specific backup or user
+      if (tab === 'backups' && inspectId) {
+        const rec = await c.env.DB.prepare(
+          `SELECT s.userId, u.email, u.displayName, s.version, s.lastSyncedAt, s.payload
+           FROM sync_records s LEFT JOIN users u ON u.id = s.userId
+           WHERE s.userId = ?`
+        )
+          .bind(inspectId)
+          .first<any>();
+        if (rec) {
+          let prettyJson = String(rec.payload || '');
+          try {
+            prettyJson = JSON.stringify(JSON.parse(prettyJson), null, 2);
+          } catch (_) {}
+          const rawBytes = new TextEncoder().encode(String(rec.payload || '')).byteLength;
+          const truncated = prettyJson.length > 60000;
+          inspectedBackup = {
+            userId: String(rec.userId),
+            email: rec.email ? String(rec.email) : null,
+            displayName: rec.displayName ? String(rec.displayName) : null,
+            version: Number(rec.version || 1),
+            sizeBytes: rawBytes,
+            lastSyncedAt: Number(rec.lastSyncedAt || 0),
+            summary: summarizeSyncPayload(String(rec.payload || '')),
+            prettyJson: truncated ? prettyJson.slice(0, 60000) : prettyJson,
+            truncated,
+          };
+        }
+      }
     } catch (_) {}
   }
 
   const backupByUser = new Map<string, AdminBackupView>();
   for (const b of backups) backupByUser.set(b.userId, b);
+
+  const prefByUser = new Map<string, AdminPrefRow>();
+  for (const p of prefsList) prefByUser.set(p.userId, p);
 
   let activeProUsers = 0;
   let expiredProUsers = 0;
@@ -300,6 +422,7 @@ adminRouter.get('/', async (c) => {
       aiQueriesToday += Number(u.dailyAiQueriesCount || 0);
     }
     const b = backupByUser.get(String(u.id));
+    const pr = prefByUser.get(String(u.id));
     return {
       id: String(u.id),
       email: String(u.email || ''),
@@ -314,8 +437,37 @@ adminRouter.get('/', async (c) => {
       backupVersion: b ? b.version : null,
       backupBytes: b ? b.sizeBytes : null,
       backupUpdatedAt: b ? b.lastSyncedAt : null,
+      baseCurrency: pr?.baseCurrency || null,
+      locale: pr?.locale || null,
+      onboarded: pr ? pr.onboarded : null,
     };
   });
+
+  // Load User Inspector details if ?tab=users&inspect=<userId>
+  if (tab === 'users' && inspectId) {
+    const found = allUserViews.find((u) => u.id === inspectId);
+    if (found) {
+      let vaultSummary: Array<{ key: string; count: string }> = [];
+      if (c.env?.DB && found.backupVersion !== null) {
+        try {
+          const syncRow = await c.env.DB.prepare('SELECT payload FROM sync_records WHERE userId = ?')
+            .bind(found.id)
+            .first<any>();
+          if (syncRow?.payload) {
+            vaultSummary = summarizeSyncPayload(String(syncRow.payload));
+          }
+        } catch (_) {}
+      }
+      const recentEvents = allEvents
+        .filter((e) => e.userId === found.id || e.userId === found.email)
+        .slice(0, 10);
+      inspectedUser = {
+        user: found,
+        vaultSummary,
+        recentEvents,
+      };
+    }
+  }
 
   // Apply search & tier filters on Users tab
   const filteredUsers = allUserViews.filter((u) => {
@@ -331,6 +483,21 @@ adminRouter.get('/', async (c) => {
       ) {
         return false;
       }
+    }
+    return true;
+  });
+
+  // Apply filters on Telemetry tab
+  const filteredEvents = allEvents.filter((e) => {
+    if (eventTypeFilter === 'crash' && e.eventType !== 'crash' && e.eventType !== 'exception') {
+      return false;
+    }
+    if (eventTypeFilter === 'action' && e.eventType !== 'action') return false;
+    if (eventTypeFilter === 'screen_view' && e.eventType !== 'screen_view') return false;
+    if (tab === 'telemetry' && searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const blob = `${e.eventName} ${e.eventType} ${e.userId || ''} ${e.details || ''} ${e.appVersion || ''}`.toLowerCase();
+      if (!blob.includes(q)) return false;
     }
     return true;
   });
@@ -354,45 +521,45 @@ adminRouter.get('/', async (c) => {
       label: 'Cloudflare D1 Database',
       ok: dbConnected,
       critical: true,
-      detail: dbConnected ? 'Connected and responding to queries' : 'D1 binding unavailable',
+      detail: dbConnected ? 'Connected · tilvane-db responding' : 'D1 binding unavailable',
     },
     {
-      label: 'Admin Password Secret (ADMIN_PASSWORD)',
+      label: 'Admin Password (ADMIN_PASSWORD)',
       ok: !usingDefaultPassword,
       critical: true,
       detail: usingDefaultPassword
-        ? 'Using fallback dev password — run wrangler secret put ADMIN_PASSWORD'
-        : 'Custom production secret configured',
+        ? 'Fallback dev password active — rotate via wrangler secret put'
+        : 'Production secret active',
     },
     {
-      label: 'Session Signing Secret (SESSION_SECRET)',
+      label: 'Session Signing (SESSION_SECRET)',
       ok: !usingDefaultSecret,
       critical: true,
       detail: usingDefaultSecret
-        ? 'Not explicitly set — run wrangler secret put SESSION_SECRET'
-        : 'HMAC-SHA256 signing key configured',
+        ? 'Not set — run wrangler secret put SESSION_SECRET'
+        : 'HMAC-SHA256 signing active',
     },
     {
-      label: 'Gemini AI Gateway (GEMINI_API_KEY)',
+      label: 'Gemini AI Proxy (GEMINI_API_KEY)',
       ok: Boolean(c.env?.GEMINI_API_KEY?.trim()),
       detail: c.env?.GEMINI_API_KEY?.trim()
-        ? 'Live Gemini 2.5 Flash reasoning & OCR enabled'
+        ? 'Gemini 2.5 Flash reasoning & OCR live'
         : 'Missing — AI falls back to local mode',
     },
     {
-      label: 'RevenueCat Webhook Secret (REVENUECAT_WEBHOOK_AUTH)',
+      label: 'RevenueCat Webhook (REVENUECAT_WEBHOOK_AUTH)',
       ok: Boolean(c.env?.REVENUECAT_WEBHOOK_AUTH?.trim()),
       detail: c.env?.REVENUECAT_WEBHOOK_AUTH?.trim()
-        ? 'Server-to-server subscription webhook armed'
-        : 'Not set — webhook rejects requests (503 fail-closed)',
+        ? 'Server-to-server billing webhook armed'
+        : 'Not set — webhook rejects (503 fail-closed)',
     },
     {
-      label: 'Firebase App Check Enforcement (ENFORCE_APP_CHECK)',
+      label: 'Firebase App Check (ENFORCE_APP_CHECK)',
       ok: c.env?.ENFORCE_APP_CHECK === 'true',
       detail:
         c.env?.ENFORCE_APP_CHECK === 'true'
           ? 'Strictly enforcing signed RS256 App Check tokens'
-          : 'Permissive mode — set ENFORCE_APP_CHECK=true after mobile rollout',
+          : 'Permissive mode — enable after mobile rollout',
     },
   ];
 
@@ -411,29 +578,125 @@ adminRouter.get('/', async (c) => {
       flashErr,
       usingDefaultPassword,
       usingDefaultSecret,
+      dbConnected,
       searchQuery,
       tierFilter,
+      eventTypeFilter,
+      openCreate,
       metrics: {
         totalUsers,
         activeProUsers,
         expiredProUsers,
+        freeUsers: Math.max(0, totalUsers - activeProUsers - expiredProUsers),
         conversionRate,
         totalBackups: backups.length,
         totalBackupBytes,
         totalExceptions,
         totalEvents: allEvents.length,
+        crashFreeRate: analyticsSummary.crashFreeRate,
         aiQueriesToday,
         pendingDeletions,
       },
       users: filteredUsers,
+      allUsersCompact: allUserViews.slice(0, 100).map((u) => ({ id: u.id, email: u.email, displayName: u.displayName })),
+      inspectedUser,
       backups,
+      inspectedBackup,
+      preferences: prefsList,
       deletions,
-      events: allEvents,
+      events: filteredEvents,
       auditLogs,
+      tableStats,
       healthChecks,
       analyticsHtml,
     })
   );
+});
+
+// ==========================================
+// Exports (CSV Users & JSON Cloud Vault) — Auth Protected
+// ==========================================
+adminRouter.get('/export/users.csv', async (c) => {
+  const session = await resolveAdminSession(c);
+  if (!session.ok) return c.redirect('/admin');
+  if (!c.env?.DB) return c.text('Database unavailable', 503);
+
+  const res = await c.env.DB.prepare(
+    `SELECT u.id, u.email, u.displayName, u.provider, u.isPro, u.proExpiresAt, u.dailyAiQueriesCount, u.createdAt,
+            p.baseCurrency, p.locale
+     FROM users u
+     LEFT JOIN user_preferences p ON p.userId = u.id
+     ORDER BY u.createdAt DESC LIMIT 2000`
+  ).all();
+
+  const header = [
+    'id',
+    'email',
+    'displayName',
+    'provider',
+    'isPro',
+    'proExpiresAt',
+    'dailyAiQueriesCount',
+    'baseCurrency',
+    'locale',
+    'createdAt',
+  ].join(',');
+
+  const lines = ((res.results || []) as any[]).map((r) =>
+    [
+      r.id,
+      r.email,
+      r.displayName,
+      r.provider,
+      r.isPro ? 'true' : 'false',
+      r.proExpiresAt ? new Date(Number(r.proExpiresAt)).toISOString() : '',
+      r.dailyAiQueriesCount ?? 0,
+      r.baseCurrency ?? '',
+      r.locale ?? '',
+      r.createdAt ? new Date(Number(r.createdAt)).toISOString() : '',
+    ]
+      .map(csvCell)
+      .join(',')
+  );
+
+  await recordAdminAudit(c, 'export_users_csv', 'users', `Exported ${lines.length} users to CSV`);
+  return new Response([header, ...lines].join('\n'), {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="hyprwise-users-${new Date().toISOString().slice(0, 10)}.csv"`,
+      'Cache-Control': 'no-store',
+    },
+  });
+});
+
+adminRouter.get('/backups/export', async (c) => {
+  const session = await resolveAdminSession(c);
+  if (!session.ok) return c.redirect('/admin');
+
+  const userId = (c.req.query('userId') || '').trim();
+  if (!userId || !c.env?.DB) return c.text('Missing userId', 400);
+
+  const rec = await c.env.DB.prepare('SELECT userId, version, lastSyncedAt, payload FROM sync_records WHERE userId = ?')
+    .bind(userId)
+    .first<any>();
+  if (!rec) return c.text('Vault not found', 404);
+
+  let body = String(rec.payload || '{}');
+  try {
+    body = JSON.stringify(JSON.parse(body), null, 2);
+  } catch (_) {}
+
+  await recordAdminAudit(c, 'backup_exported', userId, `Downloaded sync vault v${rec.version}`);
+  const safeName = userId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="hyprwise-vault-${safeName}-v${rec.version}.json"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 });
 
 // ==========================================
@@ -464,7 +727,7 @@ adminRouter.post('/login', async (c) => {
         httpOnly: true,
         secure: isHttps,
         sameSite: 'Strict',
-        maxAge: 60 * 60 * 12, // 12-hour sliding admin session
+        maxAge: 60 * 60 * 12,
       });
       await recordAdminAudit(c, 'login_success', 'admin', 'Console session started');
       return c.redirect('/admin');
@@ -502,6 +765,7 @@ adminRouter.post('/users/upsert', async (c) => {
   const provider = String(body['provider'] || 'google').trim().slice(0, 24);
   const plan = String(body['plan'] || 'pro_lifetime').trim();
   const expiresDate = String(body['expiresDate'] || '').trim();
+  const baseCurrency = String(body['baseCurrency'] || '').trim().toUpperCase().slice(0, 6);
 
   if (!email || !EMAIL_REGEX.test(email)) {
     return c.redirect(redirectTab('users', { err: 'Please enter a valid email address.' }));
@@ -522,9 +786,19 @@ adminRouter.post('/users/upsert', async (c) => {
     )
       .bind(nextName, sub.isPro, sub.proExpiresAt, existing.id)
       .run();
+    if (baseCurrency) {
+      await ensureAdminTables(c.env.DB);
+      await c.env.DB.prepare(
+        `INSERT INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
+         VALUES (?, 'en', ?, 1, ?)
+         ON CONFLICT(userId) DO UPDATE SET baseCurrency = excluded.baseCurrency, updatedAt = excluded.updatedAt`
+      )
+        .bind(existing.id, baseCurrency, Date.now())
+        .run();
+    }
     await recordAdminAudit(c, 'user_subscription_updated', email, `Updated to ${sub.label}`);
     return c.redirect(
-      redirectTab('users', { ok: `Updated ${email} → ${sub.label}.` })
+      redirectTab('users', { inspect: existing.id, ok: `Updated ${email} → ${sub.label}.` })
     );
   }
 
@@ -539,9 +813,84 @@ adminRouter.post('/users/upsert', async (c) => {
     .bind(newId, email, displayName, provider, sub.isPro, sub.proExpiresAt, Date.now())
     .run();
 
+  if (baseCurrency) {
+    await ensureAdminTables(c.env.DB);
+    await c.env.DB.prepare(
+      `INSERT OR REPLACE INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
+       VALUES (?, 'en', ?, 1, ?)`
+    )
+      .bind(newId, baseCurrency, Date.now())
+      .run();
+  }
+
   await recordAdminAudit(c, 'user_provisioned', email, `Created (${provider}) with ${sub.label}`);
   return c.redirect(
-    redirectTab('users', { ok: `Provisioned ${email} with ${sub.label}.` })
+    redirectTab('users', { inspect: newId, ok: `Provisioned ${email} with ${sub.label}.` })
+  );
+});
+
+// Edit user profile, quota, and preferences directly from the User Inspector
+adminRouter.post('/users/update', async (c) => {
+  const body = await c.req.parseBody();
+  const guard = await requireAdminAndCsrf(c, body);
+  if (!guard.ok) return guard.response;
+
+  const userId = String(body['userId'] || '').trim();
+  const email = String(body['email'] || '').trim().toLowerCase();
+  const displayName = String(body['displayName'] || '').trim().slice(0, 80);
+  const provider = String(body['provider'] || 'google').trim().slice(0, 24);
+  const rawQuota = Number(body['dailyAiQueriesCount']);
+  const dailyAiQueriesCount = Number.isFinite(rawQuota) ? Math.max(0, Math.min(10000, Math.floor(rawQuota))) : 0;
+  const baseCurrency = String(body['baseCurrency'] || '').trim().toUpperCase().slice(0, 6);
+  const locale = String(body['locale'] || '').trim().slice(0, 12);
+  const onboarded = String(body['onboarded'] || '1') === '1' ? 1 : 0;
+
+  if (!userId || !c.env?.DB) {
+    return c.redirect(redirectTab('users', { err: 'Missing user ID.' }));
+  }
+  if (!email || !EMAIL_REGEX.test(email)) {
+    return c.redirect(redirectTab('users', { inspect: userId, err: 'Valid email address required.' }));
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  await ensureAdminTables(c.env.DB);
+  await c.env.DB.prepare(
+    `UPDATE users
+     SET email = ?, displayName = ?, provider = ?, dailyAiQueriesCount = ?, lastAiQueryDate = ?
+     WHERE id = ?`
+  )
+    .bind(
+      email,
+      displayName || email.split('@')[0],
+      provider,
+      dailyAiQueriesCount,
+      dailyAiQueriesCount > 0 ? todayStr : null,
+      userId
+    )
+    .run();
+
+  if (baseCurrency || locale) {
+    await c.env.DB.prepare(
+      `INSERT INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(userId) DO UPDATE SET
+         locale = excluded.locale,
+         baseCurrency = excluded.baseCurrency,
+         onboarded = excluded.onboarded,
+         updatedAt = excluded.updatedAt`
+    )
+      .bind(userId, locale || null, baseCurrency || null, onboarded, Date.now())
+      .run();
+  }
+
+  await recordAdminAudit(
+    c,
+    'user_updated',
+    email,
+    `Profile/prefs updated (currency=${baseCurrency || '-'}, locale=${locale || '-'}, aiUsed=${dailyAiQueriesCount})`
+  );
+  return c.redirect(
+    redirectTab('users', { inspect: userId, ok: `Saved server changes for ${email}.` })
   );
 });
 
@@ -565,14 +914,13 @@ adminRouter.post('/users/subscription', async (c) => {
   }
 
   let sub = resolvePlanSubscription(plan, expiresDate);
-  // If extending an already active timed Pro subscription via +30d / +365d, stack onto current expiry
   if (
-    (plan === 'pro_30d' || plan === 'pro_365d') &&
+    (plan === 'pro_30d' || plan === 'pro_90d' || plan === 'pro_365d') &&
     existing.isPro === 1 &&
     existing.proExpiresAt &&
     Number(existing.proExpiresAt) > Date.now()
   ) {
-    const addDays = plan === 'pro_365d' ? 365 : 30;
+    const addDays = plan === 'pro_365d' ? 365 : plan === 'pro_90d' ? 90 : 30;
     sub = {
       isPro: 1,
       proExpiresAt: Number(existing.proExpiresAt) + addDays * DAY_MS,
@@ -591,7 +939,7 @@ adminRouter.post('/users/subscription', async (c) => {
     sub.label
   );
   return c.redirect(
-    redirectTab('users', { ok: `${existing.email || userId} → ${sub.label}.` })
+    redirectTab('users', { inspect: userId, ok: `${existing.email || userId} → ${sub.label}.` })
   );
 });
 
@@ -609,7 +957,7 @@ adminRouter.post('/users/reset-quota', async (c) => {
     .bind(userId)
     .run();
   await recordAdminAudit(c, 'ai_quota_reset', userId, 'Daily AI query counter reset to 0');
-  return c.redirect(redirectTab('users', { ok: `Reset AI quota for ${userId}.` }));
+  return c.redirect(redirectTab('users', { inspect: userId, ok: `Reset AI quota for ${userId}.` }));
 });
 
 adminRouter.post('/users/delete', async (c) => {
@@ -620,7 +968,7 @@ adminRouter.post('/users/delete', async (c) => {
   const userId = String(body['userId'] || '').trim();
   const confirmed = String(body['confirm'] || '') === 'yes';
   if (!userId || !confirmed || !c.env?.DB) {
-    return c.redirect(redirectTab('users', { err: 'Confirmation required to delete user.' }));
+    return c.redirect(redirectTab('users', { inspect: userId, err: 'Confirmation required to delete user.' }));
   }
 
   const user = await c.env.DB.prepare('SELECT id, email FROM users WHERE id = ?')
@@ -651,8 +999,95 @@ adminRouter.post('/users/delete', async (c) => {
 });
 
 // ==========================================
-// Cloud Backup & Deletion Queue Management
+// Preferences & Cloud Sync Vault Editing
 // ==========================================
+adminRouter.post('/preferences/upsert', async (c) => {
+  const body = await c.req.parseBody();
+  const guard = await requireAdminAndCsrf(c, body);
+  if (!guard.ok) return guard.response;
+
+  const userId = String(body['userId'] || '').trim();
+  const baseCurrency = String(body['baseCurrency'] || '').trim().toUpperCase().slice(0, 6);
+  const locale = String(body['locale'] || '').trim().slice(0, 12);
+  const onboarded = String(body['onboarded'] || '1') === '1' ? 1 : 0;
+
+  if (!userId || !c.env?.DB) {
+    return c.redirect(redirectTab('data', { err: 'User ID is required.' }));
+  }
+
+  await ensureAdminTables(c.env.DB);
+  await c.env.DB.prepare(
+    `INSERT INTO user_preferences (userId, locale, baseCurrency, onboarded, updatedAt)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(userId) DO UPDATE SET
+       locale = excluded.locale,
+       baseCurrency = excluded.baseCurrency,
+       onboarded = excluded.onboarded,
+       updatedAt = excluded.updatedAt`
+  )
+    .bind(userId, locale || null, baseCurrency || null, onboarded, Date.now())
+    .run();
+
+  await recordAdminAudit(
+    c,
+    'preferences_updated',
+    userId,
+    `currency=${baseCurrency || '-'}, locale=${locale || '-'}, onboarded=${onboarded}`
+  );
+  return c.redirect(redirectTab('data', { ok: `Saved preferences for ${userId}.` }));
+});
+
+adminRouter.post('/backups/update', async (c) => {
+  const body = await c.req.parseBody();
+  const guard = await requireAdminAndCsrf(c, body);
+  if (!guard.ok) return guard.response;
+
+  const userId = String(body['userId'] || '').trim();
+  const rawPayload = String(body['payload'] || '').trim();
+  if (!userId || !rawPayload || !c.env?.DB) {
+    return c.redirect(redirectTab('backups', { inspect: userId, err: 'User ID and JSON payload are required.' }));
+  }
+
+  if (new TextEncoder().encode(rawPayload).byteLength > MAX_VAULT_EDIT_BYTES) {
+    return c.redirect(redirectTab('backups', { inspect: userId, err: 'Payload exceeds 5 MB limit.' }));
+  }
+
+  let normalizedJson: string;
+  try {
+    normalizedJson = JSON.stringify(JSON.parse(rawPayload));
+  } catch (err: any) {
+    return c.redirect(
+      redirectTab('backups', {
+        inspect: userId,
+        err: `Invalid JSON syntax: ${err?.message || 'parse failed'}`,
+      })
+    );
+  }
+
+  const existing = await c.env.DB.prepare('SELECT version FROM sync_records WHERE userId = ?')
+    .bind(userId)
+    .first<any>();
+  const nextVersion = Number(existing?.version || 0) + 1;
+  const now = Date.now();
+
+  await c.env.DB.prepare(
+    `INSERT OR REPLACE INTO sync_records (userId, version, lastSyncedAt, payload)
+     VALUES (?, ?, ?, ?)`
+  )
+    .bind(userId, nextVersion, now, normalizedJson)
+    .run();
+
+  await recordAdminAudit(
+    c,
+    'backup_edited',
+    userId,
+    `Updated cloud sync vault JSON → v${nextVersion} (${normalizedJson.length} bytes)`
+  );
+  return c.redirect(
+    redirectTab('backups', { inspect: userId, ok: `Saved cloud vault v${nextVersion} for ${userId}.` })
+  );
+});
+
 adminRouter.post('/backups/delete', async (c) => {
   const body = await c.req.parseBody();
   const guard = await requireAdminAndCsrf(c, body);
@@ -668,6 +1103,9 @@ adminRouter.post('/backups/delete', async (c) => {
   return c.redirect(redirectTab('backups', { ok: `Deleted cloud vault for ${userId}.` }));
 });
 
+// ==========================================
+// Deletion Queue Management
+// ==========================================
 adminRouter.post('/deletions/cancel', async (c) => {
   const body = await c.req.parseBody();
   const guard = await requireAdminAndCsrf(c, body);
@@ -710,10 +1148,9 @@ adminRouter.post('/deletions/purge', async (c) => {
     .first<any>();
 
   const stmts = [
-    c.env.DB.prepare(`UPDATE account_deletions SET status = 'purged', confirmedAt = COALESCE(confirmedAt, ?) WHERE id = ?`).bind(
-      Date.now(),
-      id
-    ),
+    c.env.DB.prepare(
+      `UPDATE account_deletions SET status = 'purged', confirmedAt = COALESCE(confirmedAt, ?) WHERE id = ?`
+    ).bind(Date.now(), id),
   ];
   if (user?.id) {
     stmts.push(
