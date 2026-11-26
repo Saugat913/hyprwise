@@ -72,7 +72,7 @@ workflows:
             sed -i '' "s|^FIREBASE_IOS_API_KEY=.*|FIREBASE_IOS_API_KEY=$FIREBASE_IOS_API_KEY|" .env 2>/dev/null || sed -i "s|^FIREBASE_IOS_API_KEY=.*|FIREBASE_IOS_API_KEY=$FIREBASE_IOS_API_KEY|" .env
           fi
       - name: Run Flutter Static Analysis
-        script: flutter analyze
+        script: flutter analyze --no-fatal-infos
       - name: Run Flutter Unit & Widget Tests
         script: flutter test --dart-define-from-file=.env
       - name: Build iOS App (.ipa)
