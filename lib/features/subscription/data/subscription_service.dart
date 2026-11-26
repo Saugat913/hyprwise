@@ -102,9 +102,10 @@ class SubscriptionService extends ChangeNotifier {
   static const String offeringPro = 'default';
   static const String offeringSupporter = 'supporter';
 
-  /// RevenueCat keys: Test Store for debug/previews, Google Play for release
+  /// RevenueCat public SDK keys: Test Store for debug, App Store / Play Store for release
   static const String testStoreKey = 'test_gyjflYZzhqICSKhjUzpGpbmhnJu';
   static const String playStoreKey = 'goog_NyRCDaFXJiNwSTgzzDRRGkLKtyy';
+  static const String appleStoreKey = 'appl_gZqamYwhJiTDoVhKpiNKlPSinDg';
 
   /// RevenueCat API key provided for Hyprwise (loaded via .env / --dart-define)
   static const String defaultApiKey = AppConfig.defaultRevenueCatKey;
@@ -113,7 +114,7 @@ class SubscriptionService extends ChangeNotifier {
       : defaultApiKey;
   static String get appleApiKey => AppConfig.revenueCatAppleKey.isNotEmpty
       ? AppConfig.revenueCatAppleKey
-      : '';
+      : appleStoreKey;
 
   /// Active API key: Test Store key in debug mode, store key in release mode
   static String get apiKey {
@@ -224,12 +225,13 @@ class SubscriptionService extends ChangeNotifier {
       if (kDebugMode) {
         await Purchases.setLogLevel(LogLevel.debug);
       } else {
-        await Purchases.setLogLevel(LogLevel.info);
+        await Purchases.setLogLevel(LogLevel.warn);
       }
 
-      final config = PurchasesConfiguration(activeKey);
+      final config = PurchasesConfiguration(activeKey)
+        ..entitlementVerificationMode = EntitlementVerificationMode.informational;
       final userId = authService.currentUser?.id;
-      if (userId != null && userId.isNotEmpty && !authService.isGuest) {
+      if (userId != null && userId.isNotEmpty && authService.isAuthenticated) {
         config.appUserID = userId;
       }
       await Purchases.configure(config);
@@ -306,6 +308,13 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Internal handler for CustomerInfo updates
   void _handleCustomerInfo(CustomerInfo info) {
+    // Reject cryptographically tampered/MITM entitlement payloads in production
+    if (info.entitlements.verification == VerificationResult.failed) {
+      debugPrint('[RevenueCat] Security warning: entitlement signature verification failed.');
+      TelemetryService.instance.trackEvent('rc_entitlement_verification_failed');
+      return;
+    }
+
     _customerInfo = info;
     final activeEntitlements = info.entitlements.active;
     final hasKnownPro = activeEntitlements.containsKey(entitlementPro) ||
@@ -328,7 +337,11 @@ class SubscriptionService extends ChangeNotifier {
     _isSupporter = hasSupporter;
 
     final tippedEver = info.allPurchasedProductIdentifiers.any(
-      (id) => id.startsWith('supporter_') || id.startsWith('hyprwise_supporter'),
+      (id) =>
+          id.startsWith('supporter_') ||
+          id.startsWith('hyprwise_supporter') ||
+          id.contains('.tip_') ||
+          id.startsWith('tip_'),
     );
     if (hasSupporter || tippedEver) {
       _everSupported = true;
@@ -440,7 +453,7 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Updates pro state from canonical user authentication response and links RevenueCat appUserID
   Future<void> setServerProStatus(bool serverPro) async {
-    if (_isConfigured && !authService.isGuest) {
+    if (_isConfigured && authService.isAuthenticated) {
       final userId = authService.currentUser?.id;
       if (userId != null && userId.isNotEmpty) {
         try {

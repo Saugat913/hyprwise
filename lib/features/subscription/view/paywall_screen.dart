@@ -8,12 +8,10 @@ import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
-import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 
-/// Unified RevenueCat Paywall screen with anonymous user conversion guard.
-/// Ensures guest users link their local data to an authenticated account before purchasing.
+/// Unified RevenueCat Paywall screen for authenticated Google/Apple users.
 class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
 
@@ -22,9 +20,7 @@ class PaywallScreen extends StatefulWidget {
 }
 
 class _PaywallScreenState extends State<PaywallScreen> {
-  String? _busyAuthProvider;
   bool _isRestoring = false;
-  String? _authError;
 
   @override
   void initState() {
@@ -35,305 +31,26 @@ class _PaywallScreenState extends State<PaywallScreen> {
     }
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    if (_busyAuthProvider != null) return;
-    setState(() {
-      _busyAuthProvider = 'google';
-      _authError = null;
-    });
-
-    try {
-      final authService = getIt<AuthService>();
-      final user = await authService.linkGuestWithGoogle();
-      if (user != null && mounted) {
-        showToast(context, 'Account connected! Current data safely saved.');
-        setState(() {
-          _busyAuthProvider = null;
-        });
-      } else if (mounted) {
-        setState(() {
-          _busyAuthProvider = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _busyAuthProvider = null;
-          _authError = 'Google sign-in failed: ${e.toString().split(']').last.trim()}';
-        });
-      }
-    }
-  }
-
-  Future<void> _handleAppleSignIn() async {
-    if (_busyAuthProvider != null) return;
-    setState(() {
-      _busyAuthProvider = 'apple';
-      _authError = null;
-    });
-
-    try {
-      final authService = getIt<AuthService>();
-      final user = await authService.linkGuestWithApple();
-      if (user != null && mounted) {
-        showToast(context, 'Account connected! Current data safely saved.');
-        setState(() {
-          _busyAuthProvider = null;
-        });
-      } else if (mounted) {
-        setState(() {
-          _busyAuthProvider = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _busyAuthProvider = null;
-          _authError = 'Apple sign-in failed: ${e.toString().split(']').last.trim()}';
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final subService = getIt<SubscriptionService>();
-    final authService = getIt<AuthService>();
 
     return ListenableBuilder(
-      listenable: Listenable.merge([subService, authService]),
-      builder: (context, _) => _buildContent(context, subService, authService),
+      listenable: subService,
+      builder: (context, _) => _buildContent(context, subService),
     );
   }
 
   Widget _buildContent(
     BuildContext context,
     SubscriptionService subService,
-    AuthService authService,
   ) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final tr = context.strings;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    const brandOrange = Color(0xFFFF6500);
     final isApplePlatform = !kIsWeb && (Platform.isIOS || Platform.isMacOS);
 
-    // 1. Guard for Anonymous / Guest users: prompt login to protect and link local data
-    if (authService.isGuest) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Hyprwise Pro'),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpace.xl),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: brandOrange.withValues(alpha: isDark ? 0.2 : 0.1),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          border: Border.all(
-                            color: brandOrange.withValues(alpha: 0.3),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: const Center(
-                          child: AppIcon(
-                            HugeIcons.strokeRoundedShieldUser,
-                            size: 38,
-                            color: brandOrange,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpace.xl),
-
-                    Text(
-                      tr.signInToLinkProTitle,
-                      textAlign: TextAlign.center,
-                      style: text.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpace.sm),
-
-                    Text(
-                      tr.signInToLinkProDesc,
-                      textAlign: TextAlign.center,
-                      style: text.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        height: 1.45,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpace.lg),
-
-                    Container(
-                      padding: const EdgeInsets.all(AppSpace.md),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2E1303) : const Color(0xFFFFF0E6),
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(
-                          color: brandOrange.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.check_circle_rounded,
-                            size: 20,
-                            color: brandOrange,
-                          ),
-                          const SizedBox(width: AppSpace.sm),
-                          Expanded(
-                            child: Text(
-                              tr.t(
-                                'All your current local shifts, accounts, and transactions will be safely preserved and stored in your user account.',
-                                ne: 'तपाईंका हालका सबै सिफ्ट, खाता र कारोबारहरू सुरक्षित रूपमा तपाईंको खातामा राखिनेछन्।',
-                                es: 'Todos tus turnos, cuentas y transacciones locales se conservarán de forma segura.',
-                                fr: 'Tous vos quarts, comptes et transactions locaux seront conservés en toute sécurité.',
-                                de: 'Alle Ihre lokalen Schichten, Konten und Transaktionen bleiben sicher erhalten.',
-                                ja: '現在のシフト、口座、取引データはすべて安全にアカウントに保存されます。',
-                                zh: '您当前的所有本地班次、账户和交易记录都将安全地保存在您的账户中。',
-                                it: 'Tutti i tuoi turni, conti e transazioni locali saranno conservati in sicurezza.',
-                              ),
-                              style: text.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? const Color(0xFFD6E3DC) : const Color(0xFF1F2726),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    if (_authError != null) ...[
-                      const SizedBox(height: AppSpace.md),
-                      Container(
-                        padding: const EdgeInsets.all(AppSpace.sm),
-                        decoration: BoxDecoration(
-                          color: scheme.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Text(
-                          _authError!,
-                          textAlign: TextAlign.center,
-                          style: text.bodySmall?.copyWith(color: scheme.error),
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: AppSpace.xl),
-
-                    SizedBox(
-                      height: AppSize.button,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark ? Colors.white : const Color(0xFF0F0F11),
-                          foregroundColor: isDark ? Colors.black : Colors.white,
-                          disabledBackgroundColor:
-                              (isDark ? Colors.white : const Color(0xFF0F0F11)).withValues(alpha: 0.72),
-                          disabledForegroundColor:
-                              (isDark ? Colors.black : Colors.white).withValues(alpha: 0.9),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                        ),
-                        icon: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          child: _busyAuthProvider == 'google'
-                              ? SizedBox(
-                                  key: const ValueKey('google_busy'),
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: isDark ? Colors.black : Colors.white,
-                                  ),
-                                )
-                              : AppIcon(
-                                  HugeIcons.strokeRoundedGoogle,
-                                  key: const ValueKey('google_icon'),
-                                  size: 20,
-                                  color: isDark ? Colors.black : Colors.white,
-                                ),
-                        ),
-                        label: Text(
-                          tr.continueWithGoogle,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                        ),
-                        onPressed: _busyAuthProvider != null ? null : _handleGoogleSignIn,
-                      ),
-                    ),
-
-                    if (!kIsWeb && Platform.isIOS) ...[
-                      const SizedBox(height: AppSpace.sm),
-                      SizedBox(
-                        height: AppSize.button,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isDark ? Colors.white : Colors.black,
-                            foregroundColor: isDark ? Colors.black : Colors.white,
-                            disabledBackgroundColor:
-                                (isDark ? Colors.white : Colors.black).withValues(alpha: 0.72),
-                            disabledForegroundColor:
-                                (isDark ? Colors.black : Colors.white).withValues(alpha: 0.9),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                            ),
-                          ),
-                          icon: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 180),
-                            child: _busyAuthProvider == 'apple'
-                                ? SizedBox(
-                                    key: const ValueKey('apple_busy'),
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: isDark ? Colors.black : Colors.white,
-                                    ),
-                                  )
-                                : AppIcon(
-                                    HugeIcons.strokeRoundedApple,
-                                    key: const ValueKey('apple_icon'),
-                                    size: 20,
-                                    color: isDark ? Colors.black : Colors.white,
-                                  ),
-                          ),
-                          label: Text(
-                            tr.continueWithApple,
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                          ),
-                          onPressed: _busyAuthProvider != null ? null : _handleAppleSignIn,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // 2. User is authenticated: Render RevenueCat UI Paywall when valid offerings exist
+    // Render RevenueCat UI Paywall when valid offerings exist
     if (subService.isConfigured && subService.hasValidOfferings) {
       return Scaffold(
         body: PaywallView(

@@ -1260,8 +1260,7 @@ class _UserChatAvatar extends StatelessWidget {
     final authService = getIt<AuthService>();
     final user = authService.currentUser;
     final scheme = Theme.of(context).colorScheme;
-    final isAnon = authService.isGuest || user == null;
-    if (isAnon) {
+    if (user == null) {
       return CircleAvatar(
         radius: 16,
         backgroundColor: scheme.surfaceContainerHighest,

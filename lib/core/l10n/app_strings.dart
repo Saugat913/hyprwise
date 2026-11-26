@@ -898,7 +898,6 @@ class AppStrings {
   // Authentication & Legal
   String get continueWithGoogle => _t('Continue with Google', ne: 'Google मार्फत जारी राख्नुहोस्', es: 'Continuar con Google', fr: 'Continuer avec Google', de: 'Mit Google fortfahren', ja: 'Googleで続ける', zh: '通过 Google 继续');
   String get continueWithApple => _t('Continue with Apple', ne: 'Apple मार्फत जारी राख्नुहोस्', es: 'Continuar con Apple', fr: 'Continuer avec Apple', de: 'Mit Apple fortfahren', ja: 'Appleで続ける', zh: '通过 Apple 继续');
-  String get continueAsGuest => _t('Continue as Guest (Offline)', ne: 'अतिथि (अफलाइन) को रूपमा जारी राख्नुहोस्', es: 'Continuar como invitado (Offline)', fr: 'Continuer en invité (Hors ligne)', de: 'Als Gast fortfahren (Offline)', ja: 'ゲストとして続ける（オフライン）', zh: '访客体验（离线）');
   String get orDivider => _t('or', ne: 'वा', es: 'o', fr: 'ou', de: 'oder', ja: 'または', zh: '或');
   String get offlineSecurityBadge => _t('100% on-device · Private · Zero ads', ne: '१००% तपाईंको फोनमै · सुरक्षित · कुनै विज्ञापन छैन', es: '100% en dispositivo · Privado · Sin anuncios', fr: '100% sur l\'appareil · Privé · Zéro pub', de: '100% auf dem Gerät · Sicher · Keine Werbung', ja: '完全端末保存 · プライベート · 広告なし', zh: '100% 本地运行 · 隐私保护 · 无广告');
   String get loginPitch => _t('Clarity and control over your financial life.', ne: 'सिफ्ट, आम्दानी र खर्चको स्पष्ट हिसाबकिताब।', es: 'Claridad y control sobre tu vida financiera.', fr: 'Clarté et contrôle sur votre vie financière.', de: 'Klarheit und Kontrolle über Ihre Finanzen.', ja: 'お金とシフトを明確にコントロール。', zh: '掌控收入与支出，财务一目了然。');
@@ -1303,17 +1302,6 @@ class AppStrings {
   String get signInToSyncSubtitle => _t('Sign in to synchronize backups & unlock Pro across devices', ne: 'ब्याकअप सिंक गर्न र सबै डिभाइसमा प्रो चलाउन साइन इन गर्नुहोस्', es: 'Inicia sesión para sincronizar copias y activar Pro', fr: 'Connectez-vous pour synchroniser vos sauvegardes et Pro', de: 'Anmelden, um Backups & Pro geräteübergreifend zu nutzen', ja: 'サインインしてバックアップとProを端末間で同期', zh: '登录以同步云备份并在多设备间解锁 Pro', it: 'Accedi per sincronizzare i backup e sbloccare Pro');
   String get signedInWithGoogle => _t('Signed in with Google', ne: 'Google बाट साइन इन गरिएको', es: 'Conectado con Google', fr: 'Connecté avec Google', de: 'Mit Google angemeldet', ja: 'Googleでサインイン中', zh: '已通过 Google 登录', it: 'Accesso effettuato con Google');
   String get signedInWithApple => _t('Signed in with Apple', ne: 'Apple बाट साइन इन गरिएको', es: 'Conectado con Apple', fr: 'Connecté avec Apple', de: 'Mit Apple angemeldet', ja: 'Appleでサインイン中', zh: '已通过 Apple 登录', it: 'Accesso effettuato con Apple');
-  String get signInToLinkProTitle => _t('Sign In to Link Data & Purchase Pro', ne: 'डाटा लिंक गर्न र प्रो खरिद गर्न साइन इन गर्नुहोस्', es: 'Inicia sesión para vincular datos y comprar Pro', fr: 'Connectez-vous pour lier vos données et acheter Pro', de: 'Anmelden, um Daten zu verknüpfen & Pro zu kaufen', ja: 'サインインしてデータを連携＆Proを購入', zh: '登录以绑定数据并购买 Pro', it: 'Accedi per collegare i dati e acquistare Pro');
-  String get signInToLinkProDesc => _t(
-        'To protect your subscription across devices and securely bind your local records to your cloud account, please sign in before upgrading to Hyprwise Pro.',
-        ne: 'तपाईंको सदस्यता सुरक्षित राख्न र फोनको डाटालाई क्लाउड खातामा जोड्न कृपया हाइपरवाइज प्रो लिनुअघि साइन इन गर्नुहोस्।',
-        es: 'Para proteger tu suscripción entre dispositivos y vincular tus datos locales, inicia sesión antes de actualizar a Hyprwise Pro.',
-        fr: 'Pour protéger votre abonnement sur tous vos appareils, veuillez vous connecter avant de passer à Hyprwise Pro.',
-        de: 'Um Ihr Abo geräteübergreifend zu schützen, melden Sie sich bitte vor dem Upgrade auf Hyprwise Pro an.',
-        ja: '複数の端末でサブスクリプションを保護しデータを安全に連携するため、アップグレード前にサインインしてください。',
-        zh: '为了跨设备保护您的订阅并将本地记录安全绑定到云账户，请在升级 Hyprwise Pro 前登录。',
-        it: 'Per proteggere il tuo abbonamento su tutti i dispositivi, accedi prima di passare a Hyprwise Pro.',
-      );
 
   // Advice Engine Alerts
   String alertGoalMayFallShort(String goalName) => _t('$goalName may fall short', ne: '$goalName लक्ष्य अपूरो हुन सक्छ', es: '$goalName podría quedarse corto', fr: '$goalName risque d\'être insuffisant', de: '$goalName könnte verfehlt werden', ja: '$goalName が目標に届かない可能性', zh: '$goalName 可能无法按期达成', it: '$goalName potrebbe non essere raggiunto');

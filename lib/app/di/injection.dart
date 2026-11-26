@@ -97,7 +97,7 @@ Future<void> configureDependencies() async {
 
   // Pro cloud sync is automatic. Finance changes, preferences, custom categories/
   // merchants, and reminder rules are all observed; AuthService debounces writes
-  // and ignores free/guest sessions.
+  // and ignores free or unauthenticated sessions.
   financeStore.addListener(authService.triggerProAutoSync);
   settingsRepo.addListener(authService.triggerProAutoSync);
   categoryRepo.addListener(authService.triggerProAutoSync);

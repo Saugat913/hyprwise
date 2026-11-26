@@ -132,9 +132,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
   }
 
+  Future<void> signInTestUser() async {
+    await storage.write(
+      key: 'auth_user_profile',
+      value: jsonEncode(const UserProfile(
+        id: 'usr_g_settings',
+        email: 'settings@hyprwise.com',
+        displayName: 'Settings User',
+        provider: AuthProvider.google,
+        isPro: false,
+      ).toJson()),
+    );
+    await authService.load();
+  }
+
   group('R5: Settings Screen Reorganization (Tier 1 Feature Coverage)', () {
     testWidgets('T1.1 & T1.2: Profile and Upgrade are positioned at the top of Settings list', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       final tr = AppStrings.current();
@@ -154,7 +168,7 @@ void main() {
     });
 
     testWidgets('T1.3: General settings are positioned in the middle zone', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       final tr = AppStrings.current();
@@ -171,7 +185,7 @@ void main() {
     });
 
     testWidgets('T1.4: Support section exists in settings layout', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       final tr = AppStrings.current();
@@ -179,7 +193,7 @@ void main() {
     });
 
     testWidgets('T1.5: Support and legal elements appear after general settings', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       final tr = AppStrings.current();
@@ -229,14 +243,14 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('T2.4: Danger Zone is located at the bottom of the Settings screen', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       final tr = AppStrings.current();
@@ -253,7 +267,7 @@ void main() {
     });
 
     testWidgets('T2.5: Tapping Restore Purchases triggers restore handler', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       final tr = AppStrings.current();

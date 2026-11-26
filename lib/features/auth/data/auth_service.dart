@@ -31,8 +31,6 @@ class AuthService extends ChangeNotifier {
 
   UserProfile? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
-  bool get isGuest =>
-      _currentUser == null || _currentUser?.provider == AuthProvider.guest;
   bool get isLoading => _isLoading;
   bool get isCloudSyncing => _isCloudSyncing;
   bool get hasRestoredCloudData => _hasRestoredCloudData;
@@ -40,7 +38,6 @@ class AuthService extends ChangeNotifier {
 
   static const _userKey = 'auth_user_profile';
   static const _tokenKey = 'auth_api_token';
-  static const _deviceGuestIdKey = 'auth_device_guest_id';
   static const _appleCachedNameKey = 'auth_apple_cached_name';
   static const _appleCachedEmailKey = 'auth_apple_cached_email';
   static const _lastLoggedInUserIdKey = 'auth_last_logged_in_user_id';
@@ -146,6 +143,14 @@ class AuthService extends ChangeNotifier {
       final raw = await _storage.read(key: _userKey);
       if (raw != null) {
         final map = jsonDecode(raw) as Map<String, dynamic>;
+        final rawProvider = (map['provider'] as String?)?.toLowerCase();
+        final rawEmail = (map['email'] as String?)?.toLowerCase() ?? '';
+        // Purge any legacy guest session from older app versions so user signs in with Google or Apple.
+        if (rawProvider == 'guest' || rawEmail == 'guest@hyprwise.local') {
+          await _storage.delete(key: _userKey);
+          await _storage.delete(key: _tokenKey);
+          return;
+        }
         _currentUser = UserProfile.fromJson(map);
         ApiClient.instance.setAuthContext(
           token: savedToken,
@@ -548,353 +553,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Links an existing anonymous/guest session with Google credentials and backs up local data to cloud
-  Future<UserProfile?> linkGuestWithGoogle() async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      String userEmail = 'user.finance@gmail.com';
-      String userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
-      String userName = 'Google User';
-      String? photoUrl;
-      String? idToken;
-
-      if (_hasFirebase) {
-        final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
-        final GoogleSignInAccount? gUser = await googleSignIn.signIn();
-        if (gUser == null) {
-          // User aborted Google sign in
-          return null;
-        }
-
-        userEmail = gUser.email.trim().toLowerCase();
-        userName = gUser.displayName ?? userEmail.split('@')[0];
-        photoUrl = gUser.photoUrl;
-        userId = deterministicUserIdFromEmail(userEmail, prefix: 'usr_g_');
-
-        final GoogleSignInAuthentication gAuth = await gUser.authentication;
-        idToken = gAuth.idToken;
-
-        final credential = GoogleAuthProvider.credential(
-          accessToken: gAuth.accessToken,
-          idToken: gAuth.idToken,
-        );
-
-        final currentFbUser = FirebaseAuth.instance.currentUser;
-        UserCredential userCredential;
-        if (currentFbUser != null && currentFbUser.isAnonymous) {
-          try {
-            userCredential = await currentFbUser.linkWithCredential(credential);
-          } on FirebaseAuthException catch (e) {
-            if (e.code == 'credential-already-in-use') {
-              userCredential = await FirebaseAuth.instance.signInWithCredential(
-                credential,
-              );
-            } else {
-              rethrow;
-            }
-          }
-        } else {
-          userCredential = await FirebaseAuth.instance.signInWithCredential(
-            credential,
-          );
-        }
-
-        final fbUser = userCredential.user;
-        if (fbUser != null) {
-          userId = fbUser.uid;
-          userEmail = (fbUser.email ?? userEmail).trim().toLowerCase();
-          userName = fbUser.displayName ?? userName;
-          photoUrl = fbUser.photoURL ?? photoUrl;
-          idToken = await fbUser.getIdToken();
-        }
-      }
-
-      // Synchronize with Cloudflare Server and adopt canonical account identity
-      bool isPro = false;
-      try {
-        final serverRes = await ApiClient.instance.authenticateFirebase(
-          uid: userId,
-          idToken: idToken,
-          email: userEmail,
-          displayName: userName,
-          photoUrl: photoUrl,
-          provider: 'google',
-        );
-        final serverUser = serverRes?['user'] as Map<String, dynamic>?;
-        if (serverUser != null) {
-          userId = (serverUser['id'] as String?) ?? userId;
-          userEmail = (serverUser['email'] as String?) ?? userEmail;
-          userName = (serverUser['displayName'] as String?) ?? userName;
-          isPro = serverUser['isPro'] as bool? ?? false;
-        }
-        await _applyServerSyncResult(serverRes);
-      } catch (_) {}
-
-      ApiClient.instance.setAuthContext(userId: userId, email: userEmail);
-
-      // Link with RevenueCat customer identity using canonical userId
-      try {
-        await Purchases.logIn(userId);
-      } catch (_) {}
-
-      final user = UserProfile(
-        id: userId,
-        email: userEmail,
-        displayName: userName,
-        photoUrl: photoUrl,
-        provider: AuthProvider.google,
-        isPro: isPro,
-      );
-      _currentUser = user;
-      await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
-
-      await _restoreProCloudAfterSignIn();
-
-      // Backup local Drift SQLite database to cloud
-      await syncLocalDataToCloud();
-
-      if (getIt.isRegistered<AssistantViewModel>()) {
-        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
-      }
-
-      // Firebase Analytics Tracking
-      TelemetryService.instance.setUserId(userId);
-      TelemetryService.instance.logLogin(loginMethod: 'google_linked');
-      TelemetryService.instance.setUserProperty(
-        name: 'auth_provider',
-        value: 'google',
-      );
-      TelemetryService.instance.setUserProperty(
-        name: 'is_pro',
-        value: isPro.toString(),
-      );
-
-      return user;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Links an existing anonymous/guest session with Apple credentials and backs up local data
-  Future<UserProfile?> linkGuestWithApple() async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      String? userEmail;
-      String? userId;
-      String? userName;
-      String? idToken;
-
-      if (_hasFirebase) {
-        final appleProvider = AppleAuthProvider();
-        appleProvider.addScope('email');
-        appleProvider.addScope('name');
-        final currentFbUser = FirebaseAuth.instance.currentUser;
-        UserCredential userCredential;
-        if (currentFbUser != null && currentFbUser.isAnonymous) {
-          try {
-            userCredential = await currentFbUser.linkWithProvider(
-              appleProvider,
-            );
-          } on FirebaseAuthException catch (e) {
-            if (e.code == 'credential-already-in-use') {
-              userCredential = await FirebaseAuth.instance.signInWithProvider(
-                appleProvider,
-              );
-            } else {
-              rethrow;
-            }
-          }
-        } else {
-          userCredential = await FirebaseAuth.instance.signInWithProvider(
-            appleProvider,
-          );
-        }
-
-        final fbUser = userCredential.user;
-        if (fbUser != null) {
-          userId = fbUser.uid;
-          idToken = await fbUser.getIdToken();
-
-          // 1. Extract from profile
-          final profile = userCredential.additionalUserInfo?.profile;
-          if (profile != null) {
-            final profileEmail = profile['email'] as String?;
-            if (profileEmail != null && profileEmail.isNotEmpty) {
-              userEmail = profileEmail.trim().toLowerCase();
-            }
-            final extractedName = extractNameFromProfile(profile);
-            if (extractedName != null && extractedName.isNotEmpty) {
-              userName = extractedName;
-            }
-          }
-
-          // 2. Extract from providerData
-          for (final p in fbUser.providerData) {
-            if ((userEmail == null || userEmail.isEmpty) && p.email != null && p.email!.isNotEmpty) {
-              userEmail = p.email!.trim().toLowerCase();
-            }
-            if ((userName == null || userName.isEmpty || userName == 'Apple User' || userName == 'Apple Account') &&
-                p.displayName != null &&
-                p.displayName!.trim().isNotEmpty &&
-                p.displayName!.trim() != 'Apple User' &&
-                p.displayName!.trim() != 'Apple Account') {
-              userName = p.displayName!.trim();
-            }
-          }
-
-          // 3. Extract from JWT claims
-          if (idToken != null) {
-            final claims = decodeJwtPayload(idToken);
-            if (claims != null) {
-              if (userEmail == null || userEmail.isEmpty) {
-                final tokenEmail = claims['email'] as String?;
-                if (tokenEmail != null && tokenEmail.isNotEmpty) {
-                  userEmail = tokenEmail.trim().toLowerCase();
-                }
-              }
-              if (userName == null || userName.isEmpty || userName == 'Apple User' || userName == 'Apple Account') {
-                final tokenName = claims['name'] as String?;
-                if (tokenName != null && tokenName.isNotEmpty && tokenName != 'Apple User') {
-                  userName = tokenName.trim();
-                }
-              }
-            }
-          }
-
-          // 4. Direct fbUser
-          if (fbUser.email != null && fbUser.email!.isNotEmpty) {
-            userEmail ??= fbUser.email!.trim().toLowerCase();
-          }
-          if (fbUser.displayName != null &&
-              fbUser.displayName!.trim().isNotEmpty &&
-              fbUser.displayName!.trim() != 'Apple User' &&
-              fbUser.displayName!.trim() != 'Apple Account') {
-            userName ??= fbUser.displayName!.trim();
-          }
-
-          // 5. Secure storage fallback
-          userEmail ??= await _storage.read(key: 'auth_apple_email_$userId');
-          userEmail ??= await _storage.read(key: _appleCachedEmailKey);
-
-          userName ??= await _storage.read(key: 'auth_apple_name_$userId');
-          userName ??= await _storage.read(key: _appleCachedNameKey);
-        }
-      }
-
-      userEmail ??= await _storage.read(key: _appleCachedEmailKey);
-      userId ??= userEmail != null
-          ? deterministicUserIdFromEmail(userEmail, prefix: 'usr_a_')
-          : 'usr_a_unknown';
-      if (userEmail == null || userEmail.isEmpty) {
-        userEmail = 'user.finance@icloud.com';
-      }
-
-      if (userName == null ||
-          userName.trim().isEmpty ||
-          userName.trim() == 'Apple User' ||
-          userName.trim() == 'Apple Account') {
-        userName = formatDisplayNameFromEmail(userEmail);
-      }
-
-      final String finalUserId = userId;
-      String finalEmail = userEmail;
-      String finalName = userName;
-
-      // Cache to storage
-      await _storage.write(key: 'auth_apple_email_$finalUserId', value: finalEmail);
-      await _storage.write(key: _appleCachedEmailKey, value: finalEmail);
-      await _storage.write(key: 'auth_apple_name_$finalUserId', value: finalName);
-      await _storage.write(key: _appleCachedNameKey, value: finalName);
-
-      // Update Firebase user displayName on-device if possible
-      if (_hasFirebase) {
-        try {
-          final currentFb = FirebaseAuth.instance.currentUser;
-          if (currentFb != null &&
-              (currentFb.displayName == null ||
-               currentFb.displayName!.isEmpty ||
-               currentFb.displayName == 'Apple User')) {
-            await currentFb.updateDisplayName(finalName);
-          }
-        } catch (_) {}
-      }
-
-      // Synchronize with Cloudflare Server and adopt canonical account identity
-      bool isPro = false;
-      try {
-        final serverRes = await ApiClient.instance.authenticateFirebase(
-          uid: finalUserId,
-          idToken: idToken,
-          email: finalEmail,
-          displayName: finalName,
-          provider: 'apple',
-        );
-        final serverUser = serverRes?['user'] as Map<String, dynamic>?;
-        if (serverUser != null) {
-          final sName = serverUser['displayName'] as String?;
-          if (sName != null &&
-              sName.trim().isNotEmpty &&
-              sName.trim() != 'Apple User' &&
-              sName.trim() != 'Apple Account') {
-            finalName = sName.trim();
-          }
-          final sEmail = serverUser['email'] as String?;
-          if (sEmail != null && sEmail.trim().isNotEmpty && !sEmail.startsWith('guest@')) {
-            finalEmail = sEmail.trim().toLowerCase();
-          }
-          isPro = serverUser['isPro'] as bool? ?? false;
-        }
-        await _applyServerSyncResult(serverRes);
-      } catch (_) {}
-
-      ApiClient.instance.setAuthContext(userId: finalUserId, email: finalEmail);
-
-      // Link with RevenueCat
-      try {
-        await Purchases.logIn(finalUserId);
-      } catch (_) {}
-
-      final user = UserProfile(
-        id: finalUserId,
-        email: finalEmail,
-        displayName: finalName,
-        provider: AuthProvider.apple,
-        isPro: isPro,
-      );
-      _currentUser = user;
-      await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
-
-      await _restoreProCloudAfterSignIn();
-
-      // Backup local Drift SQLite database to cloud
-      await syncLocalDataToCloud();
-
-      if (getIt.isRegistered<AssistantViewModel>()) {
-        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
-      }
-
-      // Firebase Analytics Tracking
-      TelemetryService.instance.setUserId(userId);
-      TelemetryService.instance.logLogin(loginMethod: 'apple_linked');
-      TelemetryService.instance.setUserProperty(
-        name: 'auth_provider',
-        value: 'apple',
-      );
-      TelemetryService.instance.setUserProperty(
-        name: 'is_pro',
-        value: isPro.toString(),
-      );
-
-      return user;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
   /// Records onboarding completion for this user in secure storage and backend
   Future<void> markUserOnboarded({
     required String userId,
@@ -1136,22 +794,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Restores a Pro customer's encrypted snapshot after identity is known.
-  /// A successful restore brings back `onboarded`, language, currency and
-  /// notification preferences; a new account without a snapshot still sees
-  /// onboarding normally.
-  Future<void> _restoreProCloudAfterSignIn() async {
-    final subscription =
-        getIt.isRegistered<SubscriptionService>()
-            ? getIt<SubscriptionService>()
-            : null;
-    final hasProAccess =
-        _currentUser?.isPro == true || (subscription?.isPro ?? false);
-    if (!hasProAccess) return;
-
-    await pullCloudDataToLocal();
-  }
-
   /// Called when local data changes to automatically back up to cloud if user is Pro
   void triggerProAutoSync() {
     if (_suppressAutoSync || _isCloudSyncing) return;
@@ -1211,74 +853,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<UserProfile> signInAsGuest() async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      // Reuse persistent device guest ID so logging out and logging in as guest on the same device
-      // keeps the same server quota identity.
-      String? storedGuestId = await _storage.read(key: _deviceGuestIdKey);
-      String userId = storedGuestId ?? '';
-
-      if (userId.isEmpty && _hasFirebase) {
-        try {
-          final userCredential =
-              await FirebaseAuth.instance.signInAnonymously();
-          if (userCredential.user != null) {
-            userId = userCredential.user!.uid;
-          }
-        } catch (_) {}
-      }
-      if (userId.isEmpty) {
-        userId = 'usr_guest_device_1';
-      }
-      await _storage.write(key: _deviceGuestIdKey, value: userId);
-
-      try {
-        final serverRes = await ApiClient.instance.authenticateFirebase(
-          uid: userId,
-          email: 'guest@hyprwise.local',
-          displayName: 'Guest User',
-          provider: 'offline',
-        );
-        await _applyServerSyncResult(serverRes);
-      } catch (_) {}
-
-      ApiClient.instance.setAuthContext(
-        userId: userId,
-        email: 'guest@hyprwise.local',
-      );
-
-      final user = UserProfile(
-        id: userId,
-        email: 'guest@hyprwise.local',
-        displayName: 'Guest User',
-        provider: AuthProvider.guest,
-        isPro: false,
-      );
-      _currentUser = user;
-      await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
-
-      if (getIt.isRegistered<AssistantViewModel>()) {
-        unawaited(getIt<AssistantViewModel>().syncQuotaFromServer());
-      }
-
-      // Firebase Analytics Tracking
-      TelemetryService.instance.setUserId(userId);
-      TelemetryService.instance.logLogin(loginMethod: 'guest');
-      TelemetryService.instance.setUserProperty(
-        name: 'auth_provider',
-        value: 'guest',
-      );
-      TelemetryService.instance.setUserProperty(name: 'is_pro', value: 'false');
-
-      return user;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
   Future<void> signOut() async {
     _autoSyncDebounce?.cancel();
     _autoSyncDebounce = null;
@@ -1329,10 +903,9 @@ class AuthService extends ChangeNotifier {
     _autoSyncDebounce?.cancel();
     _autoSyncDebounce = null;
     final user = _currentUser;
-    final wasGuest = isGuest;
 
-    // 1. Purge server-side cloud account & backups (required for non-guest accounts)
-    if (!wasGuest && user != null) {
+    // 1. Purge server-side cloud account & backups
+    if (user != null) {
       final serverDeleted = await ApiClient.instance.deleteAccount(
         userId: user.id,
         email: user.email,
@@ -1378,7 +951,6 @@ class AuthService extends ChangeNotifier {
       await _storage.delete(key: _userKey);
       await _storage.delete(key: _tokenKey);
       await _storage.delete(key: _lastLoggedInUserIdKey);
-      await _storage.delete(key: _deviceGuestIdKey);
       await _storage.delete(key: _appleCachedNameKey);
       await _storage.delete(key: _appleCachedEmailKey);
     }

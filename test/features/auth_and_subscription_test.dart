@@ -46,28 +46,27 @@ void main() {
     subService.dispose();
   });
 
-  test('Guest login creates offline profile and initial free tier', () async {
-    expect(authService.isGuest, isTrue);
-    final user = await authService.signInAsGuest();
-    expect(user.provider, equals(AuthProvider.guest));
+  test('Legacy persisted guest profile is purged on load requiring Google or Apple sign-in', () async {
+    await storage.write(
+      key: 'auth_user_profile',
+      value: '{"id":"usr_guest_1","email":"guest@hyprwise.local","displayName":"Guest User","provider":"guest","isPro":false}',
+    );
+    await authService.load();
+    expect(authService.isAuthenticated, isFalse);
+    expect(authService.currentUser, isNull);
+  });
+
+  test('Signing in with Google creates authenticated permanent user on initial free tier', () async {
+    final user = await authService.signInWithGoogle(email: 'user@hyprwise.com', displayName: 'Hyprwise User');
+    expect(user, isNotNull);
+    expect(user!.provider, equals(AuthProvider.google));
     expect(user.isPro, isFalse);
     expect(authService.isAuthenticated, isTrue);
-    expect(authService.isGuest, isTrue);
     expect(subService.isPro, isFalse);
   });
 
-  test('Signing in with Google upgrades guest to authenticated permanent user', () async {
-    await authService.signInAsGuest();
-    expect(authService.isGuest, isTrue);
-
-    final user = await authService.signInWithGoogle(email: 'user@hyprwise.com', displayName: 'Hyprwise User');
-    expect(user!.provider, equals(AuthProvider.google));
-    expect(authService.isGuest, isFalse);
-    expect(authService.isAuthenticated, isTrue);
-  });
-
   test('Subscribing to Pro plan activates Pro across SubscriptionService and AuthService', () async {
-    await authService.signInAsGuest();
+    await authService.signInWithGoogle(email: 'pro.buyer@hyprwise.com', displayName: 'Pro Buyer');
     expect(subService.isPro, isFalse);
 
     final plan = SubscriptionService.availablePlans[1]; // Annual plan

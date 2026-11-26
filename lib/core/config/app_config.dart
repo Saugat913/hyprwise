@@ -30,7 +30,7 @@ class AppConfig {
   /// RevenueCat Apple App Store API Key
   static const String revenueCatAppleKey = String.fromEnvironment(
     'REVENUECAT_APPLE_KEY',
-    defaultValue: '',
+    defaultValue: 'appl_gZqamYwhJiTDoVhKpiNKlPSinDg',
   );
 
   /// Default Play Store public API key for Hyprwise

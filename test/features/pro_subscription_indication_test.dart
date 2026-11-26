@@ -84,7 +84,7 @@ void main() {
 
   group('R4: Pro Plan User Indication (Tier 1 Feature Coverage)', () {
     test('T1.1: Calling subscribe() activates Pro status across SubscriptionService and AuthService', () async {
-      await authService.signInAsGuest();
+      await authService.signInWithGoogle(email: 'tester@hyprwise.com', displayName: 'Test User');
       expect(subService.isPro, isFalse);
 
       final annualPlan = SubscriptionService.availablePlans[1];
@@ -95,7 +95,7 @@ void main() {
     });
 
     test('T1.2: Calling subscribe() immediately updates isProNotifier.value to true', () async {
-      await authService.signInAsGuest();
+      await authService.signInWithGoogle(email: 'tester@hyprwise.com', displayName: 'Test User');
       expect(subService.isProNotifier.value, isFalse);
 
       final monthlyPlan = SubscriptionService.availablePlans[0];
@@ -105,7 +105,7 @@ void main() {
     });
 
     test('T1.3: Calling subscribe() triggers synchronous ChangeNotifier notification', () async {
-      await authService.signInAsGuest();
+      await authService.signInWithGoogle(email: 'tester@hyprwise.com', displayName: 'Test User');
       int notifyCount = 0;
       subService.addListener(() => notifyCount++);
 
@@ -124,7 +124,7 @@ void main() {
 
     testWidgets('T1.5: Settings screen reflects active Pro banner when user is Pro', (tester) async {
       await tester.runAsync(() async {
-        await authService.signInAsGuest();
+        await authService.signInWithGoogle(email: 'tester@hyprwise.com', displayName: 'Test User');
         final annualPlan = SubscriptionService.availablePlans[1];
         await subService.subscribe(annualPlan);
       });
@@ -154,9 +154,9 @@ void main() {
   });
 
   group('R4: Pro Plan User Indication (Tier 2 Boundary & Corner Cases)', () {
-    test('T2.1: Guest user upgrading to Pro persists Pro in storage and active notifiers', () async {
-      final guest = await authService.signInAsGuest();
-      expect(guest.provider, equals(AuthProvider.guest));
+    test('T2.1: Authenticated Google user upgrading to Pro persists Pro in storage and active notifiers', () async {
+      final user = await authService.signInWithGoogle(email: 'tester@hyprwise.com', displayName: 'Test User');
+      expect(user!.provider, equals(AuthProvider.google));
 
       final monthlyPlan = SubscriptionService.availablePlans[0];
       await subService.subscribe(monthlyPlan);
@@ -168,7 +168,7 @@ void main() {
     });
 
     test('T2.2: Lifetime plan subscription activates Pro with null expiration date', () async {
-      await authService.signInAsGuest();
+      await authService.signInWithGoogle(email: 'tester@hyprwise.com', displayName: 'Test User');
       const lifetimePlan = SubscriptionPlan(
         id: 'lifetime',
         title: 'Lifetime Plan',

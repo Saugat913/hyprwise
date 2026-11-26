@@ -1,4 +1,4 @@
-enum AuthProvider { google, apple, guest }
+enum AuthProvider { google, apple }
 
 class UserProfile {
   const UserProfile({
@@ -51,7 +51,7 @@ class UserProfile {
         photoUrl: json['photoUrl'] as String?,
         provider: AuthProvider.values.firstWhere(
           (p) => p.name == json['provider'],
-          orElse: () => AuthProvider.guest,
+          orElse: () => AuthProvider.google,
         ),
         isPro: (json['isPro'] as bool?) ?? false,
       );

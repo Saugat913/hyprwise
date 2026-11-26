@@ -171,9 +171,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
   }
 
+  Future<void> signInTestUser() async {
+    await storage.write(
+      key: 'auth_user_profile',
+      value: jsonEncode(const UserProfile(
+        id: 'usr_g_stress',
+        email: 'stress@hyprwise.com',
+        displayName: 'Stress User',
+        provider: AuthProvider.google,
+        isPro: false,
+      ).toJson()),
+    );
+    await authService.load();
+  }
+
   group('M2 Challenger 2: Widget Tree Hierarchy & Children Ordering', () {
     testWidgets('ListView children exact structural index verification', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       final listViewFinder = find.byType(ListView);
@@ -227,7 +241,7 @@ void main() {
     });
 
     testWidgets('Support & Legal AppCard contains Restore Purchases, Privacy Policy, Terms of Service in order', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester);
 
       final listView = tester.widget<ListView>(find.byType(ListView));
@@ -248,7 +262,7 @@ void main() {
     });
 
     testWidgets('Monotonic Y-coordinate hierarchy ordering in rendered layout', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester, size: const Size(1080, 4000)); // Tall enough to render all without offstage clip
 
       final tr = AppStrings.current();
@@ -302,7 +316,7 @@ void main() {
 
     for (final vp in viewports) {
       testWidgets('Viewport stress: ${vp['name']} initial render and full scroll without overflow', (tester) async {
-        await authService.signInAsGuest();
+        await signInTestUser();
         await pumpSettings(tester, size: vp['size'] as Size);
 
         // Verify initial frame has no layout exceptions
@@ -337,7 +351,7 @@ void main() {
 
   group('M2 Challenger 2: Keyboard Popping & Simulated viewInsets Stress Testing', () {
     testWidgets('Keyboard popping (300px viewInsets on 360x600 compact viewport)', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester, size: const Size(360, 600));
 
       // Simulate keyboard popping up by setting viewInsets.bottom
@@ -360,7 +374,7 @@ void main() {
     });
 
     testWidgets('Severe keyboard popping (280px viewInsets on 320x480 tiny viewport - 200px available)', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester, size: const Size(320, 480));
 
       // 280px keyboard on a 480px screen leaves only 200px visible viewport height
@@ -439,7 +453,7 @@ void main() {
       expect(find.byType(ProCrownBadge), findsOneWidget);
     });
 
-    testWidgets('Unauthenticated guest state buttons on narrow 320px screen do not overflow', (tester) async {
+    testWidgets('Unauthenticated state buttons on narrow 320px screen do not overflow', (tester) async {
       // In fresh unauthenticated state
       await pumpSettings(tester, size: const Size(360, 640));
 
@@ -451,7 +465,7 @@ void main() {
     });
 
     testWidgets('Pro state transition dynamically updates UI without layout jump or overflow', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester, size: const Size(360, 600));
 
       final tr = AppStrings.current();
@@ -472,7 +486,7 @@ void main() {
 
   group('M2 Challenger 2: Modal Bottom Sheets & Legal Dialogs Verification', () {
     testWidgets('Privacy Policy and Terms of Service dialogs open and dismiss cleanly on compact 360x600', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester, size: const Size(360, 600));
 
       final tr = AppStrings.current();
@@ -522,7 +536,7 @@ void main() {
     });
 
     testWidgets('Language modal bottom sheet opens and scrolls cleanly on compact 360x600', (tester) async {
-      await authService.signInAsGuest();
+      await signInTestUser();
       await pumpSettings(tester, size: const Size(360, 600));
 
       final tr = AppStrings.current();

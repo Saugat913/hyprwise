@@ -132,7 +132,7 @@ void main() {
 
   group('Tier 3: Cross-Feature Combinations (Pairwise Coverage)', () {
     test('T3.1: Pro user editing calendar shift maintains Pro state and scheduled shift editability', () async {
-      await authService.signInAsGuest();
+      await authService.signInWithGoogle(email: 'e2e@hyprwise.com', displayName: 'E2E User');
       final annualPlan = SubscriptionService.availablePlans[1];
       await subService.subscribe(annualPlan);
       expect(subService.isPro, isTrue);
@@ -159,7 +159,7 @@ void main() {
     });
 
     test('T3.2: Pro user exporting comprehensive analytics report generates valid content without paywall lock', () async {
-      await authService.signInAsGuest();
+      await authService.signInWithGoogle(email: 'e2e@hyprwise.com', displayName: 'E2E User');
       final annualPlan = SubscriptionService.availablePlans[1];
       await subService.subscribe(annualPlan);
 
@@ -193,7 +193,7 @@ void main() {
     });
 
     test('T3.4: Pro status upgrade immediately updates UI Listeners', () async {
-      await authService.signInAsGuest();
+      await authService.signInWithGoogle(email: 'e2e@hyprwise.com', displayName: 'E2E User');
       int listenerCalls = 0;
       subService.addListener(() => listenerCalls++);
 
@@ -353,7 +353,7 @@ void main() {
       expect(csv, contains('Groceries'));
 
       // Step 5: Upgrade to Pro
-      await authService.signInAsGuest();
+      await authService.signInWithGoogle(email: 'e2e@hyprwise.com', displayName: 'E2E User');
       final annualPlan = SubscriptionService.availablePlans[1];
       await subService.subscribe(annualPlan);
       expect(subService.isPro, isTrue);
