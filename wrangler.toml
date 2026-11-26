@@ -13,8 +13,8 @@ HOST = "0.0.0.0"
 PORT = "3000"
 FIREBASE_PROJECT_ID = "tilvane"
 FIREBASE_CLIENT_EMAIL = "firebase-adminsdk-fbsvc@tilvane.iam.gserviceaccount.com"
-GOOGLE_PROJECT_ID = "projects/218890071998"
-GOOGLE_PROJECT_NUMBER = "218890071998"
+GOOGLE_PROJECT_ID = "projects/534651621591"
+GOOGLE_PROJECT_NUMBER = "534651621591"
 ENFORCE_APP_CHECK = "true"
 # Secrets MUST be configured via `wrangler secret put` (never committed here):
 #   wrangler secret put GEMINI_API_KEY
