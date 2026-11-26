@@ -1218,7 +1218,6 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
                       <select name="provider">
                         <option value="google" ${u.provider === 'google' ? 'selected' : ''}>Google</option>
                         <option value="apple" ${u.provider === 'apple' ? 'selected' : ''}>Apple</option>
-                        <option value="manual" ${u.provider === 'manual' ? 'selected' : ''}>Manual</option>
                       </select>
                     </div>
                   </div>
@@ -1331,7 +1330,6 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
                 <select id="u_provider" name="provider">
                   <option value="google">Google</option>
                   <option value="apple">Apple</option>
-                  <option value="manual">Manual / Promo</option>
                 </select>
               </div>
               <div>
@@ -1631,7 +1629,7 @@ export function renderAdminDashboard(p: AdminDashboardProps): string {
                   <td><span class="badge ${isErr ? 'badge-red' : e.eventType === 'screen_view' ? 'badge-brand' : 'badge-neutral'}">${escapeHtml(e.eventType)}</span></td>
                   <td>
                     <div style="font-weight: 700;">${escapeHtml(e.eventName)}</div>
-                    <div class="mono muted">${escapeHtml(e.userId || 'anonymous')}</div>
+                    <div class="mono muted">${escapeHtml(e.userId || '—')}</div>
                   </td>
                   <td class="mono muted">${escapeHtml(e.appVersion || '—')}<br>${escapeHtml(e.deviceInfo || '—')}</td>
                   <td class="mono muted" style="white-space: nowrap;">${formatDateTime(e.createdAt)}</td>

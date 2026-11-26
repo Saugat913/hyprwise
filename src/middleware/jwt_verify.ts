@@ -147,12 +147,24 @@ export async function verifyFirebaseIdToken(
     const uid = typeof payload.sub === 'string' && payload.sub.length > 0 ? payload.sub : null;
     if (!uid) return null;
 
+    const signInProvider = String(payload.firebase?.sign_in_provider || '').toLowerCase();
+    // Strictly reject Firebase anonymous/guest tokens — only Google & Apple accounts are allowed
+    if (signInProvider === 'anonymous') {
+      return null;
+    }
+    const normalizedProvider =
+      signInProvider === 'apple.com'
+        ? 'apple'
+        : signInProvider === 'google.com'
+        ? 'google'
+        : signInProvider || undefined;
+
     return {
       uid,
       email: typeof payload.email === 'string' ? payload.email.toLowerCase() : undefined,
       name: typeof payload.name === 'string' ? payload.name : undefined,
       picture: typeof payload.picture === 'string' ? payload.picture : undefined,
-      provider: payload.firebase?.sign_in_provider,
+      provider: normalizedProvider,
     };
   } catch {
     return null;

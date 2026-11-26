@@ -427,7 +427,7 @@ adminRouter.get('/', async (c) => {
       id: String(u.id),
       email: String(u.email || ''),
       displayName: String(u.displayName || ''),
-      provider: String(u.provider || 'manual'),
+      provider: String(u.provider || 'google'),
       isPro: isProFlag ? 1 : 0,
       proExpiresAt: u.proExpiresAt ? Number(u.proExpiresAt) : null,
       activePro: quota.activePro,
@@ -762,7 +762,8 @@ adminRouter.post('/users/upsert', async (c) => {
 
   const email = String(body['email'] || '').trim().toLowerCase();
   const rawName = String(body['displayName'] || '').trim().slice(0, 80);
-  const provider = String(body['provider'] || 'google').trim().slice(0, 24);
+  const rawProvider = String(body['provider'] || 'google').trim().toLowerCase();
+  const provider = rawProvider === 'apple' ? 'apple' : 'google';
   const plan = String(body['plan'] || 'pro_lifetime').trim();
   const expiresDate = String(body['expiresDate'] || '').trim();
   const baseCurrency = String(body['baseCurrency'] || '').trim().toUpperCase().slice(0, 6);
@@ -838,7 +839,8 @@ adminRouter.post('/users/update', async (c) => {
   const userId = String(body['userId'] || '').trim();
   const email = String(body['email'] || '').trim().toLowerCase();
   const displayName = String(body['displayName'] || '').trim().slice(0, 80);
-  const provider = String(body['provider'] || 'google').trim().slice(0, 24);
+  const rawProvider = String(body['provider'] || 'google').trim().toLowerCase();
+  const provider = rawProvider === 'apple' ? 'apple' : 'google';
   const rawQuota = Number(body['dailyAiQueriesCount']);
   const dailyAiQueriesCount = Number.isFinite(rawQuota) ? Math.max(0, Math.min(10000, Math.floor(rawQuota))) : 0;
   const baseCurrency = String(body['baseCurrency'] || '').trim().toUpperCase().slice(0, 6);

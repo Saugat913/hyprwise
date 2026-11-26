@@ -50,15 +50,16 @@ aiRouter.post('/chat', async (c) => {
     }
 
     const user = await resolveUser(c, true, true);
-    const quota = user
-      ? computeQuotaSnapshot(user)
-      : {
-          todayStr: new Date().toISOString().slice(0, 10),
-          activePro: false,
-          dailyAiQueriesUsed: 0,
-          dailyAiQueriesLeft: 5,
-          limitReached: false,
-        };
+    if (!user) {
+      return c.json(
+        {
+          error: 'unauthorized',
+          message: 'Please sign in with Google or Apple to use HyprAI.',
+        },
+        401
+      );
+    }
+    const quota = computeQuotaSnapshot(user);
     const isPro = quota.activePro;
 
     let updatedUsed = quota.dailyAiQueriesUsed;

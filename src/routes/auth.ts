@@ -23,16 +23,29 @@ authRouter.post('/firebase', async (c) => {
     const verified = await verifyBearerIdentity(c);
     if (!verified && c.env.ALLOW_INSECURE_DEV_AUTH !== 'true') {
       return c.json(
-        { error: 'unauthorized', message: 'Valid Firebase ID token is required.' },
+        { error: 'unauthorized', message: 'Valid Google or Apple Firebase ID token is required.' },
         401
       );
     }
 
+    const rawProvider = String(verified?.provider || provider || '').toLowerCase();
+    if (rawProvider === 'guest' || rawProvider === 'anonymous') {
+      return c.json(
+        { error: 'guest_not_allowed', message: 'Guest accounts are disabled. Please sign in with Google or Apple.' },
+        403
+      );
+    }
+    const normalizedProvider = rawProvider.includes('apple') ? 'apple' : 'google';
+
     const uid = verified?.uid || String(body.uid || '').trim();
     const rawEmail = verified?.email || String(body.email || '').trim();
-    const emailStr = String(rawEmail || `${uid || 'user'}@hyprwise.local`)
-      .trim()
-      .toLowerCase();
+    if (!rawEmail || rawEmail.toLowerCase().startsWith('guest@')) {
+      return c.json(
+        { error: 'invalid_account', message: 'A verified Google or Apple account email is required.' },
+        400
+      );
+    }
+    const emailStr = rawEmail.trim().toLowerCase();
 
     const existingById = uid
       ? await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(uid).first<any>()
@@ -47,7 +60,7 @@ authRouter.post('/firebase', async (c) => {
 
     const deterministicId = deterministicUserIdFromEmail(
       emailStr,
-      provider === 'apple' ? 'usr_a_' : 'usr_g_'
+      normalizedProvider === 'apple' ? 'usr_a_' : 'usr_g_'
     );
     const finalUserId = existing?.id || (uid && uid.length > 5 ? uid : deterministicId);
 
@@ -57,7 +70,7 @@ authRouter.post('/firebase', async (c) => {
       displayName:
         displayName || verified?.name || existing?.displayName || emailStr.split('@')[0],
       photoUrl: photoUrl || verified?.picture || existing?.photoUrl || null,
-      provider: provider || verified?.provider || 'google',
+      provider: normalizedProvider,
       isPro: existing?.isPro ?? 0,
       proExpiresAt: existing?.proExpiresAt ?? null,
       dailyAiQueriesCount: existing?.dailyAiQueriesCount ?? 0,
