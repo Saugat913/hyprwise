@@ -331,20 +331,37 @@ async function run() {
   const versionCode = bundleData.versionCode;
   console.log(`\x1b[32m✓ Bundle uploaded! Version Code: ${versionCode}\x1b[0m\n`);
 
-  // 4. Assign bundle to track
-  console.log(`5. Assigning version code ${versionCode} to track "${track}"...`);
-  const trackBody = JSON.stringify({
-    track: track,
-    releases: [
-      {
-        name: `Hyprwise v${versionCode}`,
-        versionCodes: [versionCode.toString()],
-        status: 'completed',
-      },
-    ],
-  });
+  // 4. Assign bundle to track (fall back to 'draft' if Play Console requires draft status on first prod release)
+  const pubspecVersion = (() => {
+    try {
+      const m = fs.readFileSync(path.join(ROOT_DIR, 'pubspec.yaml'), 'utf8').match(/^version:\s*([^\s+]+)/m);
+      return m ? m[1] : `${versionCode}`;
+    } catch (_) {
+      return `${versionCode}`;
+    }
+  })();
 
-  const trackRes = await httpsRequest(
+  console.log(`5. Assigning version ${pubspecVersion} (code ${versionCode}) to track "${track}"...`);
+  let releaseStatus = 'completed';
+  const buildTrackBody = (status) =>
+    JSON.stringify({
+      track: track,
+      releases: [
+        {
+          name: `${pubspecVersion} (${versionCode})`,
+          versionCodes: [versionCode.toString()],
+          status,
+          releaseNotes: [
+            {
+              language: 'en-US',
+              text: 'Hyprwise 1.0.0: Personal finance, dual-currency budgets, shift & overtime wage tracking, home screen widgets, HyprAI assistant, and optional Pro cloud sync.',
+            },
+          ],
+        },
+      ],
+    });
+
+  let trackRes = await httpsRequest(
     `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/edits/${editId}/tracks/${track}`,
     {
       method: 'PUT',
@@ -353,14 +370,30 @@ async function run() {
         'Content-Type': 'application/json',
       },
     },
-    trackBody
+    buildTrackBody('completed')
   );
+
+  if (trackRes.statusCode === 400 && /draft/i.test(trackRes.body)) {
+    console.log('\x1b[33mNotice: Play Console requires draft status for this track. Retrying with status="draft"...\x1b[0m');
+    releaseStatus = 'draft';
+    trackRes = await httpsRequest(
+      `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/edits/${editId}/tracks/${track}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      },
+      buildTrackBody('draft')
+    );
+  }
 
   if (trackRes.statusCode < 200 || trackRes.statusCode >= 300) {
     console.error(`\x1b[31mFailed to update track (${trackRes.statusCode}): ${trackRes.body}\x1b[0m`);
     process.exit(1);
   }
-  console.log(`\x1b[32m✓ Track "${track}" updated with version ${versionCode}.\x1b[0m\n`);
+  console.log(`\x1b[32m✓ Track "${track}" updated with ${pubspecVersion}+${versionCode} (status: ${releaseStatus}).\x1b[0m\n`);
 
   // 5. Commit edit
   console.log('6. Committing changes to Google Play Store...');
