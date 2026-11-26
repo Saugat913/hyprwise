@@ -29,8 +29,12 @@ class QuickActionsWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_quick_actions)
 
             fun makePending(actionUri: String, requestCode: Int): PendingIntent {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(actionUri)).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                val intent = Intent(context, MainActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    data = Uri.parse(actionUri)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
                 return PendingIntent.getActivity(
                     context, requestCode, intent,

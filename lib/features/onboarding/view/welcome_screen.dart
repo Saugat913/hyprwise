@@ -58,19 +58,19 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: AppSpace.md),
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadius.xl),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       child: Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: colors.hero,
-                          borderRadius: BorderRadius.circular(AppRadius.xl),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: Stack(
                           children: [
                             Positioned.fill(
                               child: CustomPaint(
                                 painter: _ConcentricRingsPainter(
-                                  ringColor: Colors.white.withValues(alpha: 0.12),
+                                  ringColor: colors.onHero.withValues(alpha: 0.12),
                                 ),
                               ),
                             ),

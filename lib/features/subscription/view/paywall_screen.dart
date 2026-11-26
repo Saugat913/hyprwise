@@ -99,11 +99,24 @@ class _PaywallScreenState extends State<PaywallScreen> {
   Widget build(BuildContext context) {
     final subService = getIt<SubscriptionService>();
     final authService = getIt<AuthService>();
+
+    return ListenableBuilder(
+      listenable: Listenable.merge([subService, authService]),
+      builder: (context, _) => _buildContent(context, subService, authService),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    SubscriptionService subService,
+    AuthService authService,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final tr = context.strings;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const brandOrange = Color(0xFFFF6500);
+    final isApplePlatform = !kIsWeb && (Platform.isIOS || Platform.isMacOS);
 
     // 1. Guard for Anonymous / Guest users: prompt login to protect and link local data
     if (authService.isGuest) {
@@ -320,8 +333,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
       );
     }
 
-    // 2. User is authenticated: Render RevenueCat UI Paywall
-    if (subService.isConfigured) {
+    // 2. User is authenticated: Render RevenueCat UI Paywall when valid offerings exist
+    if (subService.isConfigured && subService.hasValidOfferings) {
       return Scaffold(
         body: PaywallView(
           offering: subService.offerings?.current,
@@ -377,113 +390,141 @@ class _PaywallScreenState extends State<PaywallScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpace.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const AppIcon(
+                    HugeIcons.strokeRoundedCrown,
+                    size: 36,
+                    color: Color(0xFFF59E0B),
+                  ),
                 ),
-                child: const AppIcon(
-                  HugeIcons.strokeRoundedCrown,
-                  size: 36,
-                  color: Color(0xFFF59E0B),
+                const SizedBox(height: AppSpace.lg),
+                Text(
+                  'Hyprwise Pro',
+                  style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
-              ),
-              const SizedBox(height: AppSpace.lg),
-              Text(
-                'Hyprwise Pro',
-                style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              Text(
-                tr.proUpgradeSubtitle,
-                textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppSpace.xl),
-              AppButton(
-                tr.upgradeToPro,
-                onPressed: () async {
-                  if (subService.hasValidOfferings) {
-                    final result = await subService.presentPaywallIfNeeded();
-                    if (result == PaywallResult.purchased || result == PaywallResult.restored) {
-                      if (context.mounted) context.pop();
-                    }
-                  } else {
-                    if (kDebugMode) {
-                      await subService.setDebugPro(true);
-                      if (context.mounted) {
-                        showToast(context, 'Pro unlocked for testing (Dev mode)');
-                        context.pop();
+                const SizedBox(height: AppSpace.sm),
+                Text(
+                  tr.proUpgradeSubtitle,
+                  textAlign: TextAlign.center,
+                  style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: AppSpace.xl),
+                AppButton(
+                  tr.upgradeToPro,
+                  onPressed: () async {
+                    if (subService.hasValidOfferings) {
+                      final result = await subService.presentPaywallIfNeeded();
+                      if (result == PaywallResult.purchased || result == PaywallResult.restored) {
+                        if (context.mounted) context.pop();
                       }
                     } else {
-                      showToast(
-                        context,
-                        tr.t(
-                          'Subscriptions are being activated on the Play Store. Please check back shortly.',
-                          ne: 'प्ले स्टोरमा सदस्यता सक्रिय गरिँदैछ। कृपया केही समयपछि पुन: प्रयास गर्नुहोस्।',
-                          es: 'Las suscripciones se están activando en Play Store. Vuelve a consultar en breve.',
-                          fr: 'Les abonnements sont en cours d\'activation sur le Play Store. Veuillez réessayer sous peu.',
-                          de: 'Abonnements werden im Play Store aktiviert. Bitte versuchen Sie es in Kürze erneut.',
-                          ja: 'Playストアでサブスクリプションが有効化されています。しばらくしてからもう一度お試しください。',
-                          zh: 'Play 商店正在激活订阅。请稍后重试。',
-                          it: 'Gli abbonamenti sono in fase di attivazione su Play Store. Riprova a breve.',
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-              const SizedBox(height: AppSpace.sm),
-              AppButton(
-                tr.t(
-                  'Restore Purchases',
-                  ne: 'खरिदहरू पुनर्स्थापना गर्नुहोस्',
-                  es: 'Restaurar compras',
-                  fr: 'Restaurer les achats',
-                  de: 'Käufe wiederherstellen',
-                  ja: '購入を復元',
-                  zh: '恢复购买',
-                  it: 'Ripristina acquisti',
-                ),
-                kind: AppButtonKind.text,
-                loading: _isRestoring,
-                onPressed: _isRestoring
-                    ? null
-                    : () async {
-                        setState(() => _isRestoring = true);
-                        final access = await subService.restorePurchases();
+                      if (kDebugMode) {
+                        await subService.setDebugPro(true);
                         if (context.mounted) {
-                          setState(() => _isRestoring = false);
-                          if (access.isPro) {
-                            showToast(context, tr.proActive);
-                            context.pop();
-                          } else {
-                            showToast(
-                              context,
-                              tr.t(
-                                'No active subscription found.',
-                                ne: 'कुनै सक्रिय सदस्यता फेला परेन।',
-                                es: 'No se encontró ninguna suscripción activa.',
-                                fr: 'Aucun abonnement actif trouvé.',
-                                de: 'Kein aktives Abonnement gefunden.',
-                                ja: '有効なサブスクリプションが見つかりませんでした。',
-                                zh: '未找到有效的订阅。',
-                                it: 'Nessun abbonamento attivo trovato.',
-                              ),
-                            );
-                          }
+                          showToast(context, 'Pro unlocked for testing (Dev mode)');
+                          context.pop();
                         }
-                      },
-              ),
-            ],
+                      } else {
+                        final storeName = isApplePlatform ? 'App Store' : 'Google Play';
+                        showToast(
+                          context,
+                          tr.t(
+                            'Subscriptions are currently syncing with $storeName. Please check back shortly.',
+                            ne: '$storeName मा सदस्यता सिंक गरिँदैछ। कृपया केही समयपछि पुन: प्रयास गर्नुहोस्।',
+                            hi: '$storeName के साथ सदस्यता सिंक हो रही है। कृपया कुछ देर बाद पुनः प्रयास करें।',
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                const SizedBox(height: AppSpace.sm),
+                AppButton(
+                  tr.t(
+                    'Restore Purchases',
+                    ne: 'खरिदहरू पुनर्स्थापना गर्नुहोस्',
+                    hi: 'खरीदारी पुनर्स्थापित करें',
+                    es: 'Restaurar compras',
+                    fr: 'Restaurer les achats',
+                    de: 'Käufe wiederherstellen',
+                    ja: '購入を復元',
+                    zh: '恢复购买',
+                    it: 'Ripristina acquisti',
+                  ),
+                  kind: AppButtonKind.text,
+                  loading: _isRestoring,
+                  onPressed: _isRestoring
+                      ? null
+                      : () async {
+                          setState(() => _isRestoring = true);
+                          final access = await subService.restorePurchases();
+                          if (context.mounted) {
+                            setState(() => _isRestoring = false);
+                            if (access.isPro) {
+                              showToast(context, tr.proActive);
+                              context.pop();
+                            } else {
+                              showToast(
+                                context,
+                                tr.t(
+                                  'No active subscription found.',
+                                  ne: 'कुनै सक्रिय सदस्यता फेला परेन।',
+                                  hi: 'कोई सक्रिय सदस्यता नहीं मिली।',
+                                  es: 'No se encontró ninguna suscripción activa.',
+                                  fr: 'Aucun abonnement actif trouvé.',
+                                  de: 'Kein aktives Abonnement gefunden.',
+                                  ja: '有効なサブスクリプションが見つかりませんでした。',
+                                  zh: '未找到有效的订阅。',
+                                  it: 'Nessun abbonamento attivo trovato.',
+                                ),
+                              );
+                            }
+                          }
+                        },
+                ),
+                const SizedBox(height: AppSpace.lg),
+                Text(
+                  tr.t(
+                    'Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period in your ${isApplePlatform ? "Apple ID" : "Google Play"} account settings.',
+                    ne: 'हालको अवधि सकिन कम्तीमा २४ घण्टा अघि रद्द नगरिएसम्म सदस्यता स्वतः नवीकरण हुन्छ।',
+                    hi: 'वर्तमान अवधि समाप्त होने से कम से कम 24 घंटे पहले रद्द न किए जाने पर सदस्यता स्वतः नवीनीकृत हो जाएगी।',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: text.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: AppSpace.md,
+                  children: [
+                    TextButton(
+                      onPressed: () => showAppTermsDialog(context),
+                      child: Text(tr.termsOfService, style: text.labelSmall),
+                    ),
+                    TextButton(
+                      onPressed: () => showAppPrivacyPolicyDialog(context),
+                      child: Text(tr.privacyPolicy, style: text.labelSmall),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

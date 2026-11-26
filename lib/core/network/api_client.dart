@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:http/http.dart' as http;
@@ -46,13 +47,13 @@ class ApiClient {
 
   static const String defaultProductionUrl = 'https://hyprwise.kandelsaugat913.workers.dev';
 
-  // Potential host endpoints in order of priority (configurable via .env / --dart-define)
+  // Potential host endpoints in order of priority (configurable via .env / --dart-define).
+  // Cleartext local/LAN endpoints are STRICTLY restricted to debug builds.
   static List<String> get _candidateHosts => [
     if (AppConfig.serverUrl.isNotEmpty) AppConfig.serverUrl,
     defaultProductionUrl,
-    'http://127.0.0.1:3000',      // Localhost / ADB reverse proxy
-    'http://10.0.2.2:3000',        // Android emulator loopback alias
-    'http://192.168.100.96:3000',  // Local Wi-Fi host IP
+    if (kDebugMode) 'http://127.0.0.1:3000', // Localhost / ADB reverse proxy
+    if (kDebugMode) 'http://10.0.2.2:3000', // Android emulator loopback alias
   ];
 
   String? _resolvedBaseUrl;
@@ -86,24 +87,44 @@ class ApiClient {
   }
 
   String? _cachedAppCheckToken;
+  DateTime? _appCheckFetchedAt;
 
   /// Fetches latest App Check token to authenticate genuine mobile client requests
   Future<void> refreshAppCheckToken() async {
     try {
       if (Firebase.apps.isNotEmpty) {
-        _cachedAppCheckToken = await FirebaseAppCheck.instance.getToken();
+        final now = DateTime.now();
+        if (_cachedAppCheckToken == null ||
+            _appCheckFetchedAt == null ||
+            now.difference(_appCheckFetchedAt!) > const Duration(minutes: 45)) {
+          _cachedAppCheckToken = await FirebaseAppCheck.instance.getToken();
+          _appCheckFetchedAt = now;
+        }
       }
     } catch (_) {}
   }
 
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        if (_authToken != null && _authToken!.isNotEmpty) 'Authorization': 'Bearer $_authToken',
-        if (_userId != null && _userId!.isNotEmpty) 'X-User-Id': _userId!,
-        if (_userEmail != null && _userEmail!.isNotEmpty) 'X-User-Email': _userEmail!,
-        if (_cachedAppCheckToken != null && _cachedAppCheckToken!.isNotEmpty)
-          'X-Firebase-AppCheck': _cachedAppCheckToken!,
-      };
+  /// Builds authenticated headers, preferring a live Firebase ID token + App Check token.
+  Future<Map<String, String>> _buildHeaders() async {
+    await refreshAppCheckToken();
+    String? bearer = _authToken;
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        final fbToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+        if (fbToken != null && fbToken.isNotEmpty) {
+          bearer = fbToken;
+        }
+      }
+    } catch (_) {}
+    return {
+      'Content-Type': 'application/json',
+      if (bearer != null && bearer.isNotEmpty) 'Authorization': 'Bearer $bearer',
+      if (_userId != null && _userId!.isNotEmpty) 'X-User-Id': _userId!,
+      if (_userEmail != null && _userEmail!.isNotEmpty) 'X-User-Email': _userEmail!,
+      if (_cachedAppCheckToken != null && _cachedAppCheckToken!.isNotEmpty)
+        'X-Firebase-AppCheck': _cachedAppCheckToken!,
+    };
+  }
 
   /// Discovers the active server URL by pinging /health
   Future<String?> getBaseUrl({bool forceRefresh = false}) async {
@@ -164,7 +185,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/auth/firebase'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({
               'uid': uid,
               'idToken': idToken,
@@ -211,7 +232,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/auth/preferences'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({
               if (targetUserId != null) 'userId': targetUserId,
               if (targetEmail != null) 'email': targetEmail,
@@ -242,7 +263,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/auth/google'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({
               'email': email,
               'displayName': displayName,
@@ -281,7 +302,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/auth/apple'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({
               'email': email,
               'fullName': fullName,
@@ -315,7 +336,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/sync/push'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({
               'clientTimestamp': DateTime.now().millisecondsSinceEpoch,
               'data': data,
@@ -341,7 +362,7 @@ class ApiClient {
       final res = await http
           .get(
             Uri.parse('$host/api/sync/pull'),
-            headers: _headers,
+            headers: await _buildHeaders(),
           )
           .timeout(const Duration(seconds: 6));
 
@@ -363,7 +384,7 @@ class ApiClient {
       final res = await http
           .get(
             Uri.parse('$host/api/sync/status'),
-            headers: _headers,
+            headers: await _buildHeaders(),
           )
           .timeout(const Duration(seconds: 3));
 
@@ -383,7 +404,7 @@ class ApiClient {
       final res = await http
           .get(
             Uri.parse('$host/api/ai/quota'),
-            headers: _headers,
+            headers: await _buildHeaders(),
           )
           .timeout(const Duration(seconds: 4));
 
@@ -405,7 +426,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/ai/quota/consume'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({}),
           )
           .timeout(const Duration(seconds: 4));
@@ -450,7 +471,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/ai/chat'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({
               'messages': messagesPayload,
               if (preferredLanguage != null) 'preferredLanguage': preferredLanguage,
@@ -527,7 +548,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/subscription/verify'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({
               'appUserId': appUserId,
               'planId': planId,
@@ -554,7 +575,7 @@ class ApiClient {
       final res = await http
           .get(
             Uri.parse('$host/api/subscription/status'),
-            headers: _headers,
+            headers: await _buildHeaders(),
           )
           .timeout(const Duration(seconds: 4));
 
@@ -574,7 +595,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/export/csv'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({'data': data}),
           )
           .timeout(const Duration(seconds: 8));
@@ -595,7 +616,7 @@ class ApiClient {
       final res = await http
           .get(
             Uri.parse('$host/api/currency/rates'),
-            headers: _headers,
+            headers: await _buildHeaders(),
           )
           .timeout(const Duration(seconds: 4));
 
@@ -621,7 +642,7 @@ class ApiClient {
       final res = await http
           .post(
             Uri.parse('$host/api/account/delete'),
-            headers: _headers,
+            headers: await _buildHeaders(),
             body: jsonEncode({
               if (userId != null) 'userId': userId,
               if (email != null) 'email': email,

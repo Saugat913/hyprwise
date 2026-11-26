@@ -14,11 +14,24 @@ import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';
 import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
-class ShiftDoneScreen extends StatelessWidget {
+class ShiftDoneScreen extends StatefulWidget {
   const ShiftDoneScreen({super.key, required this.shiftId, this.earnings});
 
   final int shiftId;
   final ShiftEarnings? earnings;
+
+  @override
+  State<ShiftDoneScreen> createState() => _ShiftDoneScreenState();
+}
+
+class _ShiftDoneScreenState extends State<ShiftDoneScreen> {
+  late final Future<List<ShiftBreak>> _breaksFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _breaksFuture = getIt<WorkViewModel>().breaksForShift(widget.shiftId);
+  }
 
   String _formatDurationMinutes(int totalMinutes, AppStrings tr) {
     final h = totalMinutes ~/ 60;
@@ -34,14 +47,35 @@ class ShiftDoneScreen extends StatelessWidget {
     final colors = context.colors;
     final tr = context.strings;
 
-    final shift = viewModel.shifts.firstWhere(
-      (s) => s.id == shiftId,
-      orElse: () => viewModel.shifts.first,
-    );
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRoutes.home);
+      }
+    }
+
+    final shift = viewModel.shifts.where((s) => s.id == widget.shiftId).firstOrNull ??
+        viewModel.shifts.firstOrNull;
+    if (shift == null) {
+      return Scaffold(
+        appBar: AppTopBar(title: tr.shiftLogTitle, onBack: handleBack),
+        body: Center(
+          child: EmptyState(
+            icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+            title: tr.shiftLogTitle,
+            message: tr.notCurrentlyClockedIn,
+            actionLabel: tr.returnHome,
+            onAction: () => context.go(AppRoutes.home),
+          ),
+        ),
+      );
+    }
+
     final job = viewModel.jobsById[shift.jobId];
     final currency = job?.currencyCode ?? viewModel.baseCurrency;
 
-    final calculated = earnings ?? (job != null ? ShiftEarnings.forShift(shift, job) : null);
+    final calculated = widget.earnings ?? (job != null ? ShiftEarnings.forShift(shift, job) : null);
 
     final startTime = DateTime.fromMillisecondsSinceEpoch(shift.startAt);
     final endTime = shift.endAt != null
@@ -51,14 +85,6 @@ class ShiftDoneScreen extends StatelessWidget {
     final workedMinutes = calculated?.workedMinutes ?? 0;
     final breakMinutes = shift.breakMinutes;
     final baseRateMinor = shift.rateOverrideMinor ?? job?.hourlyRateMinor ?? 0;
-
-    void handleBack() {
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(AppRoutes.home);
-      }
-    }
 
     return PopScope(
       canPop: context.canPop(),
@@ -75,7 +101,7 @@ class ShiftDoneScreen extends StatelessWidget {
         ),
         body: SafeArea(
           child: FutureBuilder<List<ShiftBreak>>(
-            future: viewModel.breaksForShift(shiftId),
+            future: _breaksFuture,
             builder: (context, snapshot) {
               final breaks = snapshot.data ?? const <ShiftBreak>[];
 

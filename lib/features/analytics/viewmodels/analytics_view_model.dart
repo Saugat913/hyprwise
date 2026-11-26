@@ -340,18 +340,27 @@ class AnalyticsViewModel extends ChangeNotifier {
     final dates = <DateTime>[];
     final totalDays = end.difference(start).inDays + 1;
 
-    // Sample intervals if date range is long
+    // Aggregate across multi-day bucket intervals when range exceeds 31 days
+    // so no transactions are dropped on Year / long custom ranges.
     final step = totalDays > 31 ? (totalDays / 12).ceil() : 1;
 
-    var day = start;
-    while (!day.isAfter(end)) {
-      final key = AppDate.dateOnly(day).millisecondsSinceEpoch;
-      incomeValues.add(incomeBuckets[key] ?? 0.0);
-      expenseValues.add(expenseBuckets[key] ?? 0.0);
+    var day = AppDate.dateOnly(start);
+    final endDay = AppDate.dateOnly(end);
+    while (!day.isAfter(endDay)) {
+      var bucketIncome = 0.0;
+      var bucketExpense = 0.0;
+      for (var offset = 0; offset < step; offset++) {
+        final cursor = day.add(Duration(days: offset));
+        if (cursor.isAfter(endDay)) break;
+        final key = cursor.millisecondsSinceEpoch;
+        bucketIncome += incomeBuckets[key] ?? 0.0;
+        bucketExpense += expenseBuckets[key] ?? 0.0;
+      }
+      incomeValues.add(bucketIncome);
+      expenseValues.add(bucketExpense);
       labels.add(totalDays <= 7 ? AppDate.weekday(day) : DateFormatter.day(day));
       dates.add(day);
       day = day.add(Duration(days: step));
-      if (step > 1 && labels.length >= 12) break;
     }
 
     return DualBarChartData(

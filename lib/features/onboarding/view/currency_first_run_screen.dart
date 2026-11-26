@@ -168,6 +168,7 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
   ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeInOut));
 
   int _currentStepIndex = 0;
+  String? _setupError;
 
   bool get _isTestEnvironment {
     try {
@@ -187,28 +188,39 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
   }
 
   Future<void> _startSetupWorkflow() async {
+    if (mounted) {
+      setState(() {
+        _setupError = null;
+        _currentStepIndex = 0;
+      });
+    }
     final stepDelay =
-        _isTestEnvironment ? Duration.zero : const Duration(milliseconds: 400);
+        _isTestEnvironment ? Duration.zero : const Duration(milliseconds: 350);
     final midDelay =
-        _isTestEnvironment ? Duration.zero : const Duration(milliseconds: 500);
+        _isTestEnvironment ? Duration.zero : const Duration(milliseconds: 450);
 
-    // Step 0: Initializing
-    await Future<void>.delayed(stepDelay);
-    if (!mounted) return;
-    setState(() => _currentStepIndex = 1);
+    try {
+      // Step 0: Initializing
+      await Future<void>.delayed(stepDelay);
+      if (!mounted) return;
+      setState(() => _currentStepIndex = 1);
 
-    // Step 1: Performing finishSetup() (sets locale, baseCurrency, accounts, completes onboarding)
-    await widget.viewModel.finishSetup();
-    if (!mounted) return;
-    setState(() => _currentStepIndex = 2);
+      // Step 1: Performing finishSetup() (sets locale, baseCurrency, accounts, completes onboarding)
+      await widget.viewModel.finishSetup();
+      if (!mounted) return;
+      setState(() => _currentStepIndex = 2);
 
-    await Future<void>.delayed(midDelay);
-    if (!mounted) return;
-    setState(() => _currentStepIndex = 3);
+      await Future<void>.delayed(midDelay);
+      if (!mounted) return;
+      setState(() => _currentStepIndex = 3);
 
-    await Future<void>.delayed(stepDelay);
-    if (!mounted) return;
-    context.go(AppRoutes.home);
+      await Future<void>.delayed(stepDelay);
+      if (!mounted) return;
+      context.go(AppRoutes.home);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _setupError = '$e');
+    }
   }
 
   @override
@@ -223,6 +235,22 @@ class _SettingUpWorkspaceScreenState extends State<_SettingUpWorkspaceScreen>
 
     return SetupLayout(
       animation: _scaleAnimation,
+      errorMessage: _setupError != null ? tr.couldNotSave(_setupError!) : null,
+      actionLabel:
+          _setupError != null
+              ? tr.t(
+                'Try again',
+                ne: 'पुनः प्रयास गर्नुहोस्',
+                hi: 'पुनः प्रयास करें',
+                es: 'Reintentar',
+                fr: 'Réessayer',
+                de: 'Erneut versuchen',
+                ja: '再試行',
+                zh: '重试',
+                it: 'Riprova',
+              )
+              : null,
+      onAction: _setupError != null ? _startSetupWorkflow : null,
       title: tr.t(
         'Setting up your workspace...',
         ne: 'तपाईंको कार्यक्षेत्र सेटअप गरिँदैछ...',

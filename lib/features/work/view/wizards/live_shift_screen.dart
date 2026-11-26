@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -21,28 +23,56 @@ class LiveShiftScreen extends StatefulWidget {
   State<LiveShiftScreen> createState() => _LiveShiftScreenState();
 }
 
-class _LiveShiftScreenState extends State<LiveShiftScreen> {
-  bool _actionHandled = false;
+class _LiveShiftScreenState extends State<LiveShiftScreen>
+    with SingleTickerProviderStateMixin {
+  String? _pendingAction;
+  late final WorkViewModel _viewModel;
+  late final AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialAction != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _handleInitialAction());
+    _viewModel = getIt<WorkViewModel>();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _pendingAction = widget.initialAction;
+    _viewModel.addListener(_tryHandlePendingAction);
+    if (_pendingAction != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _tryHandlePendingAction());
     }
   }
 
-  void _handleInitialAction() {
-    if (_actionHandled || !mounted) return;
-    _actionHandled = true;
-    final viewModel = getIt<WorkViewModel>();
-    final shift = viewModel.activeShift;
-    if (shift == null) return;
+  @override
+  void didUpdateWidget(covariant LiveShiftScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialAction != null &&
+        widget.initialAction != oldWidget.initialAction) {
+      _pendingAction = widget.initialAction;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _tryHandlePendingAction());
+    }
+  }
 
-    if (widget.initialAction == 'break') {
-      viewModel.toggleBreak();
-    } else if (widget.initialAction == 'end') {
-      _triggerEndShift(viewModel, shift);
+  @override
+  void dispose() {
+    _viewModel.removeListener(_tryHandlePendingAction);
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _tryHandlePendingAction() {
+    final action = _pendingAction;
+    if (action == null || !mounted) return;
+    final shift = _viewModel.activeShift;
+    // Wait until Drift streams hydrate the active shift on cold start from widget tap
+    if (shift == null) return;
+    _pendingAction = null;
+
+    if (action == 'break') {
+      _viewModel.toggleBreak();
+    } else if (action == 'end') {
+      unawaited(_triggerEndShift(_viewModel, shift));
     }
   }
 
@@ -59,19 +89,29 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
       cancelLabel: tr.keepWorking,
     );
     if (confirmed && mounted) {
-      final earnings = await viewModel.endShift(
-        shift.id,
-        breakMinutes: viewModel.currentBreakMinutes,
-      );
-      if (mounted) {
-        context.go(AppRoutes.shiftDone(shift.id), extra: earnings);
+      try {
+        final earnings = await showBusyWhile(
+          context,
+          () => viewModel.endShift(
+            shift.id,
+            breakMinutes: viewModel.currentBreakMinutes,
+          ),
+        );
+        if (mounted) {
+          context.go(AppRoutes.shiftDone(shift.id), extra: earnings);
+        }
+      } catch (e) {
+        if (mounted) {
+          showErrorToast(context, tr.couldNotSave('$e'));
+        }
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = getIt<WorkViewModel>();
+    final viewModel = _viewModel;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     void handleBack() {
       if (context.canPop()) {
@@ -82,7 +122,7 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
     }
 
     return ListenableBuilder(
-      listenable: viewModel,
+      listenable: Listenable.merge([viewModel, viewModel.liveTick]),
       builder: (context, _) {
         final shift = viewModel.activeShift;
         final text = Theme.of(context).textTheme;
@@ -130,7 +170,7 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
             context: context,
             initialTime: TimeOfDay.fromDateTime(startTime),
           );
-          if (picked != null) {
+          if (picked != null && context.mounted) {
             final newStart = DateTime(
               startTime.year,
               startTime.month,
@@ -138,7 +178,22 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
               picked.hour,
               picked.minute,
             );
-            await viewModel.shiftRepo.update(shift.id, startAt: newStart);
+            if (newStart.isAfter(DateTime.now())) {
+              showErrorToast(
+                context,
+                tr.t(
+                  'Start time cannot be in the future.',
+                  ne: 'सुरु समय भविष्यमा हुन सक्दैन।',
+                  hi: 'शुरू समय भविष्य में नहीं हो सकता।',
+                ),
+              );
+              return;
+            }
+            try {
+              await viewModel.updateShift(shift.id, startAt: newStart);
+            } catch (e) {
+              if (context.mounted) showErrorToast(context, tr.couldNotSave('$e'));
+            }
           }
         }
 
@@ -236,34 +291,56 @@ class _LiveShiftScreenState extends State<LiveShiftScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: viewModel.isOnBreak ? colors.warningBg : colors.incomeBg,
-                                  borderRadius: BorderRadius.circular(AppRadius.md),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    AppIcon(
-                                      viewModel.isOnBreak
-                                          ? HugeIcons.strokeRoundedCoffee01
-                                          : HugeIcons.strokeRoundedClock01,
-                                      size: 14,
-                                      color: viewModel.isOnBreak ? colors.warning : colors.income,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      viewModel.isOnBreak
-                                          ? tr.onBreakTimerPausedUpper
-                                          : tr.inProgress.toUpperCase(),
-                                      style: text.labelSmall?.copyWith(
-                                        color: viewModel.isOnBreak ? colors.warning : colors.income,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.6,
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                child: Container(
+                                  key: ValueKey(viewModel.isOnBreak),
+                                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: viewModel.isOnBreak ? colors.warningBg : colors.incomeBg,
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (!viewModel.isOnBreak) ...[
+                                        AnimatedBuilder(
+                                          animation: _pulseController,
+                                          builder: (context, _) {
+                                            final opacity = reduceMotion
+                                                ? 1.0
+                                                : 0.4 + (_pulseController.value * 0.6);
+                                            return Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                color: colors.income.withValues(alpha: opacity),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(width: 6),
+                                      ] else ...[
+                                        AppIcon(
+                                          HugeIcons.strokeRoundedCoffee01,
+                                          size: 14,
+                                          color: colors.warning,
+                                        ),
+                                        const SizedBox(width: 6),
+                                      ],
+                                      Text(
+                                        viewModel.isOnBreak
+                                            ? tr.onBreakTimerPausedUpper
+                                            : tr.inProgress.toUpperCase(),
+                                        style: text.labelSmall?.copyWith(
+                                          color: viewModel.isOnBreak ? colors.warning : colors.income,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.6,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppSpace.md),

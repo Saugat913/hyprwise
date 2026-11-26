@@ -7,26 +7,28 @@
     android:clickable="true"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="6dp">
 
-    <!-- HyprAI Emblem -->
+    <!-- Official Hyprwise Brand Mark (same logo used inside the app) -->
     <ImageView
-        android:layout_width="46dp"
-        android:layout_height="46dp"
-        android:background="@drawable/widget_icon_ai_bg"
-        android:padding="10dp"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_widget_ai" />
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/widget_ai_name"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_widget_hypr_logo" />
 
-    <!-- Label: hyprai -->
+    <!-- Compact Label -->
     <TextView
         android:id="@+id/widget_ai_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="hyprai"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="HyprAI"
         android:textColor="@color/widget_ink"
-        android:textSize="12.5sp"
+        android:textSize="10sp"
         android:textStyle="bold" />
 
 </LinearLayout>

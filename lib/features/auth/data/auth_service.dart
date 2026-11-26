@@ -8,11 +8,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
+import 'package:finance_tracker/core/widgets/widget_sync_service.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
 import 'package:finance_tracker/features/assistant/viewmodels/assistant_view_model.dart';
 import 'package:finance_tracker/features/auth/data/model/user_profile.dart';
 import 'package:finance_tracker/features/settings/data/repository/data_repository.dart';
 import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
+import 'package:finance_tracker/features/shared/data/category_repository.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
@@ -268,7 +270,7 @@ class AuthService extends ChangeNotifier {
       // Link with RevenueCat customer identity using canonical userId
       try {
         final logInResult = await Purchases.logIn(finalUserId);
-        if (logInResult.customerInfo.entitlements.active.containsKey('hyprwise_pro')) {
+        if (_hasAnyProEntitlement(logInResult.customerInfo)) {
           isPro = true;
         }
       } catch (_) {}
@@ -510,7 +512,7 @@ class AuthService extends ChangeNotifier {
       // Link with RevenueCat
       try {
         final logInResult = await Purchases.logIn(finalUserId);
-        if (logInResult.customerInfo.entitlements.active.containsKey('hyprwise_pro')) {
+        if (_hasAnyProEntitlement(logInResult.customerInfo)) {
           isPro = true;
         }
       } catch (_) {}
@@ -1081,10 +1083,25 @@ class AuthService extends ChangeNotifier {
   }
 
   Timer? _autoSyncDebounce;
+  bool _suppressAutoSync = false;
+  bool _isCloudUploading = false;
+  String? _lastSyncError;
+
+  bool get isCloudUploading => _isCloudUploading;
+  String? get lastSyncError => _lastSyncError;
+
+  static bool _hasAnyProEntitlement(CustomerInfo info) {
+    final active = info.entitlements.active;
+    return active.containsKey(SubscriptionService.entitlementPro) ||
+        active.containsKey(SubscriptionService.entitlementSupporter) ||
+        active.containsKey('hyprwise_pro');
+  }
 
   /// Pulls the latest cloud backup from Hyprwise Cloud and restores into Drift SQLite
   Future<bool> pullCloudDataToLocal() async {
     _isCloudSyncing = true;
+    _suppressAutoSync = true;
+    _lastSyncError = null;
     notifyListeners();
     try {
       final result = await ApiClient.instance.pullSync();
@@ -1097,17 +1114,24 @@ class AuthService extends ChangeNotifier {
       final dataRepo = getIt<DataRepository>();
       await dataRepo.importJson(jsonString);
       if (getIt.isRegistered<SettingsRepository>()) {
-        // DataRepository writes directly to Drift; refresh the cached settings
-        // so routing and the app theme/language see the restored preferences.
         await getIt<SettingsRepository>().load();
+      }
+      if (getIt.isRegistered<CategoryRepository>()) {
+        await getIt<CategoryRepository>().load();
       }
       debugPrint('[Auth] Automatically pulled and synced cloud data.');
       return true;
     } catch (e) {
+      _lastSyncError = '$e';
       debugPrint('[Auth] Auto sync pull notice: $e');
       return false;
     } finally {
       _isCloudSyncing = false;
+      // Keep auto-sync suppressed briefly so Drift stream emissions from importJson
+      // do not immediately bounce an identical backup back to the server.
+      Future<void>.delayed(const Duration(seconds: 2), () {
+        _suppressAutoSync = false;
+      });
       notifyListeners();
     }
   }
@@ -1130,6 +1154,7 @@ class AuthService extends ChangeNotifier {
 
   /// Called when local data changes to automatically back up to cloud if user is Pro
   void triggerProAutoSync() {
+    if (_suppressAutoSync || _isCloudSyncing) return;
     final isPro =
         _currentUser?.isPro == true ||
         (getIt.isRegistered<SubscriptionService>() &&
@@ -1143,22 +1168,46 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Exports local Drift SQLite database and synchronizes with Hyprwise Cloud
-  Future<void> syncLocalDataToCloud() async {
+  Future<bool> syncLocalDataToCloud() async {
     final subscription =
         getIt.isRegistered<SubscriptionService>()
             ? getIt<SubscriptionService>()
             : null;
     final hasProAccess =
         _currentUser?.isPro == true || (subscription?.isPro ?? false);
-    if (!isAuthenticated || !hasProAccess) return;
+    if (!isAuthenticated || !hasProAccess) return false;
+    if (_isCloudUploading) return false;
 
+    _isCloudUploading = true;
+    _lastSyncError = null;
+    notifyListeners();
     try {
       final dataRepo = getIt<DataRepository>();
       final jsonString = await dataRepo.exportJson();
       final map = jsonDecode(jsonString) as Map<String, dynamic>;
-      await ApiClient.instance.pushSync(map);
+      final res = await ApiClient.instance.pushSync(map);
+      if (res != null && res['success'] == true) {
+        if (getIt.isRegistered<SettingsRepository>()) {
+          _suppressAutoSync = true;
+          try {
+            final settingsRepo = getIt<SettingsRepository>();
+            await settingsRepo.setBackupEnabled(true);
+            await settingsRepo.setLastBackupAt(DateTime.now());
+          } finally {
+            _suppressAutoSync = false;
+          }
+        }
+        return true;
+      }
+      _lastSyncError = 'Could not reach sync server';
+      return false;
     } catch (e) {
+      _lastSyncError = '$e';
       debugPrint('[Auth] Auto sync local data notice: $e');
+      return false;
+    } finally {
+      _isCloudUploading = false;
+      notifyListeners();
     }
   }
 
@@ -1231,7 +1280,12 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    _autoSyncDebounce?.cancel();
+    _autoSyncDebounce = null;
     if (_hasFirebase) {
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
       try {
         await FirebaseAuth.instance.signOut();
       } catch (_) {}
@@ -1246,6 +1300,7 @@ class AuthService extends ChangeNotifier {
     await _storage.delete(key: _userKey);
     await _storage.delete(key: _tokenKey);
     ApiClient.instance.clearAuthContext();
+    unawaited(WidgetSyncService.clearShift());
 
     if (getIt.isRegistered<SubscriptionService>()) {
       await getIt<SubscriptionService>().resetOnLogout();
@@ -1255,7 +1310,7 @@ class AuthService extends ChangeNotifier {
       await getIt<SettingsRepository>().resetOnboarding();
     }
 
-    // Local-First: We preserve encrypted local SQLite database data across sign-outs.
+    // Local-First: We preserve local SQLite database data across sign-outs.
     // If a different user later signs in, account switching logic clears old data.
 
     // Firebase Analytics Tracking
@@ -1263,6 +1318,73 @@ class AuthService extends ChangeNotifier {
     TelemetryService.instance.trackEvent('auth_logout');
 
     notifyListeners();
+  }
+
+  /// Permanently deletes the user's cloud account, Firebase Auth record,
+  /// local Drift database, secure storage tokens, widgets, and analytics state.
+  /// Complies with Apple Guideline 5.1.1(v) and Google Play Data Safety.
+  Future<({bool deleted, String? error})> deleteAccountPermanently({
+    String? reason,
+  }) async {
+    _autoSyncDebounce?.cancel();
+    _autoSyncDebounce = null;
+    final user = _currentUser;
+    final wasGuest = isGuest;
+
+    // 1. Purge server-side cloud account & backups (required for non-guest accounts)
+    if (!wasGuest && user != null) {
+      final serverDeleted = await ApiClient.instance.deleteAccount(
+        userId: user.id,
+        email: user.email,
+        reason: reason ?? 'in_app_request',
+      );
+      if (!serverDeleted) {
+        return (
+          deleted: false,
+          error: 'Could not reach the server to delete your cloud account. Please check your internet connection and try again.',
+        );
+      }
+    }
+
+    // 2. Delete Firebase Auth account if signed in
+    if (_hasFirebase) {
+      try {
+        final fbUser = FirebaseAuth.instance.currentUser;
+        if (fbUser != null) {
+          await fbUser.delete();
+        }
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'requires-recent-login') {
+          debugPrint('[Auth] Firebase delete requires recent login; server account purged.');
+        } else {
+          debugPrint('[Auth] Firebase delete notice: ${e.code}');
+        }
+      } catch (e) {
+        debugPrint('[Auth] Firebase delete error: $e');
+      }
+    }
+
+    // 3. Wipe all local Drift tables (including preferences, reminders, budgets)
+    if (getIt.isRegistered<DataRepository>()) {
+      await getIt<DataRepository>().eraseAll(includePreferences: true);
+    }
+
+    // 4. Clear home screen widgets, analytics & secure storage
+    await WidgetSyncService.clearShift();
+    await TelemetryService.instance.resetAnalyticsData();
+    try {
+      await _storage.deleteAll();
+    } catch (_) {
+      await _storage.delete(key: _userKey);
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _lastLoggedInUserIdKey);
+      await _storage.delete(key: _deviceGuestIdKey);
+      await _storage.delete(key: _appleCachedNameKey);
+      await _storage.delete(key: _appleCachedEmailKey);
+    }
+
+    await signOut();
+    return (deleted: true, error: null);
   }
 
   void updateProStatus(bool isPro) {

@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
+import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/shared/widgets/app_icon.dart';
@@ -19,8 +20,7 @@ class ProCrownBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    const goldColor = Color(0xFFF59E0B);
+    final colors = context.colors;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -28,10 +28,10 @@ class ProCrownBadge extends StatelessWidget {
         vertical: isCompact ? 2 : 3,
       ),
       decoration: BoxDecoration(
-        color: goldColor.withValues(alpha: isDark ? 0.2 : 0.12),
+        color: colors.warningBg,
         borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-          color: goldColor.withValues(alpha: isDark ? 0.45 : 0.35),
+          color: colors.warning.withValues(alpha: 0.4),
           width: 0.8,
         ),
       ),
@@ -41,7 +41,7 @@ class ProCrownBadge extends StatelessWidget {
           Icon(
             Icons.workspace_premium_rounded,
             size: isCompact ? 11 : 13,
-            color: goldColor,
+            color: colors.warning,
           ),
           const SizedBox(width: 3),
           Text(
@@ -50,7 +50,7 @@ class ProCrownBadge extends StatelessWidget {
               fontSize: isCompact ? 9 : 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
-              color: goldColor,
+              color: colors.warning,
             ),
           ),
         ],
@@ -68,42 +68,41 @@ Future<void> showProUpgradeSheet(
 }) async {
   final text = Theme.of(context).textTheme;
   final scheme = Theme.of(context).colorScheme;
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  const goldColor = Color(0xFFF59E0B);
+  final colors = context.colors;
 
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: scheme.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
     ),
     builder: (sheetContext) {
       return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
             AppSpace.page,
             AppSpace.xs,
             AppSpace.page,
-            AppSpace.xl,
+            MediaQuery.of(sheetContext).viewInsets.bottom + AppSpace.xl,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Glowing Gold Crown Avatar
+              // Crown Avatar (WCAG AA contrast in light & dark)
               Container(
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: goldColor.withValues(alpha: isDark ? 0.2 : 0.12),
-                  border: Border.all(color: goldColor.withValues(alpha: 0.4), width: 1.5),
+                  color: colors.warningBg,
+                  border: Border.all(color: colors.warning.withValues(alpha: 0.45), width: 1.5),
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.workspace_premium_rounded,
                     size: 32,
-                    color: goldColor,
+                    color: colors.warning,
                   ),
                 ),
               ),
@@ -134,7 +133,7 @@ Future<void> showProUpgradeSheet(
                 padding: const EdgeInsets.all(AppSpace.md),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
                 ),
                 child: Column(
@@ -147,14 +146,14 @@ Future<void> showProUpgradeSheet(
                     const SizedBox(height: AppSpace.sm),
                     _PerkRow(
                       icon: HugeIcons.strokeRoundedCloud,
-                      label: sheetContext.strings.proPerkMultiCurrency,
+                      label: sheetContext.strings.proPerkCloudBackup,
                       isHighlight: featureHighlight == 'backup',
                     ),
                     const SizedBox(height: AppSpace.sm),
                     _PerkRow(
                       icon: HugeIcons.strokeRoundedFile01,
-                      label: sheetContext.strings.proPerkCloudBackup,
-                      isHighlight: featureHighlight == 'export',
+                      label: sheetContext.strings.proPerkMultiCurrency,
+                      isHighlight: featureHighlight == 'export' || featureHighlight == 'currency',
                     ),
                   ],
                 ),
@@ -167,10 +166,10 @@ Future<void> showProUpgradeSheet(
                 height: AppSize.button,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: goldColor,
-                    foregroundColor: Colors.black,
+                    backgroundColor: scheme.primary,
+                    foregroundColor: scheme.onPrimary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
                   onPressed: () async {
@@ -229,14 +228,14 @@ class _PerkRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    const goldColor = Color(0xFFF59E0B);
+    final colors = context.colors;
 
     return Row(
       children: [
         Icon(
           Icons.check_circle_rounded,
           size: 16,
-          color: isHighlight ? goldColor : scheme.primary,
+          color: isHighlight ? colors.warning : scheme.primary,
         ),
         const SizedBox(width: AppSpace.sm),
         Expanded(
@@ -245,7 +244,7 @@ class _PerkRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w500,
-              color: isHighlight ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87) : scheme.onSurface,
+              color: scheme.onSurface,
             ),
           ),
         ),

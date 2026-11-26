@@ -18,7 +18,6 @@ import 'package:finance_tracker/features/home/view/widgets/top_spending_card.dar
 import 'package:finance_tracker/features/home/view/widgets/home_transaction_row.dart';
 import 'package:finance_tracker/features/home/viewmodels/home_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
-import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -28,13 +27,11 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = getIt<HomeViewModel>();
     final workViewModel = getIt<WorkViewModel>();
-    final subService = getIt<SubscriptionService>();
 
     return ListenableBuilder(
-      listenable: Listenable.merge([viewModel, workViewModel, subService]),
+      listenable: viewModel,
       builder: (context, _) {
         final colors = context.colors;
-        final text = Theme.of(context).textTheme;
         final tr = context.strings;
 
         return TabPage(
@@ -43,6 +40,7 @@ class HomeScreen extends StatelessWidget {
           actions: [
             RoundIconButton(
               HugeIcons.strokeRoundedSettings02,
+              tooltip: tr.settings,
               onPressed: () => context.push(AppRoutes.settings),
             ),
             const SizedBox(width: AppSpace.xs),
@@ -55,6 +53,7 @@ class HomeScreen extends StatelessWidget {
                     final unreadCount = alertsVm.unreadCount;
                     final iconButton = RoundIconButton(
                       HugeIcons.strokeRoundedNotification01,
+                      tooltip: tr.alerts,
                       onPressed: () {
                         alertsVm.markAllAsRead();
                         context.push(AppRoutes.notifications);
@@ -86,18 +85,40 @@ class HomeScreen extends StatelessWidget {
             // One calm snapshot of where money stands right now.
             HomeHeroCard(viewModel: viewModel),
 
-            // Active shift banner (when clocked in)
-            if (workViewModel.isClockedIn) ...[
-              const SizedBox(height: AppSpace.md),
-              _ActiveShiftBanner(workViewModel: workViewModel),
-            ],
+            // Active shift banner (scoped listener prevents 1Hz full-dashboard rebuilds)
+            ListenableBuilder(
+              listenable: Listenable.merge([workViewModel, workViewModel.liveTick]),
+              builder: (context, _) {
+                return AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: workViewModel.isClockedIn
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: AppSpace.md),
+                          child: _ActiveShiftBanner(workViewModel: workViewModel),
+                        )
+                      : const SizedBox.shrink(),
+                );
+              },
+            ),
 
-            // Get set up checklist (if not completed) placed right under shift starting manage section
+            // Get set up checklist (actionable milestones, dismissible anytime)
             if (viewModel.hasAccounts && !viewModel.isSetupComplete) ...[
               const SizedBox(height: AppSpace.xs),
               SectionHeader(
-                tr.getSetUp,
-                actionLabel: tr.setupStepsProgress(viewModel.setupCompletedCount, 4),
+                '${tr.getSetUp} · ${tr.setupStepsProgress(viewModel.setupCompletedCount, 4)}',
+                actionLabel: tr.t(
+                  'Hide',
+                  ne: 'लुकाउनुहोस्',
+                  hi: 'छिपाएं',
+                  es: 'Ocultar',
+                  fr: 'Masquer',
+                  de: 'Ausblenden',
+                  ja: '非表示',
+                  zh: '隐藏',
+                  it: 'Nascondi',
+                ),
+                onAction: viewModel.dismissSetupChecklist,
               ),
               const SizedBox(height: AppSpace.sm),
               AppCard(
@@ -106,17 +127,6 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     _ChecklistRow(
                       step: tr.formatNumber(1),
-                      title: tr.addAccountChecklist,
-                      subtitle:
-                          viewModel.hasAccounts
-                              ? '${tr.done} · ${tr.accountDisplayName(viewModel.snapshot.accounts.first.name)}'
-                              : tr.balanceRealSubtitle,
-                      isDone: viewModel.hasAccounts,
-                      onTap: () => context.push(AppRoutes.addAccount),
-                    ),
-                    const RowDivider(),
-                    _ChecklistRow(
-                      step: tr.formatNumber(2),
                       title: tr.addJobChecklist,
                       subtitle:
                           viewModel.hasJobs
@@ -124,6 +134,17 @@ class HomeScreen extends StatelessWidget {
                               : tr.shiftsLiveHereSubtitle,
                       isDone: viewModel.hasJobs,
                       onTap: () => context.push(AppRoutes.addJob),
+                    ),
+                    const RowDivider(),
+                    _ChecklistRow(
+                      step: tr.formatNumber(2),
+                      title: tr.addTransaction,
+                      subtitle:
+                          viewModel.hasTransactions
+                              ? '${tr.done} · ${tr.formatNumber(viewModel.snapshot.transactions.length)}'
+                              : tr.tapAddToRecordFirstTransaction,
+                      isDone: viewModel.hasTransactions,
+                      onTap: () => context.push(AppRoutes.addTransaction),
                     ),
                     const RowDivider(),
                     _ChecklistRow(
@@ -172,10 +193,14 @@ class HomeScreen extends StatelessWidget {
             
 
             // Cash flow answers the complementary question: what changed this month?
+            // Progressive disclosure: hide TopSpendingCard until spending exists so
+            // new users don't face consecutive empty cards on the dashboard.
             if (viewModel.hasAccounts) ...[
               HomeMonthOverview(viewModel: viewModel),
-              const SizedBox(height: AppSpace.xs),
-              TopSpendingCard(viewModel: viewModel),
+              if (viewModel.topSpendingCategories.isNotEmpty) ...[
+                const SizedBox(height: AppSpace.xs),
+                TopSpendingCard(viewModel: viewModel),
+              ],
               const SizedBox(height: AppSpace.xs),
               HomeAtAGlance(viewModel: viewModel),
               const SizedBox(height: AppSpace.xs),
@@ -191,11 +216,14 @@ class HomeScreen extends StatelessWidget {
             ),
             if (viewModel.recentTransactions.isEmpty)
               AppCard(
-                child: Text(
-                  tr.noTransactionsYet,
-                  style: text.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                child: EmptyState(
+                  compact: true,
+                  illustration: EmptyIllustration.transactions,
+                  icon: HugeIcons.strokeRoundedCoins01,
+                  title: tr.noTransactionsYet,
+                  message: tr.tapAddToRecordFirstTransaction,
+                  actionLabel: tr.addTransaction,
+                  onAction: () => context.push(AppRoutes.addTransaction),
                 ),
               )
             else
@@ -211,7 +239,9 @@ class HomeScreen extends StatelessWidget {
                       if (i > 0) const RowDivider(),
                       HomeTransactionRow(
                         transaction: viewModel.recentTransactions[i],
-                        currency: viewModel.baseCurrency,
+                        currency: viewModel.snapshot.currencyOf(
+                          viewModel.recentTransactions[i].accountId,
+                        ),
                       ),
                     ],
                   ],
@@ -244,20 +274,22 @@ class _ChecklistRow extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpace.lg),
-        child: Row(
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isDone ? context.colors.incomeBg : context.colors.fill,
-                shape: BoxShape.circle,
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isDone ? context.colors.incomeBg : context.colors.fill,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
               child:
                   isDone
                       ? Icon(
@@ -298,6 +330,7 @@ class _ChecklistRow extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 }
@@ -327,20 +360,23 @@ class _ActiveShiftBanner extends StatelessWidget {
     final colors = context.colors;
     final theme = Theme.of(context);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      onTap: () => context.push(AppRoutes.liveShift),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpace.md,
-          vertical: AppSpace.sm + 2,
+    return Material(
+      color: (isOnBreak ? colors.warning : colors.income).withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        side: BorderSide(
+          color: (isOnBreak ? colors.warning : colors.income).withValues(alpha: 0.3),
         ),
-        decoration: BoxDecoration(
-          color: colors.income.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: colors.income.withValues(alpha: 0.3)),
-        ),
-        child: Row(
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.liveShift),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.md,
+            vertical: AppSpace.sm + 2,
+          ),
+          child: Row(
           children: [
          
             Expanded(
@@ -386,13 +422,13 @@ class _ActiveShiftBanner extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 }
 
-/// A small, task-first control surface for the dashboard. It deliberately
-/// uses the app's existing surface, hairline and 12px-radius tokens so it
-/// feels like part of the product rather than a separate shortcut grid.
+/// Full-width, evenly proportioned task bar using Hyprwise's 12px surface and
+/// hairline tokens so every quick action shares identical geometry and weight.
 class _HomeActionPanel extends StatelessWidget {
   const _HomeActionPanel({
     required this.workViewModel,
@@ -417,62 +453,43 @@ class _HomeActionPanel extends StatelessWidget {
       _QuickActionItem(
         title: tr.transfer,
         icon: HugeIcons.strokeRoundedCoinsSwap,
-        color: colors.brand,
+        color: colors.brandText,
+        background: colors.brandBg,
         onTap: onTransfer,
       ),
-      // _QuickActionItem(
-      //   title: workViewModel.isClockedIn ? tr.activeShift : tr.startShift,
-      //   icon: workViewModel.isClockedIn
-      //       ? HugeIcons.strokeRoundedClock01
-      //       : HugeIcons.strokeRoundedPlay,
-      //   color: colors.income,
-      //   onTap: onShift,
-      // ),
       _QuickActionItem(
         title: tr.hyprAi,
-        icon: HugeIcons.strokeRoundedChatBot,
-        color: colors.brand,
+        icon: HugeIcons.strokeRoundedSparkles,
+        customLeading: const BrandEmblem(size: 22),
+        color: colors.brandText,
+        background: colors.brandBg,
         onTap: onAssistant,
       ),
       _QuickActionItem(
-        title: tr.t(
-          'Analytics',
-          ne: 'विश्लेषण',
-          hi: 'एनालिटिक्स',
-          es: 'Análisis',
-          fr: 'Analyses',
-          de: 'Analysen',
-          ja: '分析',
-          zh: '分析',
-          it: 'Analisi',
-        ),
+        title: tr.analytics,
         icon: HugeIcons.strokeRoundedAnalytics01,
-        color: colors.liquid,
+        color: colors.income,
+        background: colors.incomeBg,
         onTap: onAnalytics,
       ),
     ];
 
-    return SizedBox(
-      height: 44,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        itemCount: actions.length,
-        itemBuilder: (context, index) {
-          final action = actions[index];
-          return Padding(
-            padding: EdgeInsets.only(
-              right: index == actions.length - 1 ? 0 : AppSpace.sm,
-            ),
+    return Row(
+      children: [
+        for (var i = 0; i < actions.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpace.sm),
+          Expanded(
             child: _QuickActionTile(
-              title: action.title,
-              icon: action.icon,
-              color: action.color,
-              onTap: action.onTap,
+              title: actions[i].title,
+              icon: actions[i].icon,
+              customLeading: actions[i].customLeading,
+              color: actions[i].color,
+              background: actions[i].background,
+              onTap: actions[i].onTap,
             ),
-          );
-        },
-      ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -481,13 +498,17 @@ class _QuickActionItem {
   const _QuickActionItem({
     required this.title,
     required this.icon,
+    this.customLeading,
     required this.color,
+    required this.background,
     required this.onTap,
   });
 
   final String title;
   final IconGlyph icon;
+  final Widget? customLeading;
   final Color color;
+  final Color background;
   final VoidCallback onTap;
 }
 
@@ -495,13 +516,17 @@ class _QuickActionTile extends StatelessWidget {
   const _QuickActionTile({
     required this.title,
     required this.icon,
+    this.customLeading,
     required this.color,
+    required this.background,
     required this.onTap,
   });
 
   final String title;
   final IconGlyph icon;
+  final Widget? customLeading;
   final Color color;
+  final Color background;
   final VoidCallback onTap;
 
   @override
@@ -512,39 +537,41 @@ class _QuickActionTile extends StatelessWidget {
       color: scheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        side: BorderSide(color: scheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.md,
-            vertical: AppSpace.xs,
+            horizontal: AppSpace.sm,
+            vertical: AppSpace.md,
           ),
-          child: Row(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 28,
-                height: 28,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
+                  color: background,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 alignment: Alignment.center,
-                child: AppIcon(icon, size: 16, color: color),
+                child: customLeading ?? AppIcon(icon, size: 18, color: color),
               ),
-              const SizedBox(width: AppSpace.sm),
+              const SizedBox(height: AppSpace.xs + 2),
               Text(
                 title,
                 style: text.labelMedium?.copyWith(
                   color: scheme.onSurface,
                   fontWeight: FontWeight.w600,
+                  fontSize: 12,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
             ],
           ),

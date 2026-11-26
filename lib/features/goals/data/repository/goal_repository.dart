@@ -103,7 +103,12 @@ class GoalRepository {
       (_db.delete(_db.goalContributions)..where((c) => c.id.equals(id))).go();
 
   Future<void> delete(int id) async {
-    await (_db.delete(_db.goals)..where((g) => g.id.equals(id))).go();
+    await _db.transaction(() async {
+      await (_db.delete(_db.goalContributions)
+            ..where((c) => c.goalId.equals(id)))
+          .go();
+      await (_db.delete(_db.goals)..where((g) => g.id.equals(id))).go();
+    });
   }
 
   void _validate(String name, int targetAmountMinor) {

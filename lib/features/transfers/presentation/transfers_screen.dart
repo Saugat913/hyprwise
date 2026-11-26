@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
+import 'package:finance_tracker/core/l10n/app_strings.dart';
+import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/accounts/data/repository/account_repository.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/transfers/data/transfer_repository.dart';
@@ -12,162 +17,180 @@ class TransfersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tr = context.strings;
     final accountRepository = getIt<AccountRepository>();
     final transferRepository = getIt<TransferRepository>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Transfers')),
-      floatingActionButton: StreamBuilder<List<Account>>(
-        stream: accountRepository.watchAccounts(),
-        builder: (context, snapshot) {
-          final accounts = (snapshot.data ?? const <Account>[])
-              .where((account) => !account.isArchived)
-              .toList();
-          return FloatingActionButton.extended(
-            onPressed: !_hasCompatibleAccountPair(accounts)
-                ? null
-                : () => _showTransferForm(context, accounts, transferRepository),
-            icon: const Icon(Icons.swap_horiz_rounded),
-            label: const Text('Transfer money'),
-          );
-        },
-      ),
-      body: StreamBuilder<List<Account>>(
-        stream: accountRepository.watchAccounts(),
-        builder: (context, accountSnapshot) {
-          final accounts = accountSnapshot.data ?? const <Account>[];
-          final accountById = {for (final account in accounts) account.id: account};
-
-          return StreamBuilder(
-            stream: transferRepository.watchTransfers(),
-            builder: (context, transferSnapshot) {
-              final transfers = transferSnapshot.data ?? const [];
-
-              if (accountSnapshot.hasError || transferSnapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Could not load transfers: ${accountSnapshot.error ?? transferSnapshot.error}',
-                  ),
-                );
-              }
-              if ((accountSnapshot.connectionState == ConnectionState.waiting &&
-                      !accountSnapshot.hasData) ||
-                  (transferSnapshot.connectionState == ConnectionState.waiting &&
-                      !transferSnapshot.hasData)) {
-                return const Center(child: CircularProgressIndicator());
-              }
+      appBar: AppTopBar(
+        title: tr.transfer,
+        actions: [
+          StreamBuilder<List<Account>>(
+            stream: accountRepository.watchAccounts(),
+            builder: (context, snapshot) {
+              final accounts = (snapshot.data ?? const <Account>[])
+                  .where((account) => !account.isArchived)
+                  .toList();
               if (!_hasCompatibleAccountPair(accounts)) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.swap_horiz_rounded,
-                            size: 44, color: theme.colorScheme.primary),
-                        const SizedBox(height: 14),
-                        Text('Two accounts needed', style: theme.textTheme.titleLarge),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Create at least two active accounts with the same currency in Money. Transfers do not count as income or expense.',
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+                return const SizedBox.shrink();
               }
-              if (transfers.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.swap_horiz_rounded,
-                            size: 44, color: theme.colorScheme.primary),
-                        const SizedBox(height: 14),
-                        Text('No transfers yet', style: theme.textTheme.titleLarge),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Move money between your own accounts without changing your total wealth.',
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
+              return TopBarAction(
+                HugeIcons.strokeRoundedPlusSign,
+                tooltip: tr.transfer,
+                onPressed: () => _showTransferForm(context, accounts, transferRepository),
+              );
+            },
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: StreamBuilder<List<Account>>(
+          stream: accountRepository.watchAccounts(),
+          builder: (context, accountSnapshot) {
+            final accounts = accountSnapshot.data ?? const <Account>[];
+            final activeAccounts = accounts.where((a) => !a.isArchived).toList();
+            final accountById = {for (final account in accounts) account.id: account};
 
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-                itemCount: transfers.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final transfer = transfers[index];
-                  final source = accountById[transfer.sourceAccountId];
-                  final destination = accountById[transfer.destinationAccountId];
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: theme.colorScheme.outlineVariant),
+            return StreamBuilder(
+              stream: transferRepository.watchTransfers(),
+              builder: (context, transferSnapshot) {
+                final transfers = transferSnapshot.data ?? const [];
+
+                if (accountSnapshot.hasError || transferSnapshot.hasError) {
+                  return EmptyState(
+                    illustration: EmptyIllustration.accounts,
+                    icon: HugeIcons.strokeRoundedAlertCircle,
+                    title: tr.couldNotSave('${accountSnapshot.error ?? transferSnapshot.error}'),
+                    message: tr.t(
+                      'Please try again in a moment.',
+                      ne: 'कृपया केही समयपछि पुनः प्रयास गर्नुहोस्।',
+                      hi: 'कृपया थोड़ी देर बाद फिर से प्रयास करें।',
+                      es: 'Inténtalo de nuevo en un momento.',
+                      fr: 'Veuillez réessayer dans un instant.',
+                      de: 'Bitte versuche es gleich erneut.',
+                      ja: 'しばらくしてからもう一度お試しください。',
+                      zh: '请稍后再试。',
+                      it: 'Riprova tra poco.',
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: Icon(Icons.swap_horiz_rounded,
-                              color: theme.colorScheme.onSecondaryContainer),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${source?.name ?? 'Deleted account'} → ${destination?.name ?? 'Deleted account'}',
-                                style: theme.textTheme.titleSmall,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatDate(DateTime.fromMillisecondsSinceEpoch(
-                                  transfer.occurredAt,
-                                )),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              if (transfer.note?.isNotEmpty == true) ...[
-                                const SizedBox(height: 3),
+                  );
+                }
+                if ((accountSnapshot.connectionState == ConnectionState.waiting &&
+                        !accountSnapshot.hasData) ||
+                    (transferSnapshot.connectionState == ConnectionState.waiting &&
+                        !transferSnapshot.hasData)) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!_hasCompatibleAccountPair(activeAccounts)) {
+                  return EmptyState(
+                    illustration: EmptyIllustration.accounts,
+                    icon: HugeIcons.strokeRoundedCoinsSwap,
+                    title: tr.t(
+                      'Two accounts needed',
+                      ne: 'कम्तिमा दुई खाता आवश्यक छ',
+                      hi: 'कम से कम दो खाते आवश्यक हैं',
+                      es: 'Se necesitan dos cuentas',
+                      fr: 'Deux comptes requis',
+                      de: 'Zwei Konten erforderlich',
+                      ja: '2つの口座が必要です',
+                      zh: '至少需要两个账户',
+                      it: 'Servono due conti',
+                    ),
+                    message: tr.t(
+                      'Create at least two active accounts to move money between them without affecting net worth.',
+                      ne: 'कुल सम्पत्ति नबदली रकम सार्न कम्तिमा दुई सक्रिय खाता बनाउनुहोस्।',
+                      hi: 'कुल संपत्ति बदले बिना पैसे ट्रांसफर करने के लिए कम से कम दो सक्रिय खाते बनाएं।',
+                      es: 'Crea al menos dos cuentas activas para mover dinero entre ellas sin cambiar tu patrimonio.',
+                      fr: 'Créez au moins deux comptes actifs pour transférer de l\'argent entre eux.',
+                      de: 'Erstelle mindestens zwei aktive Konten für Überträge.',
+                      ja: '口座間で資金を移動するには、有効な口座を2つ以上作成してください。',
+                      zh: '创建至少两个活跃账户以在账户间转账，不影响总资产。',
+                      it: 'Crea almeno due conti attivi per trasferire denaro tra di essi.',
+                    ),
+                    actionLabel: tr.addAccount,
+                    onAction: () => context.push(AppRoutes.addAccount),
+                  );
+                }
+                if (transfers.isEmpty) {
+                  return EmptyState(
+                    illustration: EmptyIllustration.transactions,
+                    icon: HugeIcons.strokeRoundedCoinsSwap,
+                    title: tr.t(
+                      'No transfers yet',
+                      ne: 'अहिलेसम्म कुनै ट्रान्सफर छैन',
+                      hi: 'अभी तक कोई ट्रांसफर नहीं',
+                      es: 'Aún no hay transferencias',
+                      fr: 'Aucun transfert pour l\'instant',
+                      de: 'Noch keine Überträge',
+                      ja: 'まだ振替履歴はありません',
+                      zh: '暂无转账记录',
+                      it: 'Nessun trasferimento ancora',
+                    ),
+                    message: tr.t(
+                      'Move money between your own accounts without changing your total wealth.',
+                      ne: 'तपाईंको कुल सम्पत्ति नबदली आफ्ना खाताहरू बीच रकम सार्नुहोस्।',
+                      hi: 'अपनी कुल संपत्ति बदले बिना अपने खातों के बीच पैसे ट्रांसफर करें।',
+                      es: 'Mueve dinero entre tus propias cuentas sin cambiar tu patrimonio total.',
+                      fr: 'Déplacez de l\'argent entre vos comptes sans modifier votre patrimoine.',
+                      de: 'Bewege Geld zwischen deinen Konten, ohne dein Gesamtvermögen zu verändern.',
+                      ja: '総資産を変えずに自分の口座間で資金を移動できます。',
+                      zh: '在您自己的账户之间划转资金，不会改变总资产。',
+                      it: 'Sposta denaro tra i tuoi conti senza cambiare il patrimonio totale.',
+                    ),
+                    actionLabel: tr.transfer,
+                    onAction: () => _showTransferForm(context, activeAccounts, transferRepository),
+                  );
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.page, AppSpace.md, AppSpace.page, AppSpace.xxxl),
+                  itemCount: transfers.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: AppSpace.sm),
+                  itemBuilder: (context, index) {
+                    final transfer = transfers[index];
+                    final source = accountById[transfer.sourceAccountId];
+                    final destination = accountById[transfer.destinationAccountId];
+                    return AppCard(
+                      padding: const EdgeInsets.all(AppSpace.md),
+                      child: Row(
+                        children: [
+                          const IconTile(HugeIcons.strokeRoundedCoinsSwap, size: 42),
+                          const SizedBox(width: AppSpace.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  transfer.note!,
+                                  '${source?.name ?? 'Account'} → ${destination?.name ?? 'Account'}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall,
+                                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                                 ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  _formatDate(DateTime.fromMillisecondsSinceEpoch(
+                                    transfer.occurredAt,
+                                  )),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (transfer.note?.isNotEmpty == true) ...[
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    transfer.note!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
+                          const SizedBox(width: AppSpace.sm),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
                               _formatMoney(
                                 transfer.amountMinor,
                                 source?.currencyCode ?? 'NPR',
@@ -180,35 +203,42 @@ class TransfersScreen extends StatelessWidget {
                               tooltip: 'Transfer actions',
                               onSelected: (value) async {
                                 if (value != 'delete') return;
-                                final confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder: (dialogContext) => AlertDialog(
-                                    title: const Text('Delete transfer?'),
-                                    content: const Text(
-                                      'The account balances will be recalculated without this transfer.',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(dialogContext, false),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      FilledButton(
-                                        onPressed: () =>
-                                            Navigator.pop(dialogContext, true),
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
+                                final confirmed = await showConfirmDialog(
+                                  context,
+                                  title: tr.t(
+                                    'Delete transfer?',
+                                    ne: 'ट्रान्सफर मेटाउने?',
+                                    hi: 'ट्रांसफर हटाएं?',
+                                    es: '¿Eliminar transferencia?',
+                                    fr: 'Supprimer le transfert ?',
+                                    de: 'Übertrag löschen?',
+                                    ja: '振替を削除しますか？',
+                                    zh: '删除这笔转账？',
+                                    it: 'Eliminare il trasferimento?',
                                   ),
+                                  message: tr.t(
+                                    'Account balances will be recalculated without this transfer.',
+                                    ne: 'यो ट्रान्सफर बिना खाताको मौज्दात पुनः गणना गरिनेछ।',
+                                    hi: 'इस ट्रांसफर के बिना खाते का शेष फिर से गणना किया जाएगा।',
+                                    es: 'Los saldos de las cuentas se recalcularán sin esta transferencia.',
+                                    fr: 'Les soldes des comptes seront recalculés sans ce transfert.',
+                                    de: 'Die Kontostände werden ohne diesen Übertrag neu berechnet.',
+                                    ja: 'この振替を除いて口座残高が再計算されます。',
+                                    zh: '删除后将重新计算相关账户余额。',
+                                    it: 'I saldi dei conti verranno ricalcolati senza questo trasferimento.',
+                                  ),
+                                  confirmLabel: tr.delete,
+                                  cancelLabel: tr.cancel,
+                                  destructive: true,
                                 );
-                                if (confirmed == true && context.mounted) {
+                                if (confirmed && context.mounted) {
                                   await transferRepository.deleteTransfer(transfer.id);
                                 }
                               },
-                              itemBuilder: (_) => const [
+                              itemBuilder: (_) => [
                                 PopupMenuItem(
                                   value: 'delete',
-                                  child: Text('Delete'),
+                                  child: Text(tr.delete),
                                 ),
                               ],
                             ),
@@ -222,6 +252,7 @@ class TransfersScreen extends StatelessWidget {
             },
           );
         },
+        ),
       ),
     );
   }

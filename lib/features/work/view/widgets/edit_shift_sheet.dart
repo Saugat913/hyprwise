@@ -32,21 +32,27 @@ void showEditShiftDialog(
     context: context,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
     ),
-    builder: (ctx) => StatefulBuilder(
+    builder: (ctx) => DisposableScope(
+      onDispose: () {
+        breakController.dispose();
+        noteController.dispose();
+      },
+      child: StatefulBuilder(
       builder: (ctx, setDialogState) {
         final text = Theme.of(ctx).textTheme;
         final tr = ctx.strings;
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: AppSpace.page,
-            right: AppSpace.page,
-            top: AppSpace.lg,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
-          ),
-          child: Column(
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: AppSpace.page,
+              right: AppSpace.page,
+              top: AppSpace.lg,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
+            ),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -183,58 +189,60 @@ void showEditShiftDialog(
               ),
               const SizedBox(height: AppSpace.lg),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      tr.cancel,
-                      kind: AppButtonKind.secondary,
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpace.md),
-                  Expanded(
-                    child: AppButton(
-                      tr.saveChanges,
-                      onPressed: () async {
-                        final newStart = DateTime(
-                          selectedDate.year,
-                          selectedDate.month,
-                          selectedDate.day,
-                          startTime.hour,
-                          startTime.minute,
-                        );
-                        final newEnd = DateTime(
-                          selectedDate.year,
-                          selectedDate.month,
-                          selectedDate.day,
-                          endTime.hour,
-                          endTime.minute,
-                        );
-                        final breakMin = int.tryParse(breakController.text.trim()) ?? 0;
-                        final note = noteController.text.trim();
+              AppButton(
+                tr.saveChanges,
+                onPressed: () async {
+                  final newStart = DateTime(
+                    selectedDate.year,
+                    selectedDate.month,
+                    selectedDate.day,
+                    startTime.hour,
+                    startTime.minute,
+                  );
+                  var newEnd = DateTime(
+                    selectedDate.year,
+                    selectedDate.month,
+                    selectedDate.day,
+                    endTime.hour,
+                    endTime.minute,
+                  );
+                  // Handle overnight shifts crossing midnight cleanly
+                  if (!newEnd.isAfter(newStart)) {
+                    newEnd = newEnd.add(const Duration(days: 1));
+                  }
+                  final breakMin = (int.tryParse(breakController.text.trim()) ?? 0).clamp(0, 720);
+                  final note = noteController.text.trim();
 
-                        await viewModel.updateShift(
-                          shift.id,
-                          jobId: selectedJobId,
-                          startAt: newStart,
-                          endAt: newEnd,
-                          breakMinutes: breakMin,
-                          status: selectedStatus,
-                          note: note.isEmpty ? null : note,
-                        );
+                  try {
+                    await viewModel.updateShift(
+                      shift.id,
+                      jobId: selectedJobId,
+                      startAt: newStart,
+                      endAt: newEnd,
+                      breakMinutes: breakMin,
+                      status: selectedStatus,
+                      note: note.isEmpty ? null : note,
+                    );
 
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        if (context.mounted) showToast(context, tr.shiftUpdatedSuccess);
-                      },
-                    ),
-                  ),
-                ],
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (context.mounted) showToast(context, tr.shiftUpdatedSuccess);
+                  } catch (e) {
+                    if (context.mounted) showErrorToast(context, tr.couldNotSave('$e'));
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpace.sm),
+              AppButton(
+                tr.cancel,
+                kind: AppButtonKind.secondary,
+                onPressed: () => Navigator.pop(ctx),
               ),
             ],
           ),
+        ),
         );
       },
+    ),
     ),
   );
 }

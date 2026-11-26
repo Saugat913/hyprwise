@@ -595,17 +595,21 @@ class _PayTypeCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      title,
-                      style: text.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isSelected ? scheme.primary : null,
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: text.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? scheme.primary : null,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (isSelected)
+                    if (isSelected) ...[
+                      const SizedBox(width: 4),
                       Icon(Icons.check_circle_rounded, size: 14, color: scheme.primary),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 4),

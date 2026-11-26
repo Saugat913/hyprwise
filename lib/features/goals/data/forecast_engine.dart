@@ -220,23 +220,37 @@ class ForecastEngine {
     DateTime start,
     DateTime horizonEnd,
   ) {
+    if (snapshot.shifts.isEmpty || snapshot.jobs.isEmpty) return const [];
     final jobsById = {for (final job in snapshot.jobs) job.id: job};
+    final tr = AppStrings.current();
+    final rateByJobId = <int, String>{};
+    final titleByJobId = <int, String>{};
+    final startMs = start.millisecondsSinceEpoch;
+    final horizonEndExclusiveMs = horizonEnd.add(const Duration(days: 1)).millisecondsSinceEpoch;
+    final scheduledStatus = ShiftStatus.scheduled.value;
+
     final events = <ForecastEvent>[];
     for (final shift in snapshot.shifts) {
-      if (shift.status != ShiftStatus.scheduled.value) continue;
-      if (shift.endAt == null) continue;
-      final end = DateTime.fromMillisecondsSinceEpoch(shift.endAt!);
+      if (shift.status != scheduledStatus) continue;
+      final endMs = shift.endAt;
+      if (endMs == null || endMs < startMs || endMs >= horizonEndExclusiveMs) continue;
+      final end = DateTime.fromMillisecondsSinceEpoch(endMs);
       if (end.isBefore(start) || end.isAfter(horizonEnd)) continue;
       final job = jobsById[shift.jobId];
       if (job == null) continue;
-      final tr = AppStrings.current();
       final earnings = ShiftEarnings.forShift(shift, job);
-      final rateStr =
-          '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)}/${tr.hourAbbr}';
+      final rateStr = rateByJobId.putIfAbsent(
+        job.id,
+        () => '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)}/${tr.hourAbbr}',
+      );
+      final titleStr = titleByJobId.putIfAbsent(
+        job.id,
+        () => tr.jobShiftTitle(job.name),
+      );
       events.add(
         ForecastEvent(
           date: AppDate.dateOnly(end),
-          label: tr.jobShiftTitle(job.name),
+          label: titleStr,
           deltaMinor: snapshot.convert(
             earnings.earningsMinor,
             job.currencyCode,
@@ -257,6 +271,7 @@ class ForecastEngine {
   ) {
     final activeGoals =
         snapshot.goals.where((goal) => !goal.isArchived).toList();
+    if (activeGoals.isEmpty) return const [];
     final priorityOrder = {'high': 0, 'normal': 1, 'low': 2};
     activeGoals.sort((a, b) {
       final pA = priorityOrder[a.priority] ?? 1;
@@ -266,12 +281,19 @@ class ForecastEngine {
       return (a.targetDate ?? 9999999999999).compareTo(b.targetDate ?? 9999999999999);
     });
 
+    final contributionsByGoal = <int, int>{};
+    for (final contribution in snapshot.contributions) {
+      contributionsByGoal.update(
+        contribution.goalId,
+        (sum) => sum + contribution.amountMinor,
+        ifAbsent: () => contribution.amountMinor,
+      );
+    }
+
     final results = <GoalForecast>[];
 
     for (final goal in activeGoals) {
-      final contributions = snapshot.contributions
-          .where((contribution) => contribution.goalId == goal.id)
-          .fold(0, (sum, contribution) => sum + contribution.amountMinor);
+      final contributions = contributionsByGoal[goal.id] ?? 0;
       final linkedBalance =
           goal.accountId != null ? snapshot.balanceOf(goal.accountId!) : 0;
       final effectiveSavedMinor =

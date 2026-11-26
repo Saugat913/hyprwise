@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/money/data/model/transaction_type.dart';
 import 'package:finance_tracker/features/goals/data/forecast_engine.dart';
 import 'package:finance_tracker/features/shared/data/categories.dart';
+import 'package:finance_tracker/features/shared/data/finance_snapshot.dart';
 import 'package:finance_tracker/features/shared/data/finance_store.dart';
 import 'package:finance_tracker/features/work/data/model/work.dart';
 
@@ -76,12 +78,92 @@ class CalendarViewModel extends ChangeNotifier {
     scrollToShiftNotifier.value++;
   }
 
+  // Per-snapshot O(1) date indexes & selected-day memoization caches.
+  FinanceSnapshot? _indexedSnapshot;
+  Map<int, List<Shift>> _shiftsByDay = const {};
+  Map<int, List<Transaction>> _transactionsByDay = const {};
+  Map<int, Job> _jobsById = const {};
+  Set<int>? _forecastNonShiftDays;
+  Set<int>? _forecastBillDays;
+  List<CalendarItem>? _selectedDayItemsCache;
+  int? _dayIncomeCache;
+  int? _dayExpenseCache;
+
+  static int _dayKey(DateTime d) => d.year * 10000 + d.month * 100 + d.day;
+
+  void _invalidateDayCache() {
+    _selectedDayItemsCache = null;
+    _dayIncomeCache = null;
+    _dayExpenseCache = null;
+  }
+
+  void _ensureIndexed() {
+    final snap = financeStore.snapshot;
+    if (identical(_indexedSnapshot, snap)) return;
+    _indexedSnapshot = snap;
+    _forecastNonShiftDays = null;
+    _forecastBillDays = null;
+    _invalidateDayCache();
+
+    _jobsById = {for (final j in snap.jobs) j.id: j};
+
+    final shiftMap = <int, List<Shift>>{};
+    final todayKey = _dayKey(DateTime.now());
+    for (final s in snap.shifts) {
+      final start = DateTime.fromMillisecondsSinceEpoch(s.startAt);
+      final startKey = _dayKey(start);
+      shiftMap.putIfAbsent(startKey, () => <Shift>[]).add(s);
+
+      if (s.endAt != null) {
+        final end = DateTime.fromMillisecondsSinceEpoch(s.endAt!);
+        final endKey = _dayKey(end);
+        if (endKey != startKey) {
+          shiftMap.putIfAbsent(endKey, () => <Shift>[]).add(s);
+        }
+      }
+      if (s.status == 'in_progress' && todayKey != startKey) {
+        final list = shiftMap.putIfAbsent(todayKey, () => <Shift>[]);
+        if (!list.contains(s)) list.add(s);
+      }
+    }
+    _shiftsByDay = shiftMap;
+
+    final txMap = <int, List<Transaction>>{};
+    for (final t in snap.transactions) {
+      final txDate = DateTime.fromMillisecondsSinceEpoch(t.occurredAt);
+      txMap.putIfAbsent(_dayKey(txDate), () => <Transaction>[]).add(t);
+    }
+    _transactionsByDay = txMap;
+  }
+
+  void _ensureForecastDaysIndexed() {
+    _ensureIndexed();
+    if (_forecastNonShiftDays != null) return;
+    final nonShiftDays = <int>{};
+    final billDays = <int>{};
+    final events = financeStore.forecast(horizonDays: 60).events;
+    for (final e in events) {
+      if (e.kind == ForecastEventKind.shift) continue;
+      final key = _dayKey(e.date);
+      nonShiftDays.add(key);
+      if (e.kind == ForecastEventKind.bill ||
+          e.kind == ForecastEventKind.subscription) {
+        billDays.add(key);
+      }
+    }
+    _forecastNonShiftDays = nonShiftDays;
+    _forecastBillDays = billDays;
+  }
+
   void _onStoreChanged() {
+    _indexedSnapshot = null;
+    _invalidateDayCache();
     notifyListeners();
   }
 
   void selectDate(DateTime date) {
     _selectedDate = AppDate.dateOnly(date);
+    _invalidateDayCache();
     // Keep week strip synced with selected date
     final today = AppDate.dateOnly(DateTime.now());
     final currentMonday = today.subtract(Duration(days: today.weekday - 1));
@@ -92,7 +174,9 @@ class CalendarViewModel extends ChangeNotifier {
   }
 
   void setFilter(CalendarFilter filter) {
+    if (_filter == filter) return;
     _filter = filter;
+    _invalidateDayCache();
     triggerScrollToNextShift();
     notifyListeners();
   }
@@ -103,6 +187,7 @@ class CalendarViewModel extends ChangeNotifier {
     final currentMonday = today.subtract(Duration(days: today.weekday - 1));
     final newMonday = currentMonday.add(Duration(days: _weekOffset * 7));
     _selectedDate = newMonday;
+    _invalidateDayCache();
     triggerScrollToNextShift();
     notifyListeners();
   }
@@ -111,6 +196,7 @@ class CalendarViewModel extends ChangeNotifier {
     _weekOffset = 0;
     _selectedDate = AppDate.dateOnly(DateTime.now());
     if (resetFilter) _filter = CalendarFilter.shifts;
+    _invalidateDayCache();
     triggerScrollToNextShift();
     notifyListeners();
   }
@@ -123,104 +209,104 @@ class CalendarViewModel extends ChangeNotifier {
   }
 
   bool hasEventsOn(DateTime day) {
-    final d = AppDate.dateOnly(day);
-    // Check shifts
-    for (final s in financeStore.shifts) {
-      final start = AppDate.dateOnly(DateTime.fromMillisecondsSinceEpoch(s.startAt));
-      if (start == d) return true;
+    _ensureIndexed();
+    final key = _dayKey(day);
+    if (_filter == CalendarFilter.all || _filter == CalendarFilter.shifts) {
+      if (_shiftsByDay.containsKey(key)) return true;
     }
-    // Check recorded transactions
-    for (final t in financeStore.transactions) {
-      final txDate = AppDate.dateOnly(DateTime.fromMillisecondsSinceEpoch(t.occurredAt));
-      if (txDate == d) return true;
+    if (_filter == CalendarFilter.all || _filter == CalendarFilter.transactions) {
+      if (_transactionsByDay.containsKey(key)) return true;
     }
-    // Check forecast events
-    final events = financeStore.forecast(horizonDays: 60).events;
-    for (final e in events) {
-      if (AppDate.dateOnly(e.date) == d) return true;
+    if (_filter == CalendarFilter.all || _filter == CalendarFilter.bills) {
+      _ensureForecastDaysIndexed();
+      if (_filter == CalendarFilter.bills) {
+        return _forecastBillDays!.contains(key);
+      }
+      return _forecastNonShiftDays!.contains(key);
     }
     return false;
   }
 
-  /// Returns items ONLY for the selected date, filtered by active filter
+  /// Returns items ONLY for the selected date, filtered by active filter (cached per date/filter/snapshot).
   List<CalendarItem> get selectedDayItems {
+    _ensureIndexed();
+    if (_selectedDayItemsCache != null) return _selectedDayItemsCache!;
+
     final items = <CalendarItem>[];
     final targetDate = _selectedDate;
-    final jobsById = {for (final j in financeStore.jobs) j.id: j};
+    final targetKey = _dayKey(targetDate);
+    final tr = AppStrings.current();
 
-    // 1. Shifts on selected date
+    // 1. Shifts on selected date (O(1) bucket lookup)
     if (_filter == CalendarFilter.all || _filter == CalendarFilter.shifts) {
-      for (final s in financeStore.shifts) {
-        final start = DateTime.fromMillisecondsSinceEpoch(s.startAt);
-        final end = s.endAt != null ? DateTime.fromMillisecondsSinceEpoch(s.endAt!) : null;
-        final onTargetDate = AppDate.dateOnly(start) == targetDate ||
-            (end != null && AppDate.dateOnly(end) == targetDate) ||
-            (s.status == 'in_progress' && AppDate.dateOnly(DateTime.now()) == targetDate);
-        if (!onTargetDate) continue;
+      final dayShifts = _shiftsByDay[targetKey];
+      if (dayShifts != null) {
+        for (final s in dayShifts) {
+          final start = DateTime.fromMillisecondsSinceEpoch(s.startAt);
+          final end = s.endAt != null ? DateTime.fromMillisecondsSinceEpoch(s.endAt!) : null;
+          final job = _jobsById[s.jobId];
+          final jobName = job?.name ?? tr.shiftLabel;
+          final earnings = job != null ? ShiftEarnings.forShift(s, job) : null;
+          final timeStr = end != null
+              ? '${AppDate.timeOnly(start)} – ${AppDate.timeOnly(end)}'
+              : AppDate.timeOnly(start);
 
-        final job = jobsById[s.jobId];
-        final tr = AppStrings.current();
-        final jobName = job?.name ?? tr.shiftLabel;
-        final earnings = job != null ? ShiftEarnings.forShift(s, job) : null;
-        final timeStr = end != null
-            ? '${AppDate.timeOnly(start)} – ${AppDate.timeOnly(end)}'
-            : AppDate.timeOnly(start);
+          final amount = earnings?.earningsMinor ?? (job != null ? job.hourlyRateMinor * 4 : 0);
 
-        final amount = earnings?.earningsMinor ?? (job != null ? job.hourlyRateMinor * 4 : 0);
-
-        items.add(
-          CalendarItem(
-            id: 'shift_${s.id}',
-            type: CalendarItemType.shift,
-            title: jobName,
-            subtitle: timeStr,
-            date: start,
-            endDate: end,
-            amountMinor: amount,
-            currencyCode: job?.currencyCode ?? baseCurrency,
-            isIncome: true,
-            colorIndex: job?.colorIndex ?? 0,
-            status: s.status,
-            rawId: s.id,
-          ),
-        );
+          items.add(
+            CalendarItem(
+              id: 'shift_${s.id}',
+              type: CalendarItemType.shift,
+              title: jobName,
+              subtitle: timeStr,
+              date: start,
+              endDate: end,
+              amountMinor: amount,
+              currencyCode: job?.currencyCode ?? baseCurrency,
+              isIncome: true,
+              colorIndex: job?.colorIndex ?? 0,
+              status: s.status,
+              rawId: s.id,
+            ),
+          );
+        }
       }
     }
 
-    // 2. Real transactions recorded on selected date
+    // 2. Real transactions recorded on selected date (O(1) bucket lookup)
     if (_filter == CalendarFilter.all || _filter == CalendarFilter.transactions) {
-      for (final t in financeStore.transactions) {
-        final txDate = DateTime.fromMillisecondsSinceEpoch(t.occurredAt);
-        if (AppDate.dateOnly(txDate) != targetDate) continue;
+      final dayTxs = _transactionsByDay[targetKey];
+      if (dayTxs != null) {
+        for (final t in dayTxs) {
+          final txDate = DateTime.fromMillisecondsSinceEpoch(t.occurredAt);
+          final isIncome = t.type == TransactionType.income.value;
+          final locCat = TransactionCategories.localizedCategoryName(t.category);
+          final title = (t.note != null && t.note!.isNotEmpty) ? t.note! : locCat;
 
-        final isIncome = t.type == TransactionType.income.value;
-        final locCat = TransactionCategories.localizedCategoryName(t.category);
-        final title = (t.note != null && t.note!.isNotEmpty) ? t.note! : locCat;
-
-        items.add(
-          CalendarItem(
-            id: 'tx_${t.id}',
-            type: isIncome ? CalendarItemType.income : CalendarItemType.expense,
-            title: title,
-            subtitle: '$locCat · ${AppDate.timeOnly(txDate)}',
-            date: txDate,
-            amountMinor: t.amountMinor,
-            currencyCode: baseCurrency,
-            isIncome: isIncome,
-            category: t.category,
-            rawId: t.id,
-          ),
-        );
+          items.add(
+            CalendarItem(
+              id: 'tx_${t.id}',
+              type: isIncome ? CalendarItemType.income : CalendarItemType.expense,
+              title: title,
+              subtitle: '$locCat · ${AppDate.timeOnly(txDate)}',
+              date: txDate,
+              amountMinor: t.amountMinor,
+              currencyCode: financeStore.snapshot.currencyOf(t.accountId),
+              isIncome: isIncome,
+              category: t.category,
+              rawId: t.id,
+            ),
+          );
+        }
       }
     }
 
     // 3. Forecast events (bills, subscriptions, goal contributions) on selected date
     if (_filter == CalendarFilter.all || _filter == CalendarFilter.bills) {
-      final tr = AppStrings.current();
       final forecast = financeStore.forecast(horizonDays: 60);
       for (var i = 0; i < forecast.events.length; i++) {
         final e = forecast.events[i];
-        if (AppDate.dateOnly(e.date) != targetDate) continue;
+        if (_dayKey(e.date) != targetKey) continue;
         if (e.kind == ForecastEventKind.shift) continue; // Real shifts already added above
 
         final isBill = e.kind == ForecastEventKind.bill || e.kind == ForecastEventKind.subscription;
@@ -244,25 +330,33 @@ class CalendarViewModel extends ChangeNotifier {
     }
 
     items.sort((a, b) => a.date.compareTo(b.date));
-    return items;
+    return _selectedDayItemsCache = items;
   }
 
-  /// Day income totals
+  /// Day income totals converted to base currency (cached per date/filter/snapshot)
   int get dayIncomeMinor {
+    if (_dayIncomeCache != null) return _dayIncomeCache!;
     var sum = 0;
+    final snap = financeStore.snapshot;
     for (final item in selectedDayItems) {
-      if (item.isIncome) sum += item.amountMinor;
+      if (item.isIncome) {
+        sum += snap.convert(item.amountMinor, item.currencyCode);
+      }
     }
-    return sum;
+    return _dayIncomeCache = sum;
   }
 
-  /// Day expense totals
+  /// Day expense totals converted to base currency (cached per date/filter/snapshot)
   int get dayExpenseMinor {
+    if (_dayExpenseCache != null) return _dayExpenseCache!;
     var sum = 0;
+    final snap = financeStore.snapshot;
     for (final item in selectedDayItems) {
-      if (!item.isIncome) sum += item.amountMinor;
+      if (!item.isIncome) {
+        sum += snap.convert(item.amountMinor, item.currencyCode);
+      }
     }
-    return sum;
+    return _dayExpenseCache = sum;
   }
 
   int get dayNetMinor => dayIncomeMinor - dayExpenseMinor;

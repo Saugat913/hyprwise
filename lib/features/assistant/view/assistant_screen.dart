@@ -153,6 +153,22 @@ class _AssistantScreenState extends State<AssistantScreen> {
         }
       } catch (e) {
         debugPrint('Error picking bill image: $e');
+        if (context.mounted) {
+          showErrorToast(
+            context,
+            tr.t(
+              'Unable to access camera or photos. Check permissions in Settings.',
+              ne: 'क्यामेरा वा फोटो खोल्न सकिएन। सेटिङमा अनुमति जाँच गर्नुहोस्।',
+              hi: 'कैमरा या फ़ोटो तक पहुँच नहीं हो सकी। सेटिंग्स में अनुमतियाँ जाँचें।',
+              es: 'No se pudo acceder a la cámara o fotos. Revisa los permisos.',
+              fr: 'Impossible d\'accéder à la caméra ou aux photos.',
+              de: 'Kein Zugriff auf Kamera oder Fotos. Berechtigungen prüfen.',
+              ja: 'カメラまたは写真にアクセスできません。設定で権限を確認してください。',
+              zh: '无法访问相机或相册，请在设置中检查权限。',
+              it: 'Impossibile accedere a fotocamera o foto. Controlla i permessi.',
+            ),
+          );
+        }
       }
     }
   }
@@ -781,7 +797,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                     size: 20,
                                   ),
                                   tooltip: tr.scanBillTooltip,
-                                  onPressed: () => _pickBillImage(context),
+                                  onPressed:
+                                      _viewModel.isTyping
+                                          ? null
+                                          : () => _pickBillImage(context),
                                 ),
                                 const SizedBox(width: AppSpace.sm),
 
@@ -836,22 +855,49 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
                                   child: IconButton(
+                                    tooltip: tr.t(
+                                      'Send message',
+                                      ne: 'सन्देश पठाउनुहोस्',
+                                      hi: 'संदेश भेजें',
+                                      es: 'Enviar mensaje',
+                                      fr: 'Envoyer le message',
+                                      de: 'Nachricht senden',
+                                      ja: 'メッセージを送信',
+                                      zh: '发送消息',
+                                      it: 'Invia messaggio',
+                                    ),
                                     style: IconButton.styleFrom(
-                                      backgroundColor: hasText
-                                          ? scheme.primary
-                                          : scheme.surfaceContainerHighest,
-                                      foregroundColor: hasText
-                                          ? scheme.onPrimary
-                                          : scheme.onSurfaceVariant.withValues(alpha: 0.4),
+                                      backgroundColor:
+                                          (hasText && !_viewModel.isTyping)
+                                              ? scheme.primary
+                                              : scheme.surfaceContainerHighest,
+                                      foregroundColor:
+                                          (hasText && !_viewModel.isTyping)
+                                              ? scheme.onPrimary
+                                              : scheme.onSurfaceVariant
+                                                  .withValues(alpha: 0.4),
                                       shape: const CircleBorder(),
                                       padding: const EdgeInsets.all(10),
                                       minimumSize: const Size(44, 44),
                                     ),
-                                    onPressed: hasText ? () => _send() : null,
-                                    icon: const Icon(
-                                      Icons.arrow_upward_rounded,
-                                      size: 20,
-                                    ),
+                                    onPressed:
+                                        (hasText && !_viewModel.isTyping)
+                                            ? () => _send()
+                                            : null,
+                                    icon:
+                                        _viewModel.isTyping
+                                            ? SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: scheme.onSurfaceVariant,
+                                              ),
+                                            )
+                                            : const Icon(
+                                              Icons.arrow_upward_rounded,
+                                              size: 20,
+                                            ),
                                   ),
                                 ),
                               ],

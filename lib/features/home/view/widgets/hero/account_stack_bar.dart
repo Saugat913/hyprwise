@@ -133,9 +133,7 @@ class AccountStackBar extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             opacity: opacity,
             child: ColoredBox(
-              color: slice.isSpendable
-                  ? const Color(0xFF22C55E)
-                  : const Color(0xFF64748B),
+              color: color,
               child: const SizedBox(
                 height: 6.0,
               ),

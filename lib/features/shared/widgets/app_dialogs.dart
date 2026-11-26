@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/shared/widgets/app_button.dart';
@@ -14,9 +15,10 @@ Future<bool> showConfirmDialog(
   required String title,
   required String message,
   required String confirmLabel,
-  String cancelLabel = 'Cancel',
+  String? cancelLabel,
   bool destructive = true,
 }) async {
+  final effectiveCancel = cancelLabel ?? context.strings.cancel;
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => Dialog(
@@ -39,7 +41,7 @@ Future<bool> showConfirmDialog(
               onPressed: () => Navigator.pop(ctx, true),
             ),
             const SizedBox(height: AppSpace.xs),
-            AppButton(cancelLabel, kind: AppButtonKind.text, onPressed: () => Navigator.pop(ctx, false)),
+            AppButton(effectiveCancel, kind: AppButtonKind.text, onPressed: () => Navigator.pop(ctx, false)),
           ],
         ),
       ),
@@ -92,7 +94,11 @@ void showToast(
                 child: AppIcon(
                   hasError ? HugeIcons.strokeRoundedAlertCircle : HugeIcons.strokeRoundedTick02,
                   size: 15,
-                  color: Colors.white,
+                  color: hasError
+                      ? Theme.of(context).colorScheme.onError
+                      : (Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Colors.white),
                 ),
               ),
             ),

@@ -81,35 +81,41 @@ class WorkScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: AppSpace.md),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            tr.localizeDigits(_formatDuration(viewModel.activeShiftElapsed)),
-                            style: text.displaySmall?.copyWith(
-                              fontFamily: 'RedditMono',
-                              fontWeight: FontWeight.w700,
-                              color: viewModel.isOnBreak ? scheme.onSurfaceVariant : null,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: colors.incomeBg.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                            ),
-                            child: Text(
-                              '≈ ${MoneyFormatter.format(liveEarnings?.earningsMinor ?? 0, activeCurrency)}',
-                              style: text.titleSmall?.copyWith(
-                                fontFamily: 'RedditMono',
-                                fontWeight: FontWeight.w700,
-                                color: colors.income,
+                      ListenableBuilder(
+                        listenable: viewModel.liveTick,
+                        builder: (context, _) {
+                          final tickEarnings = viewModel.activeShiftLiveEarnings;
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                tr.localizeDigits(_formatDuration(viewModel.activeShiftElapsed)),
+                                style: text.displaySmall?.copyWith(
+                                  fontFamily: 'RedditMono',
+                                  fontWeight: FontWeight.w700,
+                                  color: viewModel.isOnBreak ? scheme.onSurfaceVariant : null,
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: colors.incomeBg.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                ),
+                                child: Text(
+                                  '≈ ${MoneyFormatter.format(tickEarnings?.earningsMinor ?? liveEarnings?.earningsMinor ?? 0, activeCurrency)}',
+                                  style: text.titleSmall?.copyWith(
+                                    fontFamily: 'RedditMono',
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.income,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: AppSpace.lg),
                       Row(
@@ -131,6 +137,7 @@ class WorkScreen extends StatelessWidget {
 
             if (viewModel.jobs.isEmpty)
               EmptyState(
+                illustration: EmptyIllustration.jobs,
                 icon: HugeIcons.strokeRoundedBriefcase01,
                 title: tr.noJobsYet,
                 message: tr.addJobToTrack,
@@ -138,54 +145,82 @@ class WorkScreen extends StatelessWidget {
                 onAction: () => context.push(AppRoutes.addJob),
               )
             else ...[
-              Text(
-                tr.whichJobStarting,
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: AppSpace.md),
-
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: AppSpace.sm,
-                  mainAxisSpacing: AppSpace.sm,
-                  childAspectRatio: 1.4,
+              if (viewModel.jobs.length == 1) ...[
+                SectionHeader(
+                  tr.workplaceJob,
+                  actionLabel: tr.addJob,
+                  onAction: () => context.push(AppRoutes.addJob),
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 ),
-                itemCount: viewModel.jobs.length,
-                itemBuilder: (context, index) {
-                  final job = viewModel.jobs[index];
-                  final isSelected = viewModel.selectedJob?.id == job.id;
-                  return _WorkJobGridCard(
-                    job: job,
-                    isSelected: isSelected,
-                    onTap: () => viewModel.selectJob(job.id),
-                  );
-                },
-              ),
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: ListRow(
+                    leading: const IconTile(HugeIcons.strokeRoundedBriefcase01, size: 40),
+                    title: viewModel.jobs.first.name,
+                    subtitle:
+                        '${MoneyFormatter.format(viewModel.jobs.first.hourlyRateMinor, viewModel.jobs.first.currencyCode)}/${tr.hourAbbr}',
+                    trailing: StatusChip(tr.activeBadge, tone: ChipTone.success),
+                    onTap: () => context.push(AppRoutes.manageJobs),
+                  ),
+                ),
+              ] else ...[
+                SectionHeader(
+                  tr.whichJobStarting,
+                  actionLabel: tr.addJob,
+                  onAction: () => context.push(AppRoutes.addJob),
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                ),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: AppSpace.sm,
+                    mainAxisSpacing: AppSpace.sm,
+                    childAspectRatio: 1.4,
+                  ),
+                  itemCount: viewModel.jobs.length,
+                  itemBuilder: (context, index) {
+                    final job = viewModel.jobs[index];
+                    final isSelected = viewModel.selectedJob?.id == job.id;
+                    return _WorkJobGridCard(
+                      job: job,
+                      isSelected: isSelected,
+                      onTap: () => viewModel.selectJob(job.id),
+                    );
+                  },
+                ),
+              ],
 
               const SizedBox(height: AppSpace.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      '${tr.startShift}: ${viewModel.selectedJob?.name ?? ""}',
-                      icon: HugeIcons.strokeRoundedPlay,
-                      onPressed: () => context.push(AppRoutes.startShift),
+              if (activeShift != null)
+                AppButton(
+                  tr.scheduleShift,
+                  icon: HugeIcons.strokeRoundedCalendar03,
+                  kind: AppButtonKind.secondary,
+                  onPressed: () => context.push(AppRoutes.scheduleShift),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        '${tr.startShift}: ${viewModel.selectedJob?.name ?? ""}',
+                        icon: HugeIcons.strokeRoundedPlay,
+                        onPressed: () => context.push(AppRoutes.startShift),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpace.sm),
-                  Expanded(
-                    child: AppButton(
-                      tr.scheduleShift,
-                      icon: HugeIcons.strokeRoundedCalendar03,
-                      kind: AppButtonKind.secondary,
-                      onPressed: () => context.push(AppRoutes.scheduleShift),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: AppButton(
+                        tr.scheduleShift,
+                        icon: HugeIcons.strokeRoundedCalendar03,
+                        kind: AppButtonKind.secondary,
+                        onPressed: () => context.push(AppRoutes.scheduleShift),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
               const SizedBox(height: AppSpace.xxl),
               // Weekly stats card
@@ -310,44 +345,27 @@ class WorkScreen extends StatelessWidget {
               ],
 
               if (viewModel.todayShifts.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(AppSpace.xl),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: scheme.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: scheme.outlineVariant),
-                  ),
-                  child: Column(
-                    children: [
-                      const AppIcon(HugeIcons.strokeRoundedCalendar03, size: 28, color: Colors.grey),
-                      const SizedBox(height: AppSpace.sm),
-                      Text(
-                        tr.noShiftsForToday,
-                        style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        tr.t(
-                          'You have no scheduled or completed shifts today.\nCheck the Calendar tab to see other days.',
-                          ne: 'आज तपाईंको कुनै सिफ्ट तालिका छैन।\nअन्य दिन हेर्न पात्रो ट्याब खोल्नुहोस्।',
-                          es: 'No tienes turnos programados o completados hoy.\nRevisa el Calendario para otros días.',
-                          fr: 'Aucun quart prévu ou terminé aujourd\'hui.\nConsultez le Calendrier pour d\'autres jours.',
-                          de: 'Heute keine geplanten oder abgeschlossenen Schichten.\nPrüfen Sie den Kalender für andere Tage.',
-                          ja: '本日の予定または完了したシフトはありません。\n他の日はカレンダーで確認してください。',
-                          zh: '今天没有已安排或已完成的班次。\n请查看日历以了解其他日期的日程。',
-                          it: 'Nessun turno programmato o completato per oggi.\nControlla il calendario per gli altri giorni.',
-                        ),
-                        textAlign: TextAlign.center,
-                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: AppSpace.md),
-                      OutlinedButton.icon(
-                        icon: const AppIcon(HugeIcons.strokeRoundedCalendar03, size: 16),
-                        label: Text(tr.viewAllInCalendar),
-                        onPressed: () => context.go(AppRoutes.calendar),
-                      ),
-                    ],
+                AppCard(
+                  child: EmptyState(
+                    compact: true,
+                    illustration: EmptyIllustration.shifts,
+                    icon: HugeIcons.strokeRoundedCalendar03,
+                    title: tr.noShiftsForToday,
+                    message: tr.t(
+                      'You have no scheduled or completed shifts today. Schedule one or check the Calendar tab for other days.',
+                      ne: 'आज तपाईंको कुनै सिफ्ट तालिका छैन। नयाँ सिफ्ट थप्नुहोस् वा पात्रो हेर्नुहोस्।',
+                      hi: 'आज आपकी कोई शिफ्ट नहीं है। नई शिफ्ट शेड्यूल करें या कैलेंडर देखें।',
+                      es: 'No tienes turnos hoy. Programa uno o revisa el Calendario.',
+                      fr: 'Aucun quart aujourd\'hui. Planifiez-en un ou consultez le Calendrier.',
+                      de: 'Heute keine Schichten. Plane eine Schicht oder prüfe den Kalender.',
+                      ja: '本日のシフトはありません。新しく予定するかカレンダーを確認してください。',
+                      zh: '今天没有班次，您可以安排新班次或查看日历。',
+                      it: 'Nessun turno per oggi. Pianificane uno o controlla il calendario.',
+                    ),
+                    actionLabel: tr.scheduleShift,
+                    onAction: () => context.push(AppRoutes.scheduleShift),
+                    secondaryActionLabel: tr.viewAllInCalendar,
+                    onSecondaryAction: () => context.go(AppRoutes.calendar),
                   ),
                 )
               else
@@ -368,14 +386,6 @@ class WorkScreen extends StatelessWidget {
                   ),
                 ),
 
-              const SizedBox(height: AppSpace.md),
-              Center(
-                child: TextButton.icon(
-                  icon: const AppIcon(HugeIcons.strokeRoundedCalendar03, size: 16),
-                  label: Text(tr.viewFullScheduleInCalendar),
-                  onPressed: () => context.go(AppRoutes.calendar),
-                ),
-              ),
               const SizedBox(height: AppSpace.xl),
             ],
           ],
@@ -406,25 +416,26 @@ class _ShiftFilterPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? scheme.primary : scheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: isSelected ? scheme.primary : scheme.outlineVariant,
-          ),
+    return Material(
+      color: isSelected ? scheme.primary : scheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        side: BorderSide(
+          color: isSelected ? scheme.primary : scheme.outlineVariant,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? scheme.onPrimary : scheme.onSurface,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected ? scheme.onPrimary : scheme.onSurface,
+            ),
           ),
         ),
       ),
@@ -538,7 +549,7 @@ class _ShiftRow extends StatelessWidget {
                   Text(
                     (earningsStr != null && durationStr != null) ? durationStr : tr.done,
                     style: text.bodySmall?.copyWith(
-                      color: const Color(0xFF16A34A),
+                      color: context.colors.income,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -554,8 +565,8 @@ class _ShiftRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     tr.liveBadge,
-                    style: const TextStyle(
-                      color: Color(0xFFEAB308),
+                    style: TextStyle(
+                      color: context.colors.warning,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -604,11 +615,16 @@ void _showShiftActionsSheet(BuildContext context, Shift shift, Job? job, WorkVie
     context: context,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
     ),
     builder: (ctx) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpace.page),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          AppSpace.page,
+          AppSpace.page,
+          AppSpace.page,
+          MediaQuery.of(ctx).viewInsets.bottom + AppSpace.page,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,15 +731,19 @@ void _showShiftActionsSheet(BuildContext context, Shift shift, Job? job, WorkVie
             ),
             const SizedBox(height: AppSpace.xl),
 
-            // Action buttons
+            // Action buttons (stacked vertically in full-width Column per design system)
             if (isScheduled) ...[
               AppButton(
                 tr.startShiftNow,
                 icon: HugeIcons.strokeRoundedPlay,
                 onPressed: () async {
-                  Navigator.pop(ctx);
-                  await viewModel.startShift(jobId: shift.jobId);
-                  if (context.mounted) context.push(AppRoutes.liveShift);
+                  try {
+                    await viewModel.startScheduledShift(shift);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (context.mounted) context.push(AppRoutes.liveShift);
+                  } catch (e) {
+                    if (context.mounted) showErrorToast(context, tr.couldNotSave('$e'));
+                  }
                 },
               ),
               const SizedBox(height: AppSpace.sm),
@@ -732,82 +752,86 @@ void _showShiftActionsSheet(BuildContext context, Shift shift, Job? job, WorkVie
                 kind: AppButtonKind.secondary,
                 icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                 onPressed: () async {
-                  Navigator.pop(ctx);
-                  await viewModel.updateShift(
-                    shift.id,
-                    status: ShiftStatus.completed,
-                    endAt: shift.endAt != null
-                        ? DateTime.fromMillisecondsSinceEpoch(shift.endAt!)
-                        : DateTime.fromMillisecondsSinceEpoch(shift.startAt).add(const Duration(hours: 4)),
-                  );
-                  if (context.mounted) showToast(context, tr.shiftMarkedCompleted);
+                  try {
+                    await viewModel.updateShift(
+                      shift.id,
+                      status: ShiftStatus.completed,
+                      endAt: shift.endAt != null
+                          ? DateTime.fromMillisecondsSinceEpoch(shift.endAt!)
+                          : DateTime.fromMillisecondsSinceEpoch(shift.startAt).add(const Duration(hours: 4)),
+                    );
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (context.mounted) showToast(context, tr.shiftMarkedCompleted);
+                  } catch (e) {
+                    if (context.mounted) showErrorToast(context, tr.couldNotSave('$e'));
+                  }
                 },
               ),
               const SizedBox(height: AppSpace.sm),
             ],
 
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const AppIcon(HugeIcons.strokeRoundedEdit02, size: 18),
-                    label: Text(tr.editShift),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      showEditShiftDialog(context, shift, job, viewModel);
-                    },
+            AppButton(
+              tr.editShift,
+              kind: AppButtonKind.outline,
+              icon: HugeIcons.strokeRoundedEdit02,
+              onPressed: () {
+                Navigator.pop(ctx);
+                showEditShiftDialog(context, shift, job, viewModel);
+              },
+            ),
+            const SizedBox(height: AppSpace.sm),
+            AppButton(
+              tr.delete,
+              kind: AppButtonKind.danger,
+              icon: HugeIcons.strokeRoundedDelete02,
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final confirmed = await showConfirmDialog(
+                  context,
+                  title: tr.deleteThisShift,
+                  message: tr.t(
+                    'This will remove the shift on ${AppDate.short(start)} for ${job?.name ?? "Job"}.',
+                    ne: 'यसले ${AppDate.short(start)} को ${job?.name ?? "काम"} सिफ्ट हटाउनेछ।',
+                    hi: 'यह ${AppDate.short(start)} की ${job?.name ?? "जॉब"} शिफ्ट हटा देगा।',
+                    es: 'Esto eliminará el turno del ${AppDate.short(start)} para ${job?.name ?? "Empleo"}.',
+                    fr: 'Cela supprimera le quart du ${AppDate.short(start)} pour ${job?.name ?? "Travail"}.',
+                    de: 'Dies entfernt die Schicht am ${AppDate.short(start)} für ${job?.name ?? "Job"}.',
+                    ja: '${AppDate.short(start)} の ${job?.name ?? "仕事"} のシフトが削除されます。',
+                    zh: '这将删除 ${job?.name ?? "工作"} 于 ${AppDate.short(start)} 的班次。',
+                    it: 'Questo rimuoverà il turno del ${AppDate.short(start)} per ${job?.name ?? "Lavoro"}.',
                   ),
-                ),
-                const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: scheme.error,
-                      side: BorderSide(color: scheme.error.withValues(alpha: 0.5)),
-                    ),
-                    icon: const AppIcon(HugeIcons.strokeRoundedDelete02, size: 18),
-                    label: Text(tr.delete),
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      final confirmed = await showConfirmDialog(
+                  confirmLabel: tr.delete,
+                  destructive: true,
+                );
+                if (confirmed && context.mounted) {
+                  try {
+                    await viewModel.deleteShift(shift.id);
+                    if (context.mounted) {
+                      showToast(
                         context,
-                        title: tr.deleteThisShift,
-                        message: tr.t(
-                          'This will remove the shift on ${AppDate.short(start)} for ${job?.name ?? "Job"}.',
-                          ne: 'यसले ${AppDate.short(start)} को ${job?.name ?? "काम"} सिफ्ट हटाउनेछ।',
-                          es: 'Esto eliminará el turno del ${AppDate.short(start)} para ${job?.name ?? "Empleo"}.',
-                          fr: 'Cela supprimera le quart du ${AppDate.short(start)} pour ${job?.name ?? "Travail"}.',
-                          de: 'Dies entfernt die Schicht am ${AppDate.short(start)} für ${job?.name ?? "Job"}.',
-                          ja: '${AppDate.short(start)} の ${job?.name ?? "仕事"} のシフトが削除されます。',
-                          zh: '这将删除 ${job?.name ?? "工作"} 于 ${AppDate.short(start)} 的班次。',
-                          it: 'Questo rimuoverà il turno del ${AppDate.short(start)} per ${job?.name ?? "Lavoro"}.',
-                        ),
-                        confirmLabel: tr.delete,
-                        destructive: true,
-                      );
-                      if (confirmed && context.mounted) {
-                        await viewModel.deleteShift(shift.id);
-                        if (context.mounted) {
-                          showToast(
-                            context,
-                            tr.shiftDeleted,
-                            actionLabel: tr.undo,
-                            onAction: () async {
-                              await viewModel.scheduleShift(
-                                jobId: shift.jobId,
-                                startAt: start,
-                                endAt: end,
-                                breakMinutes: shift.breakMinutes,
-                                note: shift.note,
-                              );
-                            },
+                        tr.shiftDeleted,
+                        actionLabel: tr.undo,
+                        onAction: () async {
+                          await viewModel.scheduleShift(
+                            jobId: shift.jobId,
+                            startAt: start,
+                            endAt: end,
+                            breakMinutes: shift.breakMinutes,
+                            note: shift.note,
+                            rateOverrideMinor: shift.rateOverrideMinor,
+                            overtimeThresholdMinutes: shift.overtimeThresholdMinutes,
+                            overtimeRateMinor: shift.overtimeRateMinor,
+                            longShiftAlertMinutes: shift.longShiftAlertMinutes,
+                            status: ShiftStatus.fromValue(shift.status),
                           );
-                        }
-                      }
-                    },
-                  ),
-                ),
-              ],
+                        },
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) showErrorToast(context, tr.couldNotSave('$e'));
+                  }
+                }
+              },
             ),
           ],
         ),
@@ -863,7 +887,7 @@ class _WorkJobGridCard extends StatelessWidget {
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: isSelected ? scheme.primary.withValues(alpha: 0.15) : scheme.surfaceContainerHighest,
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: AppIcon(
                         HugeIcons.strokeRoundedBriefcase01,

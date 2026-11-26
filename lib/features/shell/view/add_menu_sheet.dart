@@ -20,7 +20,7 @@ Future<void> showAddMenu(BuildContext context) {
     isScrollControlled: true,
     backgroundColor: Theme.of(context).colorScheme.surface,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
     ),
     builder: (ctx) {
       void go(String route) {
@@ -42,7 +42,7 @@ Future<void> showAddMenu(BuildContext context) {
           subtitle: tr.logMoneySpent,
           icon: HugeIcons.strokeRoundedMoneySend02,
           iconColor: colors.expense,
-          iconBg: colors.expense.withValues(alpha: 0.12),
+          iconBg: colors.expenseBg,
           onTap: () => go('${AppRoutes.addTransaction}?type=expense'),
         ),
         _AddItem(
@@ -50,70 +50,67 @@ Future<void> showAddMenu(BuildContext context) {
           subtitle: tr.salaryAndPay,
           icon: HugeIcons.strokeRoundedMoneyReceive02,
           iconColor: colors.income,
-          iconBg: colors.income.withValues(alpha: 0.12),
+          iconBg: colors.incomeBg,
           onTap: () => go('${AppRoutes.addTransaction}?type=income'),
-        ),
-        _AddItem(
-          title: tr.depositSavings,
-          subtitle: tr.fundAGoal,
-          icon: HugeIcons.strokeRoundedPiggyBank,
-          iconColor: const Color(0xFF1F7A45),
-          iconBg: const Color(0xFF1F7A45).withValues(alpha: 0.12),
-          onTap: () => go(AppRoutes.plan),
-        ),
-        _AddItem(
-          title: tr.scheduleShift,
-          subtitle: tr.scheduleHours,
-          icon: HugeIcons.strokeRoundedClock01,
-          iconColor: scheme.primary,
-          iconBg: scheme.primary.withValues(alpha: 0.12),
-          onTap: () => go(AppRoutes.scheduleShift),
         ),
         _AddItem(
           title: tr.startShift,
           subtitle: tr.liveTimeTracking,
           icon: HugeIcons.strokeRoundedPlay,
           iconColor: colors.income,
-          iconBg: colors.income.withValues(alpha: 0.12),
+          iconBg: colors.incomeBg,
           onTap: () => go(AppRoutes.startShift),
+        ),
+        _AddItem(
+          title: tr.scheduleShift,
+          subtitle: tr.scheduleHours,
+          icon: HugeIcons.strokeRoundedClock01,
+          iconColor: colors.brandText,
+          iconBg: colors.brandBg,
+          onTap: () => go(AppRoutes.scheduleShift),
         ),
         _AddItem(
           title: tr.lendBorrow,
           subtitle: tr.debtsAndIous,
           icon: HugeIcons.strokeRoundedUserGroup,
           iconColor: colors.warning,
-          iconBg: colors.warning.withValues(alpha: 0.12),
+          iconBg: colors.warningBg,
           onTap: () => go(AppRoutes.debts),
+        ),
+        _AddItem(
+          title: tr.depositSavings,
+          subtitle: tr.fundAGoal,
+          icon: HugeIcons.strokeRoundedPiggyBank,
+          iconColor: colors.income,
+          iconBg: colors.incomeBg,
+          onTap: () => go(AppRoutes.plan),
         ),
         _AddItem(
           title: tr.savingsGoal,
           subtitle: tr.setTargetSavings,
           icon: HugeIcons.strokeRoundedTarget02,
-          iconColor: scheme.primary,
-          iconBg: scheme.primary.withValues(alpha: 0.12),
+          iconColor: colors.brandText,
+          iconBg: colors.brandBg,
           onTap: () => go(AppRoutes.addGoal),
         ),
         _AddItem(
           title: tr.workplaceJob,
           subtitle: tr.hourlyRateAndDays,
           icon: HugeIcons.strokeRoundedBriefcase01,
-          iconColor: scheme.primary,
-          iconBg: scheme.primary.withValues(alpha: 0.12),
+          iconColor: scheme.onSurface,
+          iconBg: colors.fill,
           onTap: () => go(AppRoutes.addJob),
-        ),
-        _AddItem(
-          title: tr.categories,
-          subtitle: tr.customTagsAndStores,
-          icon: HugeIcons.strokeRoundedGridView,
-          iconColor: scheme.primary,
-          iconBg: scheme.primary.withValues(alpha: 0.12),
-          onTap: () => go(AppRoutes.categories),
         ),
       ];
 
       return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.page, AppSpace.sm, AppSpace.page, AppSpace.xl),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.page,
+            AppSpace.sm,
+            AppSpace.page,
+            MediaQuery.of(ctx).viewInsets.bottom + AppSpace.xl,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,7 +183,7 @@ class _GridCard extends StatelessWidget {
     return Material(
       color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,

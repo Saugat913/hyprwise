@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/export/export_service.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
+import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/core/utils/money.dart';
@@ -1147,6 +1148,7 @@ abstract final class AnalyticsPdfService {
   static Future<void> showPdfExportSheet(BuildContext context, AnalyticsViewModel viewModel, {int activeTabIndex = 0}) async {
     final currency = viewModel.baseCurrency;
     final tr = context.strings;
+    final colors = context.colors;
     final String typeLabel;
     final String reportTotal;
     final Color totalColor;
@@ -1155,33 +1157,33 @@ abstract final class AnalyticsPdfService {
       case 1:
         typeLabel = tr.income;
         reportTotal = MoneyFormatter.format(viewModel.txTabData(TransactionType.income).totalMinor, currency);
-        totalColor = const Color(0xFF10B981);
+        totalColor = colors.income;
         break;
       case 2:
         typeLabel = tr.analyticsTabExpenses;
         reportTotal = MoneyFormatter.format(viewModel.txTabData(TransactionType.expense).totalMinor, currency);
-        totalColor = const Color(0xFFEF4444);
+        totalColor = colors.expense;
         break;
       case 3:
         typeLabel = tr.analyticsTabLend;
         reportTotal = MoneyFormatter.format(viewModel.debtTabData(DebtType.lent).totalMinor, currency);
-        totalColor = const Color(0xFF10B981);
+        totalColor = colors.income;
         break;
       case 4:
         typeLabel = tr.analyticsTabBorrow;
         reportTotal = MoneyFormatter.format(viewModel.debtTabData(DebtType.borrowed).totalMinor, currency);
-        totalColor = const Color(0xFFEF4444);
+        totalColor = colors.expense;
         break;
       case 5:
         typeLabel = tr.analyticsTabShiftsWork;
         reportTotal = MoneyFormatter.format(viewModel.workTabData().earningsMinor, currency);
-        totalColor = const Color(0xFF1F7A45);
+        totalColor = colors.income;
         break;
       case 0:
       default:
         typeLabel = tr.analyticsTabOverview;
         reportTotal = MoneyFormatter.format(viewModel.netMinor, currency, signed: true);
-        totalColor = viewModel.netMinor >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+        totalColor = viewModel.netMinor >= 0 ? colors.income : colors.expense;
         break;
     }
 
@@ -1189,16 +1191,22 @@ abstract final class AnalyticsPdfService {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
       ),
       builder: (ctx) {
         final text = Theme.of(ctx).textTheme;
         final scheme = Theme.of(ctx).colorScheme;
+        final sheetColors = ctx.colors;
         final tr = ctx.strings;
 
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpace.page),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              AppSpace.page,
+              AppSpace.page,
+              AppSpace.page,
+              MediaQuery.of(ctx).viewInsets.bottom + AppSpace.page,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1209,13 +1217,13 @@ abstract final class AnalyticsPdfService {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1F7A45).withValues(alpha: 0.12),
+                        color: sheetColors.incomeBg,
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(
+                      child: Icon(
                         Icons.picture_as_pdf_rounded,
-                        color: Color(0xFF1F7A45),
+                        color: sheetColors.income,
                         size: 24,
                       ),
                     ),

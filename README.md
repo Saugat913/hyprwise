@@ -1,54 +1,29 @@
-# Finance Planner
+# Hyprwise
 
-An offline-first personal finance planner built with Flutter.
+**Local-first personal finance, shift wage tracking, dual-currency budgeting & AI financial assistant** (`com.hypr.hyprwise`).
 
-## Architecture
+## Key Capabilities
+- **Local-First Encrypted SQLite Vault (Drift)**: 100% functional offline across accounts, transactions, transfers, shifts, breaks, overtime rules, goals, debts, exchange rates, and reminder rules.
+- **Live Shift & Wage Engine**: Real-time shift tracking, break hydration across restarts, custom hourly overrides, overtime multipliers, and native **Android & iOS Home Screen Widgets**.
+- **Dual-Currency & 9 Languages**: Adaptive native symbols (`$`, `A$`, `¥`, `€`, `रु`, `₹`, etc.) across `en`, `ne`, `hi`, `es`, `fr`, `de`, `ja`, `zh`, and `it`.
+- **Hyprwise AI Assistant**: Private Gemini 2.5 Flash financial reasoning and receipt OCR scanning with strict anti-hallucination guardrails and confirmed local database actions.
+- **Hyprwise Pro**: RevenueCat subscriptions (`pro_access` / `supporter` / `hyprwise_pro`) unlocking unlimited AI queries, executive PDF/summary reports, and automatic Cloudflare D1 cloud backup & sync.
 
-- Feature-first project structure.
-- MVVM presentation with Flutter's native `ChangeNotifier`.
-- GetIt for dependency injection.
-- GoRouter for navigation.
-- Drift for local SQLite persistence.
-- Shared light/dark Material 3 design system.
+## Architecture & Branching
+- `lib/app/` — Dependency injection (`di/injection.dart`), GoRouter (`router/app_router.dart`), routes & app shell.
+- `lib/core/` — WCAG AA theme tokens (`theme/`), Drift SQLite database (`database/`), localization (`l10n/`), notifications, exports, telemetry, and native home widget bridge (`widgets/`).
+- `lib/features/` — Modular MVVM features (`home`, `analytics`, `money`, `work`, `calendar`, `goals`, `accounts`, `debts`, `transfers`, `alerts`, `assistant`, `auth`, `onboarding`, `categories`, `settings`, `subscription`).
+- `server` branch — Standalone Hono + Cloudflare Workers + D1 backend.
 
-## Local development
+## Documentation
+- [AGENTS.md](AGENTS.md) — Architectural source of truth, design system rules, and AI guardrails.
+- [docs/DEPLOYMENT_REQUIREMENTS.md](docs/DEPLOYMENT_REQUIREMENTS.md) — CI/CD, Codemagic, Cloudflare secrets, RevenueCat, and store release setup.
+- [android/GOOGLE_PLAY_SETUP.md](android/GOOGLE_PLAY_SETUP.md) & [android/KEYSTORE_FINGERPRINTS.md](android/KEYSTORE_FINGERPRINTS.md) — Play Console signing and publishing guides.
 
-Use a stable Flutter SDK that satisfies the Dart SDK constraint in `pubspec.yaml`.
-
+## Local Verification
 ```bash
-flutter pub get
-dart run build_runner build --delete-conflicting-outputs
-dart format .
-flutter analyze
-flutter test
-flutter run
+flutter analyze --no-pub
+flutter test --no-pub
+flutter build apk --release
+flutter build appbundle --release
 ```
-
-Drift generates `lib/core/database/app_database.g.dart` from the annotated database and table declarations. Regenerate it whenever those declarations change.
-
-## Git workflow
-
-- `master`: stable branch; do not develop directly on it.
-- `dev`: integration branch.
-- `feature/*`: short-lived feature branches created from `dev`; pull requests target `dev`.
-
-Never target `master` with feature pull requests during active development.
-
-## Current foundation
-
-The initial app shell contains Home, Calendar, Money, Work and Plan destinations. These are temporary placeholders for feature implementation. Financial features will be added incrementally with domain contracts, data implementations, ViewModels and tests.
-
-## Branding assets
-
-- `assets/logo.svg` is the editable vector master for the brand mark.
-- Export it to `assets/logo.png` before generating platform icons and native splash assets. Use a high-resolution transparent PNG; keep the mark centered with comfortable padding.
-- The Flutter splash screen renders the SVG directly and shows the Finance Planner wordmark/tagline. The native splash is shown first while Flutter starts.
-
-After adding `assets/logo.png`, generate the platform launcher icons and native splash:
-
-```bash
-dart run flutter_launcher_icons
-dart run flutter_native_splash:create
-```
-
-The old counter demo widget test has been temporarily commented out because it referenced the removed `MyApp` counter scaffold. Tests are intentionally deferred while the app foundation is being built.

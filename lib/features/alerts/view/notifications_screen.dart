@@ -50,6 +50,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: alerts.isEmpty
                 ? Center(
                     child: EmptyState(
+                      illustration: EmptyIllustration.alerts,
                       icon: HugeIcons.strokeRoundedNotification01,
                       title: tr.allCaughtUp,
                       message: tr.notificationsEmptySubtitle,

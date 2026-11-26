@@ -311,33 +311,9 @@ Respond ONLY with a JSON object in this exact format:
         } catch (_) {}
       }
 
-      // If AI did not return a valid amount or merchant, check if mock test image name hints exist
-      if (amount <= 0 || merchant.isEmpty) {
-        if (filename.contains('woolworth') ||
-            filename.contains('coles') ||
-            filename.contains('aldi')) {
-          merchant = 'Woolworths';
-          category = 'Groceries';
-          amount = 48.20;
-        } else if (filename.contains('cafe') ||
-            filename.contains('coffee') ||
-            filename.contains('starbucks')) {
-          merchant = 'Local Café';
-          category = 'Dining';
-          amount = 14.50;
-        } else if (filename.contains('fuel') ||
-            filename.contains('bp') ||
-            filename.contains('7-eleven') ||
-            filename.contains('shell')) {
-          merchant = '7-Eleven Fuel';
-          category = 'Transport';
-          amount = 62.00;
-        }
-      }
-
       _messages.remove(analyzingMsg);
 
-      // Strict validation: never create fake/hallucinated expenses for unrecognizable images
+      // Strict anti-hallucination validation: never fabricate amounts or merchants from filenames.
       if (amount <= 0 ||
           merchant.isEmpty ||
           merchant.toLowerCase() == 'store') {
@@ -415,7 +391,15 @@ Respond ONLY with a JSON object in this exact format:
   }
 
   ParsedTransactionIntent? _parseTransactionIntent(String text) {
-    final lower = text.toLowerCase();
+    final lower = text.toLowerCase().trim();
+    // Never auto-record expenses on hypothetical or interrogative questions
+    // (e.g., "Can I afford to buy a 500 laptop?" or "Should I spend 200?").
+    if (lower.contains('?') ||
+        RegExp(
+          r'\b(can i|could i|should i|would i|might i|afford|if i|how much|what if|planning to|want to)\b',
+        ).hasMatch(lower)) {
+      return null;
+    }
     final hasActionVerb = RegExp(
       r'\b(add|spent|spend|paid|pay|record|bought|buy)\b',
     ).hasMatch(lower);
@@ -734,10 +718,16 @@ Respond ONLY with a JSON object in this exact format:
       return true;
     }
 
-    // 8. Restrict unknown / out-of-scope non-financial queries locally
-    final isFinancialOrAction = RegExp(
-      r'\b(money|balance|account|save|saving|savings|goal|goals|spend|spent|spending|expense|expenses|income|cash|shift|shifts|job|jobs|debt|debts|owe|owes|lent|borrow|borrowed|loan|loans|afford|buy|purchase|convert|currency|wage|wages|pay|rate|rates|cost|budget|bill|bills|wallet|groceries|dining|food|transport|fuel|financial|finance|finances|summary|overview|status|report|net|worth|position|earning|earnings|worked|hours)\b',
-    ).hasMatch(lower) || RegExp(r'[\u0900-\u097F]').hasMatch(lower);
+    // 8. Restrict unknown / out-of-scope non-financial queries locally for English.
+    // Non-English locales (es, fr, de, ja, zh, it, ne, hi) pass through to Gemini
+    // where the strict multilingual domain system prompt enforces boundaries.
+    final activeLocale = financeStore.settingsRepo.localeCode;
+    final isFinancialOrAction =
+        activeLocale != 'en' ||
+        RegExp(
+          r'\b(money|balance|account|save|saving|savings|goal|goals|spend|spent|spending|expense|expenses|income|cash|shift|shifts|job|jobs|debt|debts|owe|owes|lent|borrow|borrowed|loan|loans|afford|buy|purchase|convert|currency|wage|wages|pay|rate|rates|cost|budget|bill|bills|wallet|groceries|dining|food|transport|fuel|financial|finance|finances|summary|overview|status|report|net|worth|position|earning|earnings|worked|hours)\b',
+        ).hasMatch(lower) ||
+        RegExp(r'[\u0900-\u097F]').hasMatch(lower);
 
     if (!isFinancialOrAction &&
         !RegExp(
@@ -805,6 +795,28 @@ Respond ONLY with a JSON object in this exact format:
         ),
       );
     } else {
+      // Fast deterministic anti-hallucination check: when the user asks about
+      // spending at a specific merchant/category and the local ledger has zero
+      // matching records, reply immediately without risking cloud hallucination.
+      if (RegExp(
+        r'\b(how much did i spend|did i spend|how much have i spent|spent at|spend at)\b',
+      ).hasMatch(lower)) {
+        final localCheck = financeStore.ask(text);
+        if (localCheck.headline == 'No records found') {
+          _messages.add(
+            AssistantMessage(
+              isUser: false,
+              text: localCheck.body,
+              headline: localCheck.headline,
+              explanation: localCheck.explanation,
+              suggestions: localCheck.suggestions,
+            ),
+          );
+          notifyListeners();
+          return true;
+        }
+      }
+
       // 5. Try Server-side Gemini AI Gateway with personalized financial context & MCP tools
       AiChatResult? serverAiResponse;
       late final String systemPrompt;
@@ -956,7 +968,14 @@ User Financial Snapshot (Live On-Device Ledger):
 ''';
 
         history = <Map<String, dynamic>>[];
-        final past = _messages.length > 8 ? _messages.sublist(_messages.length - 8) : _messages;
+        final priorMessages =
+            _messages.isNotEmpty && identical(_messages.last, userMsg)
+                ? _messages.sublist(0, _messages.length - 1)
+                : _messages;
+        final past =
+            priorMessages.length > 8
+                ? priorMessages.sublist(priorMessages.length - 8)
+                : priorMessages;
         for (final m in past) {
           if (m.text.trim().isEmpty) continue;
           history.add({
@@ -969,12 +988,21 @@ User Financial Snapshot (Live On-Device Ledger):
           'content': text,
         });
 
+        final jsonSafeContext = <String, dynamic>{
+          'baseCurrency': financeStore.baseCurrency,
+          'netWorthMinor': financeStore.snapshot.netWorthMinor,
+          'accountCount': financeStore.accounts.length,
+          'activeDebtCount': debts.length,
+          'goalCount': financeStore.goals.length,
+          'jobCount': financeStore.jobs.length,
+        };
+
         serverAiResponse = await ApiClient.instance.chatWithAiDetailed(
           text,
           messageHistory: history,
           systemInstruction: systemPrompt,
           preferredLanguage: financeStore.settingsRepo.localeCode,
-          context: financeStore.snapshot,
+          context: jsonSafeContext,
           tools: mcpTools.declarations,
           quotaAlreadyConsumed: quotaAlreadyConsumed,
         );

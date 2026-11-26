@@ -23,7 +23,7 @@ Future<void> showTransactionActionSheet(
     context: context,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
     ),
     builder: (ctx) {
       final text = Theme.of(ctx).textTheme;
@@ -45,10 +45,12 @@ Future<void> showTransactionActionSheet(
               .firstOrNull;
 
       return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpace.page,
-            vertical: AppSpace.lg,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.page,
+            AppSpace.lg,
+            AppSpace.page,
+            MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -126,61 +128,43 @@ Future<void> showTransactionActionSheet(
               ),
               const SizedBox(height: AppSpace.xl),
 
-              // Action Buttons
-              Row(
+              // Action Buttons (stacked full-width per design system)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.expense,
-                        side: BorderSide(
-                          color: colors.expense.withValues(alpha: 0.4),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpace.md,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                      ),
-                      icon: const Icon(Icons.delete_outline, size: 18),
-                      label: Text(tr.delete),
-                      onPressed: () async {
-                        final confirm = await showConfirmDialog(
-                          ctx,
-                          title: tr.deleteTransactionTitle,
-                          message: tr.deleteTransactionSubtitle,
-                          confirmLabel: tr.delete,
-                          destructive: true,
-                        );
-                        if (confirm == true) {
+                  AppButton(
+                    tr.edit,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showEditTransactionSheet(context, transaction);
+                    },
+                  ),
+                  const SizedBox(height: AppSpace.sm),
+                  AppButton(
+                    tr.delete,
+                    kind: AppButtonKind.danger,
+                    onPressed: () async {
+                      final confirm = await showConfirmDialog(
+                        ctx,
+                        title: tr.deleteTransactionTitle,
+                        message: tr.deleteTransactionSubtitle,
+                        confirmLabel: tr.delete,
+                        destructive: true,
+                      );
+                      if (confirm == true) {
+                        try {
                           await getIt<TransactionRepository>().delete(
                             transaction.id,
                           );
                           if (ctx.mounted) Navigator.pop(ctx);
                           onDeleted?.call();
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            showErrorToast(ctx, tr.couldNotSave('$e'));
+                          }
                         }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: AppSpace.md),
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpace.md,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                      ),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: Text(tr.edit),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _showEditTransactionSheet(context, transaction);
-                      },
-                    ),
+                      }
+                    },
                   ),
                 ],
               ),
@@ -250,10 +234,15 @@ Future<void> _showEditTransactionSheet(
     context: context,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
     ),
     builder: (ctx) {
-      return StatefulBuilder(
+      return DisposableScope(
+        onDispose: () {
+          amountController.dispose();
+          noteController.dispose();
+        },
+        child: StatefulBuilder(
         builder: (ctx, setState) {
           final isIncome = transaction.type == TransactionType.income.value;
           return SafeArea(
@@ -299,44 +288,48 @@ Future<void> _showEditTransactionSheet(
                       ),
                     ),
                     const SizedBox(height: AppSpace.md),
-                    ListTile(
+                    Material(
+                      color: Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
                         side: BorderSide(color: scheme.outlineVariant),
                       ),
-                      leading: const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 20,
-                      ),
-                      title: Text(AppDate.header(selectedDate)),
-                      subtitle: Text(AppDate.timeOnly(selectedDate)),
-                      onTap: () async {
-                        final pickedDate = await showDatePicker(
-                          context: ctx,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 365),
-                          ),
-                        );
-                        if (pickedDate != null && ctx.mounted) {
-                          final pickedTime = await showTimePicker(
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 20,
+                        ),
+                        title: Text(AppDate.header(selectedDate)),
+                        subtitle: Text(AppDate.timeOnly(selectedDate)),
+                        onTap: () async {
+                          final pickedDate = await showDatePicker(
                             context: ctx,
-                            initialTime: TimeOfDay.fromDateTime(selectedDate),
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
                           );
-                          if (pickedTime != null) {
-                            setState(() {
-                              selectedDate = DateTime(
-                                pickedDate.year,
-                                pickedDate.month,
-                                pickedDate.day,
-                                pickedTime.hour,
-                                pickedTime.minute,
-                              );
-                            });
+                          if (pickedDate != null && ctx.mounted) {
+                            final pickedTime = await showTimePicker(
+                              context: ctx,
+                              initialTime: TimeOfDay.fromDateTime(selectedDate),
+                            );
+                            if (pickedTime != null) {
+                              setState(() {
+                                selectedDate = DateTime(
+                                  pickedDate.year,
+                                  pickedDate.month,
+                                  pickedDate.day,
+                                  pickedTime.hour,
+                                  pickedTime.minute,
+                                );
+                              });
+                            }
                           }
-                        }
-                      },
+                        },
+                      ),
                     ),
                     const SizedBox(height: AppSpace.xl),
                     AppButton(
@@ -344,24 +337,33 @@ Future<void> _showEditTransactionSheet(
                       onPressed: () async {
                         final amount =
                             double.tryParse(amountController.text.trim()) ?? 0;
-                        if (amount <= 0) return;
+                        if (amount <= 0) {
+                          showErrorToast(ctx, tr.enterValidAmount);
+                          return;
+                        }
                         final minor = (amount * 100).round();
-                        await repo.update(
-                          transaction.id,
-                          accountId: transaction.accountId,
-                          type:
-                              isIncome
-                                  ? TransactionType.income
-                                  : TransactionType.expense,
-                          amountMinor: minor,
-                          category: selectedCategory,
-                          occurredAt: selectedDate,
-                          note:
-                              noteController.text.trim().isEmpty
-                                  ? null
-                                  : noteController.text.trim(),
-                        );
-                        if (ctx.mounted) Navigator.pop(ctx);
+                        try {
+                          await repo.update(
+                            transaction.id,
+                            accountId: transaction.accountId,
+                            type:
+                                isIncome
+                                    ? TransactionType.income
+                                    : TransactionType.expense,
+                            amountMinor: minor,
+                            category: selectedCategory,
+                            occurredAt: selectedDate,
+                            note:
+                                noteController.text.trim().isEmpty
+                                    ? null
+                                    : noteController.text.trim(),
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx);
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            showErrorToast(ctx, tr.couldNotSave('$e'));
+                          }
+                        }
                       },
                     ),
                   ],
@@ -370,6 +372,7 @@ Future<void> _showEditTransactionSheet(
             ),
           );
         },
+      ),
       );
     },
   );

@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
@@ -49,9 +51,16 @@ class AnalyticsTransactionsTab extends StatelessWidget {
 
     if (data.count == 0) {
       return EmptyState(
+        illustration: EmptyIllustration.analytics,
         icon: HugeIcons.strokeRoundedChartHistogram,
         title: tr.noDataForThisFilter,
         message: tr.analyticsNoEntriesInPeriod,
+        actionLabel: isExpense ? tr.addExpense : tr.addIncome,
+        onAction: () => context.push(
+          isExpense
+              ? '${AppRoutes.addTransaction}?type=expense'
+              : '${AppRoutes.addTransaction}?type=income',
+        ),
       );
     }
 
@@ -162,11 +171,13 @@ class AnalyticsDebtTab extends StatelessWidget {
     if (data.count == 0) {
       if (viewModel.selectedDebtParty != null) {
         return EmptyState(
+          illustration: EmptyIllustration.debts,
           icon: HugeIcons.strokeRoundedUserSquare,
           title: tr.noDataForThisFilter,
           message: tr.t(
             'No records found for ${viewModel.selectedDebtParty} in this period.',
             ne: 'यस अवधिमा ${viewModel.selectedDebtParty} को कुनै रेकर्ड भेटिएन।',
+            hi: 'इस अवधि में ${viewModel.selectedDebtParty} का कोई रिकॉर्ड नहीं मिला।',
             es: 'No se encontraron registros para ${viewModel.selectedDebtParty} en este período.',
             fr: 'Aucun enregistrement trouvé pour ${viewModel.selectedDebtParty} pour cette période.',
             de: 'Keine Einträge für ${viewModel.selectedDebtParty} in diesem Zeitraum gefunden.',
@@ -179,9 +190,12 @@ class AnalyticsDebtTab extends StatelessWidget {
         );
       }
       return EmptyState(
-        icon: HugeIcons.strokeRoundedChartHistogram,
+        illustration: EmptyIllustration.debts,
+        icon: HugeIcons.strokeRoundedCoinsSwap,
         title: tr.noDataForThisFilter,
         message: tr.analyticsNoEntriesInPeriod,
+        actionLabel: tr.addLoanOrDebt,
+        onAction: () => context.push(AppRoutes.addDebt),
       );
     }
 
@@ -357,9 +371,12 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
 
     if (data.shiftCount == 0) {
       return EmptyState(
-        icon: HugeIcons.strokeRoundedChartHistogram,
+        illustration: EmptyIllustration.shifts,
+        icon: HugeIcons.strokeRoundedBriefcase01,
         title: tr.noDataForThisFilter,
         message: tr.analyticsNoShiftsInPeriod,
+        actionLabel: tr.scheduleShift,
+        onAction: () => context.push(AppRoutes.scheduleShift),
       );
     }
 
@@ -415,7 +432,7 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
                     tr.analyticsOvertimeHours,
                     _duration(tr, data.overtimeMinutes),
                     color:
-                        data.overtimeMinutes > 0 ? context.colors.brand : null,
+                        data.overtimeMinutes > 0 ? context.colors.brandText : null,
                   ),
                   _Stat(
                     tr.analyticsBreakTime,
@@ -544,7 +561,7 @@ class _AnalyticsWorkTabState extends State<AnalyticsWorkTab> {
               AnimatedBarChart(
                 trend: AnalyticsTrend(weekValues, weekLabels),
                 currencyCode: _showEarnings ? currency : null,
-                unitSuffix: _showEarnings ? null : 'h',
+                unitSuffix: _showEarnings ? null : tr.hourAbbr,
               ),
             ],
           ),
@@ -1158,7 +1175,7 @@ class _CurrentWeekDayColumn extends StatelessWidget {
     final hours = day.minutes / 60.0;
     final hoursStr =
         hasWork
-            ? '${tr.localizeDigits(hours.toStringAsFixed(hours.truncateToDouble() == hours ? 0 : 1))}h'
+            ? '${tr.localizeDigits(hours.toStringAsFixed(hours.truncateToDouble() == hours ? 0 : 1))}${tr.hourAbbr}'
             : '—';
 
     final effectiveMax = maxMinutes <= 0 ? 60 : maxMinutes;
@@ -1180,7 +1197,7 @@ class _CurrentWeekDayColumn extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            AppDate.weekday(day.date).substring(0, 3),
+            tr.weekdayShort(day.date.weekday),
             style: text.labelSmall?.copyWith(
               fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
               color: isToday ? scheme.primary : scheme.onSurfaceVariant,

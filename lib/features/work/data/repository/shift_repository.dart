@@ -15,6 +15,13 @@ class ShiftRepository {
         (s) => OrderingTerm.desc(s.id),
       ])).watch();
 
+  /// Returns the currently active (`in_progress`) shift directly from SQLite, if any.
+  Future<Shift?> findActiveShift() =>
+      (_db.select(_db.shifts)
+            ..where((s) => s.status.equals(ShiftStatus.inProgress.value))
+            ..limit(1))
+          .getSingleOrNull();
+
   Future<int> add({
     required int jobId,
     required DateTime startAt,
@@ -44,6 +51,35 @@ class ShiftRepository {
           updatedAt: nowMs(),
         ),
       );
+
+  /// Inserts multiple shifts inside a single SQLite transaction so Drift emits
+  /// one update and SQLite performs one commit instead of N separate commits.
+  Future<List<int>> addMany(List<ShiftsCompanion> entries) async {
+    if (entries.isEmpty) return const [];
+    return _db.transaction(() async {
+      final ids = <int>[];
+      for (final entry in entries) {
+        ids.add(await _db.into(_db.shifts).insert(entry));
+      }
+      return ids;
+    });
+  }
+
+  /// Applies a historical rate override to all un-overridden shifts of [jobId]
+  /// in a single SQL UPDATE statement.
+  Future<void> setRateOverrideForJobShifts({
+    required int jobId,
+    required int rateOverrideMinor,
+  }) async {
+    await (_db.update(_db.shifts)
+          ..where((s) => s.jobId.equals(jobId) & s.rateOverrideMinor.isNull()))
+        .write(
+          ShiftsCompanion(
+            rateOverrideMinor: Value(rateOverrideMinor),
+            updatedAt: Value(nowMs()),
+          ),
+        );
+  }
 
   /// Clocks in now: creates an in-progress shift with no end time.
   Future<int> start({required int jobId}) => add(
@@ -103,8 +139,19 @@ class ShiftRepository {
   }
 
   Future<void> delete(int id) async {
-    await (_db.delete(_db.shiftBreaks)..where((b) => b.shiftId.equals(id))).go();
-    await (_db.delete(_db.shifts)..where((s) => s.id.equals(id))).go();
+    await _db.transaction(() async {
+      await (_db.delete(_db.shiftBreaks)..where((b) => b.shiftId.equals(id))).go();
+      await (_db.delete(_db.shifts)..where((s) => s.id.equals(id))).go();
+    });
+  }
+
+  /// Deletes multiple shifts and their breaks inside one SQLite transaction.
+  Future<void> deleteMany(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await _db.transaction(() async {
+      await (_db.delete(_db.shiftBreaks)..where((b) => b.shiftId.isIn(ids))).go();
+      await (_db.delete(_db.shifts)..where((s) => s.id.isIn(ids))).go();
+    });
   }
 
   Future<List<ShiftBreak>> breaksFor(int shiftId) =>

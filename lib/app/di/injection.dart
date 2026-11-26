@@ -95,10 +95,13 @@ Future<void> configureDependencies() async {
   financeStore.start();
   getIt.registerSingleton<FinanceStore>(financeStore);
 
-  // Pro cloud sync is automatic. Both finance changes and preferences are
-  // observed; AuthService debounces writes and ignores free/guest sessions.
+  // Pro cloud sync is automatic. Finance changes, preferences, custom categories/
+  // merchants, and reminder rules are all observed; AuthService debounces writes
+  // and ignores free/guest sessions.
   financeStore.addListener(authService.triggerProAutoSync);
   settingsRepo.addListener(authService.triggerProAutoSync);
+  categoryRepo.addListener(authService.triggerProAutoSync);
+  reminderRuleRepo.watchAll().skip(1).listen((_) => authService.triggerProAutoSync());
 
   await accountRepo.ensureFixedTwoAccounts(settingsRepo.settings.baseCurrency);
 

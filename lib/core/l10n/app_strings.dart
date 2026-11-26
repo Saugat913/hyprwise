@@ -35,7 +35,7 @@ class AppStrings {
       case 'ne':
         return localizeDigits(ne ?? en);
       case 'hi':
-        return localizeDigits(hi ?? ne ?? en);
+        return localizeDigits(hi ?? en);
       case 'es':
         return es ?? en;
       case 'fr':

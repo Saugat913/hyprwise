@@ -190,6 +190,14 @@ class SubscriptionService extends ChangeNotifier {
       if (rawExpiry != null) {
         _proExpiryDate = DateTime.tryParse(rawExpiry);
       }
+      // Enforce cached expiry so lapsed subscriptions cannot stay Pro indefinitely offline
+      if (_proExpiryDate != null && _proExpiryDate!.isBefore(DateTime.now())) {
+        _isPro = false;
+        _proExpiryDate = null;
+        await _storage.write(key: _proKey, value: 'false');
+        await _storage.write(key: _proLegacyKey, value: 'false');
+        await _storage.delete(key: _proExpiryKey);
+      }
       if (_isPro || _isSupporter || _everSupported) {
         _isPro = true;
         if (authService.currentUser != null) {
@@ -651,7 +659,11 @@ class SubscriptionService extends ChangeNotifier {
       return isPro;
     }
 
-    // Offline / unit test environment fallback when RevenueCat is not configured
+    // Offline / unit test environment fallback ONLY in debug/test builds.
+    // Never grant unpaid Pro access in release builds when RevenueCat is unconfigured.
+    if (!kDebugMode) {
+      return false;
+    }
     await Future<void>.delayed(const Duration(milliseconds: 200));
     _isPro = true;
     _proExpiryDate = plan.isLifetime

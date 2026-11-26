@@ -141,21 +141,30 @@ class _AppButtonState extends State<AppButton> {
           ),
           child: child(scheme.onSurfaceVariant),
         ),
-      _ => FilledButton(
-          onPressed: onPressed,
-          style: FilledButton.styleFrom(
-            minimumSize: size,
-            padding: padding,
-            shape: borderShape,
-            backgroundColor: switch (kind) {
-              AppButtonKind.success => colors.income,
-              AppButtonKind.danger => colors.expense,
-              _ => scheme.primary,
-            },
-            foregroundColor: kind == AppButtonKind.primary ? scheme.onPrimary : Colors.white,
-          ),
-          child: child(kind == AppButtonKind.primary ? scheme.onPrimary : Colors.white),
-        ),
+      _ => () {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final fg = switch (kind) {
+            AppButtonKind.primary => scheme.onPrimary,
+            AppButtonKind.danger => scheme.onError,
+            AppButtonKind.success => isDark ? scheme.onPrimary : Colors.white,
+            _ => scheme.onPrimary,
+          };
+          return FilledButton(
+            onPressed: onPressed,
+            style: FilledButton.styleFrom(
+              minimumSize: size,
+              padding: padding,
+              shape: borderShape,
+              backgroundColor: switch (kind) {
+                AppButtonKind.success => colors.income,
+                AppButtonKind.danger => colors.expense,
+                _ => scheme.primary,
+              },
+              foregroundColor: fg,
+            ),
+            child: child(fg),
+          );
+        }(),
     };
 
     return Listener(
@@ -172,29 +181,41 @@ class _AppButtonState extends State<AppButton> {
   }
 }
 
-/// Round 40px icon button (back, bell, filter, add).
+/// Round 40px icon button (back, bell, filter, add) with accessible semantics.
 class RoundIconButton extends StatelessWidget {
-  const RoundIconButton(this.glyph, {super.key, required this.onPressed, this.filled = false});
+  const RoundIconButton(
+    this.glyph, {
+    super.key,
+    required this.onPressed,
+    this.filled = false,
+    this.tooltip,
+  });
 
   final IconGlyph glyph;
   final VoidCallback? onPressed;
   final bool filled;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: filled ? scheme.primary : scheme.surface,
-      shape: CircleBorder(side: BorderSide(color: filled ? scheme.primary : scheme.outlineVariant)),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onPressed,
-        child: SizedBox(
-          width: AppSize.iconBox,
-          height: AppSize.iconBox,
-          child: Center(child: AppIcon(glyph, size: 18, color: filled ? scheme.onPrimary : null)),
+    final btn = Semantics(
+      button: true,
+      label: tooltip,
+      child: Material(
+        color: filled ? scheme.primary : scheme.surface,
+        shape: CircleBorder(side: BorderSide(color: filled ? scheme.primary : scheme.outlineVariant)),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            width: AppSize.iconBox,
+            height: AppSize.iconBox,
+            child: Center(child: AppIcon(glyph, size: 18, color: filled ? scheme.onPrimary : null)),
+          ),
         ),
       ),
     );
+    return tooltip != null ? Tooltip(message: tooltip!, child: btn) : btn;
   }
 }

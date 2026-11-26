@@ -86,6 +86,27 @@ class AppDatabase extends _$AppDatabase {
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_shifts_start_at ON shifts (start_at DESC)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_shifts_status ON shifts (status)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_shifts_job_id ON shifts (job_id)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_shift_breaks_shift_id ON shift_breaks (shift_id)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_transactions_occurred_at ON transactions (occurred_at DESC)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions (account_id)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal_id ON goal_contributions (goal_id)',
+      );
     },
   );
 

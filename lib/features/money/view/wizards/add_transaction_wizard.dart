@@ -72,22 +72,7 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
         showErrorToast(context, tr.enterValidAmount);
         return;
       }
-      if (_type == TransactionType.expense) {
-        final viewModel = getIt<MoneyViewModel>();
-        if (viewModel.accounts.isNotEmpty) {
-          final targetAccId = _selectedAccountId ?? viewModel.accounts.first.id;
-          final currentBalance = viewModel.snapshot.balanceOf(targetAccId);
-          final amountMinor = (amount * 100).round();
-          if (currentBalance < amountMinor) {
-            final accCurrency = viewModel.snapshot.currencyOf(targetAccId);
-            final msg =
-                '${tr.insufficientBalance}: ${MoneyFormatter.format(currentBalance, accCurrency)}.';
-            setState(() => _amountError = tr.insufficientBalance);
-            showErrorToast(context, msg);
-            return;
-          }
-        }
-      }
+      // Balance validation runs in _save() after the user picks the source account on Step 1.
       setState(() {
         _amountError = null;
         _step = 1;
@@ -680,52 +665,64 @@ class _AddTransactionWizardState extends State<AddTransactionWizard> {
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+      ),
       builder:
-          (ctx) => Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpace.page,
-              AppSpace.lg,
-              AppSpace.page,
-              MediaQuery.of(ctx).viewInsets.bottom + AppSpace.xl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  _type == TransactionType.expense
-                      ? tr.addCustomExpenseCategory
-                      : tr.addCustomIncomeCategory,
-                  style: Theme.of(ctx).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpace.md),
-                TextField(
-                  controller: ctrl,
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    labelText: tr.categoryNameLabel,
-                    hintText: tr.categoryNameHint,
+          (ctx) => DisposableScope(
+            onDispose: ctrl.dispose,
+            child: SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                AppSpace.page,
+                AppSpace.lg,
+                AppSpace.page,
+                MediaQuery.of(ctx).viewInsets.bottom + AppSpace.xl,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    _type == TransactionType.expense
+                        ? tr.addCustomExpenseCategory
+                        : tr.addCustomIncomeCategory,
+                    style: Theme.of(ctx).textTheme.titleMedium,
                   ),
-                ),
-                const SizedBox(height: AppSpace.lg),
-                AppButton(
-                  tr.addCategoryButton,
-                  onPressed: () async {
-                    final name = ctrl.text.trim();
-                    if (name.isEmpty) return;
-                    Navigator.of(ctx).pop();
-                    final cat = await getIt<CategoryRepository>().addCategory(
-                      label: name,
-                      type: _type,
-                    );
-                    setState(() {
-                      _categoryKey = cat.value;
-                      _merchant = null;
-                    });
-                  },
-                ),
-              ],
+                  const SizedBox(height: AppSpace.md),
+                  TextField(
+                    controller: ctrl,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      labelText: tr.categoryNameLabel,
+                      hintText: tr.categoryNameHint,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpace.lg),
+                  AppButton(
+                    tr.addCategoryButton,
+                    onPressed: () async {
+                      final name = ctrl.text.trim();
+                      if (name.isEmpty) {
+                        showErrorToast(ctx, tr.categoryNameHint);
+                        return;
+                      }
+                      Navigator.of(ctx).pop();
+                      final cat = await getIt<CategoryRepository>().addCategory(
+                        label: name,
+                        type: _type,
+                      );
+                      if (!mounted) return;
+                      setState(() {
+                        _categoryKey = cat.value;
+                        _merchant = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
             ),
           ),
     );
@@ -775,8 +772,8 @@ class _MerchantCard extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF0F1F2),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
@@ -1147,22 +1144,24 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
     final convertedAmount = foreignAmount * rate;
     final convertedMinor = (convertedAmount * 100).round();
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
-          ),
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        padding: const EdgeInsets.all(AppSpace.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: Container(
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadius.md),
+            ),
+          ),
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
             Row(
               children: [
                 Expanded(
@@ -1349,6 +1348,8 @@ class _CurrencyConverterSheetState extends State<_CurrencyConverterSheet> {
             ),
             const SizedBox(height: AppSpace.sm),
           ],
+        ),
+          ),
         ),
       ),
     );

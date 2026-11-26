@@ -510,8 +510,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                     ),
                                   ),
                                   StatusChip(
-                                    tr.onTrack,
-                                    tone: ChipTone.success,
+                                    viewModel.projectedMonthEndMinor >= 0
+                                        ? tr.onTrack
+                                        : tr.t(
+                                          'Watch pace',
+                                          ne: 'खर्च ध्यान दिनुहोस्',
+                                          hi: 'खर्च पर ध्यान दें',
+                                          es: 'Vigilar ritmo',
+                                          fr: 'À surveiller',
+                                          de: 'Im Blick behalten',
+                                          ja: '要注意',
+                                          zh: '需留意支出',
+                                          it: 'Da monitorare',
+                                        ),
+                                    tone: viewModel.projectedMonthEndMinor >= 0
+                                        ? ChipTone.success
+                                        : ChipTone.warning,
                                   ),
                                 ],
                               ),
@@ -1177,29 +1191,34 @@ class _DebtPartyFilterButton extends StatelessWidget {
                     ),
                   )
                 else
-                  HorizontalOptionSelector<String?>(
-                    height: 56,
-                    selectedValue: viewModel.selectedDebtParty,
-                    onChanged: (party) {
-                      viewModel.selectDebtParty(party);
-                      Navigator.pop(ctx);
-                    },
-                    items: [
-                      HorizontalOptionItem<String?>(
-                        value: null,
-                        label: tr.allParties,
-                        iconData: Icons.people_alt_rounded,
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OptionTile(
+                        title: tr.allParties,
+                        icon: HugeIcons.strokeRoundedUserGroup,
+                        selected: viewModel.selectedDebtParty == null,
+                        onTap: () {
+                          viewModel.selectDebtParty(null);
+                          Navigator.pop(ctx);
+                        },
                       ),
-                      for (final party in parties)
-                        HorizontalOptionItem<String?>(
-                          value: party,
-                          label: party,
-                          subtitle: () {
-                            final total = viewModel.partyTotalFor(party, type);
-                            return MoneyFormatter.format(total, baseCurrency);
-                          }(),
-                          avatar: LetterAvatar(party, size: 28),
+                      for (final party in parties) ...[
+                        const SizedBox(height: AppSpace.sm),
+                        OptionTile(
+                          title: party,
+                          subtitle: MoneyFormatter.format(
+                            viewModel.partyTotalFor(party, type),
+                            baseCurrency,
+                          ),
+                          icon: HugeIcons.strokeRoundedUser,
+                          selected: viewModel.selectedDebtParty == party,
+                          onTap: () {
+                            viewModel.selectDebtParty(party);
+                            Navigator.pop(ctx);
+                          },
                         ),
+                      ],
                     ],
                   ),
               ],

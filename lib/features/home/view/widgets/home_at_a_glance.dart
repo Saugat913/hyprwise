@@ -123,7 +123,7 @@ class HomeAtAGlance extends StatelessWidget {
                           viewModel.baseCurrency,
                         )
                         : nextShift?.rateFormatted,
-                onTap: () => context.push(AppRoutes.work),
+                onTap: () => context.go(AppRoutes.work),
               ),
             ],
           ),
@@ -154,77 +154,80 @@ class _GlanceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpace.lg,
-          vertical: AppSpace.md,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.sm),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.lg,
+            vertical: AppSpace.md,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                alignment: Alignment.center,
+                child: AppIcon(icon, size: 18, color: iconColor),
               ),
-              alignment: Alignment.center,
-              child: AppIcon(icon, size: 18, color: iconColor),
-            ),
-            const SizedBox(width: AppSpace.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: text.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  Text(
-                    detail,
-                    style: text.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                    Text(
+                      detail,
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: AppSpace.sm),
+                SizedBox(
+                  width: 76,
+                  child: Text(
+                    trailing!,
+                    style: text.labelSmall?.copyWith(
+                      fontFamily: 'RedditMono',
+                      fontWeight: FontWeight.w700,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
                   ),
-                ],
-              ),
-            ),
-            if (trailing != null) ...[
+                ),
+              ],
               const SizedBox(width: AppSpace.sm),
               SizedBox(
-                width: 76,
-                child: Text(
-                  trailing!,
-                  style: text.labelSmall?.copyWith(
-                    fontFamily: 'RedditMono',
-                    fontWeight: FontWeight.w700,
+                width: 18,
+                height: 36,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
                 ),
               ),
             ],
-            const SizedBox(width: AppSpace.sm),
-            SizedBox(
-              width: 18,
-              height: 36,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

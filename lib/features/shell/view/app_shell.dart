@@ -145,32 +145,39 @@ class _DockedAddButton extends StatelessWidget {
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: scheme.primary,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: (isDark ? Colors.black : scheme.primary).withValues(
-              alpha: 0.32,
-            ),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    return Semantics(
+      button: true,
+      label: context.strings.addTransaction,
+      child: Tooltip(
+        message: context.strings.add,
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: (isDark ? Colors.black : scheme.primary).withValues(
+                  alpha: 0.32,
+                ),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: Center(
-            child: AppIcon(
-              HugeIcons.strokeRoundedPlusSign,
-              size: 24,
-              color: scheme.onPrimary,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              child: Center(
+                child: AppIcon(
+                  HugeIcons.strokeRoundedPlusSign,
+                  size: 24,
+                  color: scheme.onPrimary,
+                ),
+              ),
             ),
           ),
         ),
@@ -199,35 +206,41 @@ class _NavItem extends StatelessWidget {
         selected
             ? Theme.of(context).colorScheme.onSurface
             : Theme.of(context).colorScheme.onSurfaceVariant;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 44,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? context.colors.fill : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadius.md),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 44,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected ? context.colors.fill : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: AppIcon(icon, size: 19, color: color),
             ),
-            child: AppIcon(icon, size: 19, color: color),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: scheme.labelSmall?.copyWith(
-              fontSize: 10,
-              color: color,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: scheme.labelSmall?.copyWith(
+                fontSize: 10,
+                color: color,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

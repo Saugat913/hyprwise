@@ -10,6 +10,7 @@ import 'package:finance_tracker/core/notifications/shift_notification_service.da
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
 import 'package:finance_tracker/core/widgets/widget_sync_service.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
+import 'package:finance_tracker/features/work/viewmodels/work_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +81,9 @@ Future<void> _initBackgroundServices() async {
   // D. Home Screen Widgets (Android & iOS WidgetKit)
   try {
     await WidgetSyncService.initialize();
+    if (getIt.isRegistered<WorkViewModel>()) {
+      getIt<WorkViewModel>().syncWidgetNow(force: true);
+    }
   } catch (e) {
     if (kDebugMode) {
       debugPrint('[Startup] Background WidgetSyncService init error: $e');

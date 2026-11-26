@@ -28,11 +28,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    // Default automatically to today's date and shifts filter on every page visit
+    // Default automatically to today's date and shifts filter on every page visit (single notify)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final vm = getIt<CalendarViewModel>();
-      vm.jumpToToday();
-      vm.setFilter(CalendarFilter.shifts);
+      getIt<CalendarViewModel>().jumpToToday(resetFilter: true);
     });
   }
 
@@ -86,7 +84,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
               decoration: BoxDecoration(
                 color: scheme.surface,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(color: scheme.outlineVariant),
               ),
               child: Row(
@@ -192,65 +190,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _showAddActionSheet(BuildContext context, DateTime selectedDate) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
       ),
       builder: (ctx) {
         final tr = ctx.strings;
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              AppSpace.page,
+              AppSpace.md,
+              AppSpace.page,
+              MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      tr.addToDateTitle(AppDate.short(selectedDate)),
-                      style: Theme.of(ctx).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                  ),
+                Text(
+                  tr.addToDateTitle(AppDate.short(selectedDate)),
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
-                  child: HorizontalOptionSelector<String>(
-                    height: 64,
-                    selectedValue: null,
-                    onChanged: (action) {
-                      Navigator.pop(ctx);
-                      switch (action) {
-                        case 'shift':
-                          context.push(AppRoutes.scheduleShift, extra: selectedDate);
-                          break;
-                        case 'expense':
-                        case 'income':
-                          context.push(AppRoutes.addTransaction);
-                          break;
-                      }
-                    },
-                    items: [
-                      HorizontalOptionItem(
-                        value: 'shift',
-                        label: tr.scheduleShift,
-                        subtitle: tr.addWorkShiftWithRate,
-                        icon: HugeIcons.strokeRoundedClock01,
-                      ),
-                      HorizontalOptionItem(
-                        value: 'expense',
-                        label: tr.addExpense,
-                        subtitle: tr.recordExpenseOnDate,
-                        icon: HugeIcons.strokeRoundedArrowUpRight01,
-                      ),
-                      HorizontalOptionItem(
-                        value: 'income',
-                        label: tr.addIncome,
-                        subtitle: tr.recordIncomeOnDate,
-                        icon: HugeIcons.strokeRoundedArrowDownLeft01,
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: AppSpace.md),
+                OptionTile(
+                  title: tr.scheduleShift,
+                  subtitle: tr.addWorkShiftWithRate,
+                  icon: HugeIcons.strokeRoundedClock01,
+                  selected: false,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.push(AppRoutes.scheduleShift, extra: selectedDate);
+                  },
+                ),
+                const SizedBox(height: AppSpace.sm),
+                OptionTile(
+                  title: tr.addExpense,
+                  subtitle: tr.recordExpenseOnDate,
+                  icon: HugeIcons.strokeRoundedArrowUpRight01,
+                  selected: false,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.push('${AppRoutes.addTransaction}?type=expense');
+                  },
+                ),
+                const SizedBox(height: AppSpace.sm),
+                OptionTile(
+                  title: tr.addIncome,
+                  subtitle: tr.recordIncomeOnDate,
+                  icon: HugeIcons.strokeRoundedArrowDownLeft01,
+                  selected: false,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.push('${AppRoutes.addTransaction}?type=income');
+                  },
                 ),
               ],
             ),
@@ -275,25 +268,26 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? scheme.primary : scheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: isSelected ? scheme.primary : scheme.outlineVariant,
-          ),
+    return Material(
+      color: isSelected ? scheme.primary : scheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        side: BorderSide(
+          color: isSelected ? scheme.primary : scheme.outlineVariant,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? scheme.onPrimary : scheme.onSurface,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected ? scheme.onPrimary : scheme.onSurface,
+            ),
           ),
         ),
       ),
@@ -393,51 +387,19 @@ class _EmptyDayState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     final tr = context.strings;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxl, horizontal: AppSpace.lg),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: Column(
-        children: [
-          AppIcon(HugeIcons.strokeRoundedCalendar03, size: 48, color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
-          const SizedBox(height: AppSpace.md),
-          Text(
-            isToday ? tr.nothingScheduledForToday : tr.nothingScheduledForThisDay,
-            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            tr.calendarEmptyAdvice,
-            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpace.lg),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: AppSpace.sm,
-            runSpacing: AppSpace.sm,
-            children: [
-              FilledButton.icon(
-                onPressed: onAddShift,
-                icon: AppIcon(HugeIcons.strokeRoundedClock01, size: 16, color: scheme.onPrimary),
-                label: Text(tr.scheduleShift),
-              ),
-              OutlinedButton.icon(
-                onPressed: onAddExpense,
-                icon: AppIcon(HugeIcons.strokeRoundedMoneySend02, size: 16, color: scheme.primary),
-                label: Text(tr.addExpense),
-              ),
-            ],
-          ),
-        ],
+    return AppCard(
+      child: EmptyState(
+        compact: true,
+        illustration: EmptyIllustration.calendar,
+        icon: HugeIcons.strokeRoundedCalendar03,
+        title: isToday ? tr.nothingScheduledForToday : tr.nothingScheduledForThisDay,
+        message: tr.calendarEmptyAdvice,
+        actionLabel: tr.scheduleShift,
+        onAction: onAddShift,
+        secondaryActionLabel: tr.addExpense,
+        onSecondaryAction: onAddExpense,
       ),
     );
   }

@@ -1,14 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Exact HugeIcons SVG path: strokeRoundedSparkles (white on brand orange tile) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="26dp"
-    android:height="26dp"
+    android:width="22dp"
+    android:height="22dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- Center Primary Sparkle -->
     <path
-        android:fillColor="@color/widget_brand"
-        android:pathData="M12,2 C12,7.52 7.52,12 2,12 C7.52,12 12,16.48 12,22 C12,16.48 16.48,12 22,12 C16.48,12 12,7.52 12,2 Z" />
-    <!-- Top-Right Accent Sparkle -->
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M15 2L15.5387 4.39157C15.9957 6.42015 17.5798 8.00431 19.6084 8.46127L22 9L19.6084 9.53873C17.5798 9.99569 15.9957 11.5798 15.5387 13.6084L15 16L14.4613 13.6084C14.0043 11.5798 12.4202 9.99569 10.3916 9.53873L8 9L10.3916 8.46127C12.4201 8.00431 14.0043 6.42015 14.4613 4.39158L15 2Z" />
     <path
-        android:fillColor="@color/widget_brand"
-        android:pathData="M19,2 C19,3.66 17.66,5 16,5 C17.66,5 19,6.34 19,8 C19,6.34 20.34,5 22,5 C20.34,5 19,3.66 19,2 Z" />
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7 12L7.38481 13.7083C7.71121 15.1572 8.84275 16.2888 10.2917 16.6152L12 17L10.2917 17.3848C8.84275 17.7112 7.71121 18.8427 7.38481 20.2917L7 22L6.61519 20.2917C6.28879 18.8427 5.15725 17.7112 3.70827 17.3848L2 17L3.70827 16.6152C5.15725 16.2888 6.28879 15.1573 6.61519 13.7083L7 12Z" />
 </vector>

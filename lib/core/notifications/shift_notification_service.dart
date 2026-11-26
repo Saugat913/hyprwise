@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
-import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -30,6 +29,9 @@ class ShiftNotificationService {
 
   String? _lastShiftNotifyKey;
   DateTime? _lastShiftNotifyAt;
+  String? _lastSyncedPlanSignature;
+  bool _isSyncingReminders = false;
+  List<PlannedReminder>? _queuedReminderPlan;
   static const String shiftChannelId = 'hyprwise_active_shift_channel';
   static const String alertsChannelId = 'hyprwise_scheduled_alerts_channel';
   static const DarwinNotificationDetails _darwinDetails = DarwinNotificationDetails(
@@ -90,10 +92,12 @@ class ShiftNotificationService {
     }
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // Never trigger iOS system permission dialog during silent cold startup;
+    // permissions are requested explicitly with user context in requestPermission().
     const darwinSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
     const initSettings = InitializationSettings(
       android: androidSettings,
@@ -226,8 +230,22 @@ class ShiftNotificationService {
     return true;
   }
 
-  /// Safely schedules zoned notification using exact mode, asking for permission
-  /// and falling back to inexact mode if exact alarms are not permitted.
+  Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
+    try {
+      final android = _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (android != null) {
+        final canExact = await android.canScheduleExactNotifications();
+        if (canExact == true) {
+          return AndroidScheduleMode.exactAllowWhileIdle;
+        }
+      }
+    } catch (_) {}
+    return AndroidScheduleMode.inexactAllowWhileIdle;
+  }
+
+  /// Safely schedules zoned notification using exact mode when permitted by the OS,
+  /// and gracefully falls back to inexact mode without opening system settings loops.
   Future<void> _safeZonedSchedule({
     required int id,
     required String? title,
@@ -236,7 +254,10 @@ class ShiftNotificationService {
     required NotificationDetails notificationDetails,
     DateTimeComponents? matchDateTimeComponents,
     String? payload,
+    AndroidScheduleMode? resolvedScheduleMode,
   }) async {
+    final scheduleMode = resolvedScheduleMode ?? await _resolveAndroidScheduleMode();
+
     try {
       await _notifications.zonedSchedule(
         id: id,
@@ -244,17 +265,12 @@ class ShiftNotificationService {
         body: body,
         scheduledDate: scheduledDate,
         notificationDetails: notificationDetails,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
         matchDateTimeComponents: matchDateTimeComponents,
         payload: payload,
       );
     } catch (e) {
-      final isExactAlarmError = e is PlatformException &&
-          (e.code == 'exact_alarms_not_permitted' ||
-              (e.message?.contains('exact_alarms') ?? false));
-
-      if (isExactAlarmError) {
-        await requestExactAlarmsPermission();
+      if (scheduleMode == AndroidScheduleMode.exactAllowWhileIdle) {
         try {
           await _notifications.zonedSchedule(
             id: id,
@@ -557,28 +573,92 @@ class ShiftNotificationService {
 
   Future<void> cancelLongShiftAlert() => cancelNotification(longShiftAlertId);
 
-  /// Replaces every pending rule-based reminder with [plan].
+  String _planSignature(List<PlannedReminder> plan) {
+    final buf = StringBuffer();
+    for (final r in plan) {
+      buf
+        ..write(r.id)
+        ..write('|')
+        ..write(r.at.millisecondsSinceEpoch)
+        ..write('|')
+        ..write(r.weekly ? 1 : 0)
+        ..write('|')
+        ..write(r.title)
+        ..write('|')
+        ..write(r.body)
+        ..write(';');
+    }
+    return buf.toString();
+  }
+
+  /// Replaces pending rule-based reminders with [plan].
+  /// Serialized (single-flight) and signature-diffed so redundant updates never
+  /// flood Android's AlarmManager or iOS's UNUserNotificationCenter.
   Future<void> syncReminders(List<PlannedReminder> plan) async {
     if (!_initialized) await initialize();
     if (!_isAvailable) return;
-    try {
-      final pending = await _notifications.pendingNotificationRequests();
-      for (final p in pending) {
-        if (p.id >= ReminderPlanner.idBase) await _notifications.cancel(id: p.id);
-      }
-    } catch (e) {
-      debugPrint('Error clearing reminder notifications: $e');
+
+    final signature = _planSignature(plan);
+    if (signature == _lastSyncedPlanSignature && !_isSyncingReminders) {
+      return;
     }
-    for (final r in plan) {
-      await _safeZonedSchedule(
-        id: r.id,
-        title: r.title,
-        body: r.body,
-        scheduledDate: tz.TZDateTime.from(r.at, tz.local),
-        notificationDetails: NotificationDetails(android: _alertDetails(const Color(0xFFFF6500)), iOS: _darwinDetails),
-        matchDateTimeComponents: r.weekly ? DateTimeComponents.dayOfWeekAndTime : null,
-        payload: r.payload,
-      );
+
+    if (_isSyncingReminders) {
+      // Coalesce overlapping calls into one follow-up pass with the latest plan.
+      _queuedReminderPlan = List<PlannedReminder>.of(plan);
+      return;
+    }
+
+    _isSyncingReminders = true;
+    try {
+      var currentPlan = plan;
+      var currentSignature = signature;
+
+      while (true) {
+        if (currentSignature != _lastSyncedPlanSignature) {
+          final desiredIds = <int>{for (final r in currentPlan) r.id};
+          try {
+            final pending = await _notifications.pendingNotificationRequests();
+            for (final p in pending) {
+              if (p.id >= ReminderPlanner.idBase && !desiredIds.contains(p.id)) {
+                await _notifications.cancel(id: p.id);
+              }
+            }
+          } catch (e) {
+            debugPrint('Error clearing reminder notifications: $e');
+          }
+
+          if (currentPlan.isNotEmpty) {
+            final scheduleMode = await _resolveAndroidScheduleMode();
+            final details = NotificationDetails(
+              android: _alertDetails(const Color(0xFFFF6500)),
+              iOS: _darwinDetails,
+            );
+            for (final r in currentPlan) {
+              await _safeZonedSchedule(
+                id: r.id,
+                title: r.title,
+                body: r.body,
+                scheduledDate: tz.TZDateTime.from(r.at, tz.local),
+                notificationDetails: details,
+                matchDateTimeComponents:
+                    r.weekly ? DateTimeComponents.dayOfWeekAndTime : null,
+                payload: r.payload,
+                resolvedScheduleMode: scheduleMode,
+              );
+            }
+          }
+          _lastSyncedPlanSignature = currentSignature;
+        }
+
+        final next = _queuedReminderPlan;
+        if (next == null) break;
+        _queuedReminderPlan = null;
+        currentPlan = next;
+        currentSignature = _planSignature(currentPlan);
+      }
+    } finally {
+      _isSyncingReminders = false;
     }
   }
 }

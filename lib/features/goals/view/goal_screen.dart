@@ -1,8 +1,3 @@
-// The detailed trajectory widgets remain available for the Analytics surface,
-// but the Plan tab deliberately uses the compact outlook summary below.
-// ignore_for_file: unused_element, unused_element_parameter
-
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -32,7 +27,20 @@ class GoalScreen extends StatelessWidget {
         final scheme = Theme.of(context).colorScheme;
         final colors = context.colors;
         final tr = context.strings;
-        final forecasts = viewModel.filteredGoalForecasts;
+        final allForecasts = viewModel.goalForecasts;
+        final inProgressCount = tr.formatNumber(
+          allForecasts.where((g) => g.progress.fraction < 1.0).length,
+        );
+        final completedCount = tr.formatNumber(
+          allForecasts.where((g) => g.progress.fraction >= 1.0).length,
+        );
+        final forecasts = switch (viewModel.filter) {
+          GoalFilter.all => allForecasts,
+          GoalFilter.inProgress =>
+            allForecasts.where((g) => g.progress.fraction < 1.0).toList(),
+          GoalFilter.completed =>
+            allForecasts.where((g) => g.progress.fraction >= 1.0).toList(),
+        };
 
         return TabPage(
           title: tr.goals,
@@ -61,21 +69,14 @@ class GoalScreen extends StatelessWidget {
                     const SizedBox(width: AppSpace.sm),
                     _FilterPill(
                       label: tr.t(
-                        'In progress (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
-                        ne:
-                            'प्रगतिमा (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
-                        es:
-                            'En curso (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
-                        fr:
-                            'En cours (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
-                        de:
-                            'In Arbeit (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
-                        ja:
-                            '進行中 (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
-                        zh:
-                            '进行中 (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
-                        it:
-                            'In corso (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction < 1.0).length)})',
+                        'In progress ($inProgressCount)',
+                        ne: 'प्रगतिमा ($inProgressCount)',
+                        es: 'En curso ($inProgressCount)',
+                        fr: 'En cours ($inProgressCount)',
+                        de: 'In Arbeit ($inProgressCount)',
+                        ja: '進行中 ($inProgressCount)',
+                        zh: '进行中 ($inProgressCount)',
+                        it: 'In corso ($inProgressCount)',
                       ),
                       isSelected: viewModel.filter == GoalFilter.inProgress,
                       onTap: () => viewModel.setFilter(GoalFilter.inProgress),
@@ -83,21 +84,14 @@ class GoalScreen extends StatelessWidget {
                     const SizedBox(width: AppSpace.sm),
                     _FilterPill(
                       label: tr.t(
-                        'Completed (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
-                        ne:
-                            'सम्पन्न (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
-                        es:
-                            'Completados (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
-                        fr:
-                            'Terminés (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
-                        de:
-                            'Erreicht (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
-                        ja:
-                            '達成済み (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
-                        zh:
-                            '已达成 (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
-                        it:
-                            'Completati (${tr.formatNumber(viewModel.goalForecasts.where((g) => g.progress.fraction >= 1.0).length)})',
+                        'Completed ($completedCount)',
+                        ne: 'सम्पन्न ($completedCount)',
+                        es: 'Completados ($completedCount)',
+                        fr: 'Terminés ($completedCount)',
+                        de: 'Erreicht ($completedCount)',
+                        ja: '達成済み ($completedCount)',
+                        zh: '已达成 ($completedCount)',
+                        it: 'Completati ($completedCount)',
                       ),
                       isSelected: viewModel.filter == GoalFilter.completed,
                       onTap: () => viewModel.setFilter(GoalFilter.completed),
@@ -110,6 +104,7 @@ class GoalScreen extends StatelessWidget {
 
             if (viewModel.goals.isEmpty)
               EmptyState(
+                illustration: EmptyIllustration.goals,
                 icon: HugeIcons.strokeRoundedTarget02,
                 title: tr.noGoalsYet,
                 message: tr.goalPlanningAdvice,
@@ -118,9 +113,15 @@ class GoalScreen extends StatelessWidget {
               )
             else if (forecasts.isEmpty)
               EmptyState(
+                illustration: EmptyIllustration.goals,
                 icon: HugeIcons.strokeRoundedTarget02,
                 title: tr.noMatchingGoals,
                 message: tr.tryDifferentFilter,
+                actionLabel: tr.allWithCount(viewModel.goals.length),
+                outlineAction: true,
+                onAction: () => viewModel.setFilter(GoalFilter.all),
+                secondaryActionLabel: tr.newGoal,
+                onSecondaryAction: () => context.push(AppRoutes.addGoal),
               )
             else ...[
               for (final gf in forecasts) ...[
@@ -144,18 +145,26 @@ class GoalScreen extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: AppSpace.xs),
-                                Material(
-                                  color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                                  child: InkWell(
+                                Tooltip(
+                                  message: tr.edit,
+                                  child: Material(
+                                    color: Colors.transparent,
                                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                                    onTap: () => _showEditGoalSheet(context, viewModel, gf.goal),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4.0),
-                                      child: AppIcon(
-                                        HugeIcons.strokeRoundedPencilEdit02,
-                                        size: 16,
-                                        color: scheme.onSurfaceVariant,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                                      onTap: () => _showEditGoalSheet(context, viewModel, gf.goal),
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          minWidth: 36,
+                                          minHeight: 36,
+                                        ),
+                                        child: Center(
+                                          child: AppIcon(
+                                            HugeIcons.strokeRoundedPencilEdit02,
+                                            size: 16,
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -170,20 +179,20 @@ class GoalScreen extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFEF3C7),
+                                color: colors.warningBg,
                                 borderRadius: BorderRadius.circular(
                                   AppRadius.md,
                                 ),
                                 border: Border.all(
-                                  color: const Color(0xFFF59E0B),
+                                  color: colors.warning.withValues(alpha: 0.5),
                                 ),
                               ),
                               child: Text(
                                 tr.highPriority,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFB45309),
+                                  color: colors.warning,
                                 ),
                               ),
                             ),
@@ -255,10 +264,10 @@ class GoalScreen extends StatelessWidget {
                                 return Expanded(
                                   child: Row(
                                     children: [
-                                      const AppIcon(
+                                      AppIcon(
                                         HugeIcons.strokeRoundedSafe,
                                         size: 14,
-                                        color: Color(0xFF1F7A45),
+                                        color: colors.income,
                                       ),
                                       const SizedBox(width: 5),
                                       Flexible(
@@ -268,7 +277,7 @@ class GoalScreen extends StatelessWidget {
                                               : tr.savingsAccount,
                                           style: text.labelSmall?.copyWith(
                                             fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF1F7A45),
+                                            color: colors.income,
                                           ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -293,10 +302,10 @@ class GoalScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            icon: const AppIcon(
+                            icon: AppIcon(
                               HugeIcons.strokeRoundedAddCircleHalfDot,
                               size: 15,
-                              color: Color(0xFF1F7A45),
+                              color: colors.income,
                             ),
                             label: Text(
                               tr.depositOrSave,
@@ -347,10 +356,12 @@ class GoalScreen extends StatelessWidget {
       useRootNavigator: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(
+        return DisposableScope(
+          onDispose: amountController.dispose,
+          child: StatefulBuilder(
           builder: (ctx, setState) {
             return SafeArea(
               child: Padding(
@@ -466,7 +477,7 @@ class GoalScreen extends StatelessWidget {
                                     ),
                                   ),
                                   child: Text(
-                                    '+${goal.currencyCode} $amt',
+                                    '+${MoneyFormatter.format(amt * 100, goal.currencyCode)}',
                                     style: text.labelMedium?.copyWith(
                                       fontWeight: FontWeight.w700,
                                       color:
@@ -723,9 +734,18 @@ class GoalScreen extends StatelessWidget {
                         if (selectedSourceAccountId != null) {
                           final currentBalance = viewModel.financeStore.snapshot
                               .balanceOf(selectedSourceAccountId!);
-                          if (currentBalance < amountMinor) {
-                            final accCurrency = viewModel.financeStore.snapshot
-                                .currencyOf(selectedSourceAccountId!);
+                          final accCurrency = viewModel.financeStore.snapshot
+                              .currencyOf(selectedSourceAccountId!);
+                          final requiredInAccCurrency = viewModel
+                              .financeStore
+                              .snapshot
+                              .converter
+                              .convert(
+                                amountMinor,
+                                goal.currencyCode,
+                                accCurrency,
+                              );
+                          if (currentBalance < requiredInAccCurrency) {
                             showErrorToast(
                               ctx,
                               tr.t(
@@ -749,23 +769,29 @@ class GoalScreen extends StatelessWidget {
                             return;
                           }
                         }
-                        await viewModel.addSavingsToGoal(
-                          goal: goal,
-                          amountMinor: amountMinor,
-                          fromAccountId: selectedSourceAccountId,
-                        );
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        if (context.mounted) {
-                          showToast(
-                            context,
-                            tr.addedToGoalMessage(
-                              MoneyFormatter.format(
-                                amountMinor,
-                                goal.currencyCode,
-                              ),
-                              goal.name,
-                            ),
+                        try {
+                          await viewModel.addSavingsToGoal(
+                            goal: goal,
+                            amountMinor: amountMinor,
+                            fromAccountId: selectedSourceAccountId,
                           );
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (context.mounted) {
+                            showToast(
+                              context,
+                              tr.addedToGoalMessage(
+                                MoneyFormatter.format(
+                                  amountMinor,
+                                  goal.currencyCode,
+                                ),
+                                goal.name,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            showErrorToast(ctx, tr.couldNotSave('$e'));
+                          }
                         }
                       },
                     ),
@@ -775,6 +801,7 @@ class GoalScreen extends StatelessWidget {
             ),
           );
         },
+        ),
         );
       },
     );
@@ -804,10 +831,16 @@ class GoalScreen extends StatelessWidget {
       useRootNavigator: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(
+        return DisposableScope(
+          onDispose: () {
+            nameController.dispose();
+            targetController.dispose();
+            noteController.dispose();
+          },
+          child: StatefulBuilder(
           builder: (ctx, setState) {
             return SafeArea(
               child: Padding(
@@ -1045,7 +1078,7 @@ class GoalScreen extends StatelessWidget {
                                   tr.highPriority,
                                   style: TextStyle(
                                     color: priority == GoalPriority.high
-                                        ? const Color(0xFFB45309)
+                                        ? ctx.colors.warning
                                         : null,
                                     fontWeight: priority == GoalPriority.high
                                         ? FontWeight.w700
@@ -1054,7 +1087,7 @@ class GoalScreen extends StatelessWidget {
                                 ),
                               ),
                               selected: priority == GoalPriority.high,
-                              selectedColor: const Color(0xFFFEF3C7),
+                              selectedColor: ctx.colors.warningBg,
                               onSelected: (val) {
                                 if (val) {
                                   setState(() => priority = GoalPriority.high);
@@ -1170,13 +1203,19 @@ class GoalScreen extends StatelessWidget {
                             ),
                           );
                           if (confirm == true) {
-                            await viewModel.deleteGoal(goal.id);
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            if (context.mounted) {
-                              showToast(
-                                context,
-                                tr.t('Goal deleted', ne: 'लक्ष्य मेटाइयो'),
-                              );
+                            try {
+                              await viewModel.deleteGoal(goal.id);
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (context.mounted) {
+                                showToast(
+                                  context,
+                                  tr.t('Goal deleted', ne: 'लक्ष्य मेटाइयो'),
+                                );
+                              }
+                            } catch (e) {
+                              if (ctx.mounted) {
+                                showErrorToast(ctx, tr.couldNotSave('$e'));
+                              }
                             }
                           }
                         },
@@ -1199,6 +1238,7 @@ class GoalScreen extends StatelessWidget {
               ),
             );
           },
+        ),
         );
       },
     );
@@ -1434,590 +1474,5 @@ class _FilterPill extends StatelessWidget {
   }
 }
 
-class _PlanVelocityBadge extends StatelessWidget {
-  const _PlanVelocityBadge({required this.viewModel});
 
-  final PlanViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final colors = context.colors;
-    final heroIsDark = colors.hero.computeLuminance() < 0.5;
-
-    final deltaMinor = viewModel.monthlyNetDeltaMinor;
-    final growthRate = viewModel.threeMonthGrowthRatePercent;
-
-    final IconData icon;
-    final Color bg;
-    final Color fg;
-    final String label;
-
-    if (deltaMinor > 0) {
-      icon = Icons.trending_up_rounded;
-      final tone = _heroTone(true, heroIsDark);
-      bg = tone.bg;
-      fg = tone.fg;
-      final deltaFormatted = MoneyFormatter.format(
-        deltaMinor,
-        viewModel.baseCurrency,
-      );
-      final rateStr =
-          growthRate != null
-              ? ' · +${growthRate.abs().toStringAsFixed(1)}% (90d)'
-              : '';
-      label = '+$deltaFormatted / mo$rateStr';
-    } else if (deltaMinor < 0) {
-      icon = Icons.trending_down_rounded;
-      final tone = _heroTone(false, heroIsDark);
-      bg = tone.bg;
-      fg = tone.fg;
-      final deltaFormatted = MoneyFormatter.format(
-        deltaMinor.abs(),
-        viewModel.baseCurrency,
-      );
-      final rateStr =
-          growthRate != null
-              ? ' · -${growthRate.abs().toStringAsFixed(1)}% (90d)'
-              : '';
-      label = '−$deltaFormatted / mo$rateStr';
-    } else {
-      icon = Icons.trending_flat_rounded;
-      bg = colors.onHero.withValues(alpha: 0.12);
-      fg = colors.onHeroSecondary;
-      final zeroFormatted = MoneyFormatter.format(0, viewModel.baseCurrency);
-      label = '$zeroFormatted / mo · Steady';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpace.sm + 2,
-        vertical: 4,
-      ),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: fg),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: text.labelSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: fg,
-                fontFamily: 'RedditMono',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PlanMetricBridge extends StatelessWidget {
-  const _PlanMetricBridge({required this.viewModel});
-
-  final PlanViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final colors = context.colors;
-    final tr = context.strings;
-    final heroIsDark = colors.hero.computeLuminance() < 0.5;
-
-    final netChange = viewModel.threeMonthNetChangeMinor;
-    final isPositiveNet = netChange > 0;
-    final isNegativeNet = netChange < 0;
-
-    final ({Color bg, Color fg}) netTone;
-    final String netPrefix;
-    if (isPositiveNet) {
-      netTone = _heroTone(true, heroIsDark);
-      netPrefix = '+';
-    } else if (isNegativeNet) {
-      netTone = _heroTone(false, heroIsDark);
-      netPrefix = '';
-    } else {
-      netTone = (
-        bg: colors.onHero.withValues(alpha: 0.12),
-        fg: colors.onHeroSecondary,
-      );
-      netPrefix = '';
-    }
-
-    final netFormatted = MoneyFormatter.format(
-      netChange,
-      viewModel.baseCurrency,
-    );
-    final netChangeText = '$netPrefix$netFormatted (90d)';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpace.md,
-        vertical: AppSpace.sm,
-      ),
-      decoration: BoxDecoration(
-        color: colors.onHero.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-          color: colors.onHero.withValues(alpha: 0.08),
-          width: 1.0,
-        ),
-      ),
-      child: Row(
-        children: [
-          // Left: Current Balance
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tr.t(
-                    'Current',
-                    ne: 'हाल',
-                    es: 'Actual',
-                    fr: 'Actuel',
-                    de: 'Aktuell',
-                    ja: '現在',
-                    zh: '当前',
-                    it: 'Attuale',
-                  ),
-                  style: text.labelSmall?.copyWith(
-                    color: colors.onHeroSecondary,
-                    fontSize: 10,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    MoneyFormatter.format(
-                      viewModel.currentTotalBalanceMinor,
-                      viewModel.baseCurrency,
-                    ),
-                    style: text.labelMedium?.copyWith(
-                      color: colors.onHero,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'RedditMono',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Center: Directional capsule pill showing 90-day net change
-          Expanded(
-            flex: 5,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpace.sm,
-                  vertical: 3,
-                ),
-                decoration: BoxDecoration(
-                  color: netTone.bg,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    netChangeText,
-                    style: text.labelSmall?.copyWith(
-                      color: netTone.fg,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'RedditMono',
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Right: Projected Balance
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tr.t(
-                    'In 3 months',
-                    ne: '३ महिनामा',
-                    es: 'En 3 meses',
-                    fr: 'Dans 3 mois',
-                    de: 'In 3 Monaten',
-                    ja: '3ヶ月後',
-                    zh: '3个月后',
-                    it: 'In 3 mesi',
-                  ),
-                  style: text.labelSmall?.copyWith(
-                    color: colors.onHeroSecondary,
-                    fontSize: 10,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    MoneyFormatter.format(
-                      viewModel.projectedBalanceIn3Months,
-                      viewModel.baseCurrency,
-                    ),
-                    style: text.labelMedium?.copyWith(
-                      color: colors.onHero,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'RedditMono',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlanTrajectoryVector extends StatelessWidget {
-  const _PlanTrajectoryVector({
-    required this.points,
-    required this.currencyCode,
-    this.monthlyNetDeltaMinor = 0,
-  });
-
-  final List<PlanForecastPoint> points;
-  final String currencyCode;
-  final int monthlyNetDeltaMinor;
-  static const double height = 60.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final colors = context.colors;
-    final tr = context.strings;
-    final heroIsDark = colors.hero.computeLuminance() < 0.5;
-
-    if (points.isEmpty) return const SizedBox.shrink();
-
-    final forecastColor =
-        monthlyNetDeltaMinor < 0
-            ? (heroIsDark ? const Color(0xFFF87171) : const Color(0xFFB91C1C))
-            : colors.brand;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpace.sm,
-        AppSpace.md,
-        AppSpace.sm,
-        AppSpace.sm,
-      ),
-      decoration: BoxDecoration(
-        color: colors.onHero.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-          color: colors.onHero.withValues(alpha: 0.08),
-          width: 1.0,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  tr.t(
-                    '6-Month Balance Trajectory',
-                    ne: '६-महिने ब्यालेन्स प्रक्षेपण',
-                    es: 'Trayectoria de saldo de 6 meses',
-                    fr: 'Trajectoire du solde sur 6 mois',
-                    de: '6-Monats-Saldoverlauf',
-                    ja: '6ヶ月の残高予測',
-                    zh: '6个月余额走势',
-                    it: 'Traiettoria del saldo a 6 mesi',
-                  ),
-                  style: text.labelSmall?.copyWith(
-                    color: colors.onHeroSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: AppSpace.xs),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: colors.brand.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Text(
-                  tr.t(
-                    '3 mo Forecast',
-                    ne: '३ महिना पूर्वानुमान',
-                    es: 'Pronóstico 3 m',
-                    fr: 'Prévision 3 mois',
-                    de: '3-Monats-Prognose',
-                    ja: '3ヶ月予測',
-                    zh: '3个月预测',
-                    it: 'Previsione a 3 m',
-                  ),
-                  style: text.labelSmall?.copyWith(
-                    color: colors.brand,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 9.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpace.sm),
-          SizedBox(
-            height: height,
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: _PlanTrajectoryPainter(
-                points: points,
-                onHero: colors.onHero,
-                onHeroSecondary: colors.onHeroSecondary,
-                forecastColor: forecastColor,
-                heroBackground: colors.hero,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpace.xs),
-          Row(
-            children: [
-              for (final point in points)
-                Expanded(
-                  child: Text(
-                    point.label,
-                    textAlign: TextAlign.center,
-                    style: text.labelSmall?.copyWith(
-                      color:
-                          point.isForecast
-                              ? forecastColor
-                              : colors.onHeroSecondary,
-                      fontWeight:
-                          point.isForecast ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlanTrajectoryPainter extends CustomPainter {
-  _PlanTrajectoryPainter({
-    required this.points,
-    required this.onHero,
-    required this.onHeroSecondary,
-    required this.forecastColor,
-    required this.heroBackground,
-  });
-
-  final List<PlanForecastPoint> points;
-  final Color onHero;
-  final Color onHeroSecondary;
-  final Color forecastColor;
-  final Color heroBackground;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 2) return;
-
-    final balances = points.map((p) => p.balanceMinor.toDouble()).toList();
-    final actualMin = balances.reduce(math.min);
-    final actualMax = balances.reduce(math.max);
-
-    // Normalizes across all points including 0
-    final minVal = math.min(0.0, actualMin);
-    final maxVal = math.max(0.0, actualMax);
-    var range = maxVal - minVal;
-    if (range == 0) range = 100.0;
-
-    const topPadding = 6.0;
-    const bottomPadding = 6.0;
-    final usableHeight = size.height - topPadding - bottomPadding;
-
-    double yFor(double val) {
-      return topPadding + usableHeight * (1.0 - (val - minVal) / range);
-    }
-
-    final n = points.length;
-    final colWidth = size.width / n;
-    final offsets = <Offset>[];
-    for (var i = 0; i < n; i++) {
-      final x = (i + 0.5) * colWidth;
-      final y = yFor(balances[i]);
-      offsets.add(Offset(x, y));
-    }
-
-    // Zero-baseline: if trajectory crosses zero or approaches zero
-    final hasNegative = balances.any((b) => b < 0);
-    final hasZero = balances.any((b) => b == 0);
-    final approachesZero = actualMin <= range * 0.25;
-    if (hasNegative || hasZero || approachesZero) {
-      final zeroY = yFor(0.0);
-      final zeroPaint =
-          Paint()
-            ..color = onHero.withValues(alpha: 0.18)
-            ..strokeWidth = 1.0
-            ..style = PaintingStyle.stroke;
-
-      const dashWidth = 3.0;
-      const dashSpace = 3.0;
-      var curX = 0.0;
-      while (curX < size.width) {
-        canvas.drawLine(
-          Offset(curX, zeroY),
-          Offset(math.min(curX + dashWidth, size.width), zeroY),
-          zeroPaint,
-        );
-        curX += dashWidth + dashSpace;
-      }
-    }
-
-    // Historical path (M-2 to M0): indices 0 to histEndIndex
-    final firstForecastIndex = points.indexWhere((p) => p.isForecast);
-    final histEndIndex =
-        (firstForecastIndex > 0) ? (firstForecastIndex - 1) : (n ~/ 2);
-
-    final histPaint =
-        Paint()
-          ..color = onHeroSecondary.withValues(alpha: 0.4)
-          ..strokeWidth = 2.0
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round;
-
-    for (var i = 0; i < histEndIndex; i++) {
-      _drawDashedSegment(canvas, offsets[i], offsets[i + 1], histPaint);
-    }
-
-    // Small historical vertex dots
-    final histDotPaint =
-        Paint()
-          ..color = onHeroSecondary.withValues(alpha: 0.45)
-          ..style = PaintingStyle.fill;
-    for (var i = 0; i <= histEndIndex; i++) {
-      canvas.drawCircle(offsets[i], 2.5, histDotPaint);
-    }
-
-    // Forecast trajectory (M0 to M+3): indices histEndIndex to n - 1
-    if (histEndIndex < n - 1) {
-      final forecastPaint =
-          Paint()
-            ..color = forecastColor
-            ..strokeWidth = 2.4
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round
-            ..strokeJoin = StrokeJoin.round;
-
-      final forecastPath =
-          Path()..moveTo(offsets[histEndIndex].dx, offsets[histEndIndex].dy);
-      for (var i = histEndIndex + 1; i < n; i++) {
-        forecastPath.lineTo(offsets[i].dx, offsets[i].dy);
-      }
-      canvas.drawPath(forecastPath, forecastPaint);
-
-      // Intermediate forecast dots
-      final intermediateDotPaint =
-          Paint()
-            ..color = forecastColor.withValues(alpha: 0.6)
-            ..style = PaintingStyle.fill;
-      for (var i = histEndIndex + 1; i < n - 1; i++) {
-        canvas.drawCircle(offsets[i], 2.5, intermediateDotPaint);
-      }
-
-      // Terminating solid milestone dot at M+3 (last offset)
-      final milestoneFill =
-          Paint()
-            ..color = forecastColor
-            ..style = PaintingStyle.fill;
-      final milestoneRing =
-          Paint()
-            ..color = heroBackground
-            ..strokeWidth = 1.8
-            ..style = PaintingStyle.stroke;
-
-      final lastOffset = offsets.last;
-      canvas.drawCircle(lastOffset, 4.5, milestoneFill);
-      canvas.drawCircle(lastOffset, 4.5, milestoneRing);
-    }
-  }
-
-  void _drawDashedSegment(Canvas canvas, Offset p1, Offset p2, Paint paint) {
-    final dx = p2.dx - p1.dx;
-    final dy = p2.dy - p1.dy;
-    final dist = math.sqrt(dx * dx + dy * dy);
-    if (dist == 0) return;
-    const dashLen = 4.0;
-    const spaceLen = 3.0;
-    var drawn = 0.0;
-    while (drawn < dist) {
-      final startFrac = drawn / dist;
-      final endFrac = math.min((drawn + dashLen) / dist, 1.0);
-      canvas.drawLine(
-        Offset(p1.dx + dx * startFrac, p1.dy + dy * startFrac),
-        Offset(p1.dx + dx * endFrac, p1.dy + dy * endFrac),
-        paint,
-      );
-      drawn += dashLen + spaceLen;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _PlanTrajectoryPainter oldDelegate) {
-    return oldDelegate.points != points ||
-        oldDelegate.forecastColor != forecastColor ||
-        oldDelegate.onHero != onHero ||
-        oldDelegate.onHeroSecondary != onHeroSecondary ||
-        oldDelegate.heroBackground != heroBackground;
-  }
-}
-
-/// Readable positive/negative tones that contrast with the hero card in both themes.
-({Color bg, Color fg}) _heroTone(bool positive, bool heroIsDark) {
-  if (positive) {
-    return heroIsDark
-        ? (
-          bg: const Color(0xFF22C55E).withValues(alpha: 0.2),
-          fg: const Color(0xFF4ADE80),
-        )
-        : (bg: const Color(0xFFDCFCE7), fg: const Color(0xFF15803D));
-  }
-  return heroIsDark
-      ? (
-        bg: const Color(0xFFEF4444).withValues(alpha: 0.2),
-        fg: const Color(0xFFF87171),
-      )
-      : (bg: const Color(0xFFFEE2E2), fg: const Color(0xFFB91C1C));
-}
-
-/// Backwards compatibility alias for PlanScreen
 typedef PlanScreen = GoalScreen;

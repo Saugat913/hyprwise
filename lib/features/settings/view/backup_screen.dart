@@ -3,9 +3,11 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import 'package:finance_tracker/app/di/injection.dart';
+import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/export/export_service.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/network/api_client.dart';
@@ -15,6 +17,7 @@ import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/settings/data/repository/data_repository.dart';
 import 'package:finance_tracker/features/settings/viewmodels/settings_view_model.dart';
+import 'package:finance_tracker/features/shared/data/category_repository.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
 import 'package:finance_tracker/features/subscription/data/subscription_service.dart';
 
@@ -49,6 +52,10 @@ class _BackupScreenState extends State<BackupScreen> {
             ? DateTime.fromMillisecondsSinceEpoch(lastLocalBackupMs)
             : null;
         final hasBackup = lastBackupDate != null;
+        final isSyncBusy = _isCloudPushing ||
+            _isCloudPulling ||
+            _authService.isCloudSyncing ||
+            _authService.isCloudUploading;
 
         return Scaffold(
           appBar: AppTopBar(
@@ -141,10 +148,16 @@ class _BackupScreenState extends State<BackupScreen> {
                       ),
                       const SizedBox(width: AppSpace.xs),
                       StatusChip(
-                        hasBackup
-                            ? tr.t('Protected', ne: 'सुरक्षित', es: 'Protegido', fr: 'Protégé', de: 'Gesichert', ja: '保護済', zh: '已保护', it: 'Protetto')
-                            : tr.t('Pending', ne: 'बाँकी', es: 'Pendiente', fr: 'En attente', de: 'Ausstehend', ja: '未設定', zh: '待备份', it: 'In attesa'),
-                        tone: hasBackup ? ChipTone.success : ChipTone.neutral,
+                        isSyncBusy
+                            ? tr.t('Syncing...', ne: 'सिंक हुँदैछ...', hi: 'सिंक हो रहा है...', es: 'Sincronizando...', fr: 'Sync...', de: 'Sync...', ja: '同期中...', zh: '同步中...', it: 'Sincronizzo...')
+                            : hasBackup
+                                ? tr.t('Protected', ne: 'सुरक्षित', hi: 'सुरक्षित', es: 'Protegido', fr: 'Protégé', de: 'Gesichert', ja: '保護済', zh: '已保护', it: 'Protetto')
+                                : tr.t('Pending', ne: 'बाँकी', hi: 'बाकी', es: 'Pendiente', fr: 'En attente', de: 'Ausstehend', ja: '未設定', zh: '待备份', it: 'In attesa'),
+                        tone: isSyncBusy
+                            ? ChipTone.warning
+                            : hasBackup
+                                ? ChipTone.success
+                                : ChipTone.neutral,
                       ),
                     ],
                   ),
@@ -242,26 +255,46 @@ class _BackupScreenState extends State<BackupScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            AppButton(
-                              _isCloudPushing
-                                  ? tr.t('Pushing...', ne: 'अपलोड हुँदैछ...', hi: 'अपलोड हो रहा है...', es: 'Subiendo...', fr: 'Envoi...', de: 'Sende...', ja: '送信中...', zh: '同步中...', it: 'Invio...')
-                                  : tr.pushDataToCloud,
-                              icon: HugeIcons.strokeRoundedUpload04,
-                              onPressed: (_isCloudPushing || _isCloudPulling)
-                                  ? null
-                                  : () => _handleCloudPush(context),
-                            ),
-                            const SizedBox(height: AppSpace.sm),
-                            AppButton(
-                              _isCloudPulling
-                                  ? tr.t('Pulling...', ne: 'डाउनलोड हुँदैछ...', hi: 'डाउनलोड हो रहा है...', es: 'Descargando...', fr: 'Récupération...', de: 'Lade...', ja: '取得中...', zh: '拉取中...', it: 'Scaricamento...')
-                                  : tr.pullDataFromCloud,
-                              kind: AppButtonKind.secondary,
-                              icon: HugeIcons.strokeRoundedDownload04,
-                              onPressed: (_isCloudPushing || _isCloudPulling)
-                                  ? null
-                                  : () => _handleCloudPull(context),
-                            ),
+                            if (!_authService.isAuthenticated) ...[
+                              AppButton(
+                                tr.t(
+                                  'Sign in',
+                                  ne: 'साइन इन',
+                                  hi: 'साइन इन',
+                                  es: 'Iniciar sesión',
+                                  fr: 'Se connecter',
+                                  de: 'Anmelden',
+                                  ja: 'サインイン',
+                                  zh: '登录',
+                                  it: 'Accedi',
+                                ),
+                                icon: HugeIcons.strokeRoundedLogin03,
+                                onPressed: () => context.push(AppRoutes.login),
+                              ),
+                            ] else ...[
+                              AppButton(
+                                _isCloudPushing || _authService.isCloudUploading
+                                    ? tr.t('Pushing...', ne: 'अपलोड हुँदैछ...', hi: 'अपलोड हो रहा है...', es: 'Subiendo...', fr: 'Envoi...', de: 'Sende...', ja: '送信中...', zh: '同步中...', it: 'Invio...')
+                                    : tr.pushDataToCloud,
+                                icon: HugeIcons.strokeRoundedUpload04,
+                                loading: _isCloudPushing || _authService.isCloudUploading,
+                                onPressed: isSyncBusy
+                                    ? null
+                                    : () => _handleCloudPush(context),
+                              ),
+                              const SizedBox(height: AppSpace.sm),
+                              AppButton(
+                                _isCloudPulling || _authService.isCloudSyncing
+                                    ? tr.t('Pulling...', ne: 'डाउनलोड हुँदैछ...', hi: 'डाउनलोड हो रहा है...', es: 'Descargando...', fr: 'Récupération...', de: 'Lade...', ja: '取得中...', zh: '拉取中...', it: 'Scaricamento...')
+                                    : tr.pullDataFromCloud,
+                                kind: AppButtonKind.secondary,
+                                icon: HugeIcons.strokeRoundedDownload04,
+                                loading: _isCloudPulling || _authService.isCloudSyncing,
+                                onPressed: isSyncBusy
+                                    ? null
+                                    : () => _handleCloudPull(context),
+                              ),
+                            ],
                           ],
                         ),
                       ],
@@ -460,11 +493,11 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
         );
       } else {
-        showToast(context, tr.couldNotConnectServer);
+        showErrorToast(context, tr.couldNotConnectServer);
       }
     } catch (e) {
       if (context.mounted) {
-        showToast(context, 'Sync error: $e');
+        showErrorToast(context, tr.couldNotSave('$e'));
       }
     } finally {
       if (mounted) {
@@ -540,6 +573,9 @@ class _BackupScreenState extends State<BackupScreen> {
       final dataRepo = getIt<DataRepository>();
       await dataRepo.importJson(jsonString);
       await _viewModel.settingsRepo.load();
+      if (getIt.isRegistered<CategoryRepository>()) {
+        await getIt<CategoryRepository>().load();
+      }
 
       if (context.mounted) {
         final v = result['version'] ?? 1;
@@ -548,6 +584,7 @@ class _BackupScreenState extends State<BackupScreen> {
           tr.t(
             'Cloud data v$v pulled & synced successfully!',
             ne: 'क्लाउडबाट डाटा सफलतापूर्वक रिस्टोर भयो (संस्करण $v)',
+            hi: 'क्लाउड डेटा v$v सफलतापूर्वक रीस्टोर और सिंक हुआ!',
             es: '¡Datos en la nube v$v recuperados y sincronizados!',
             fr: 'Données cloud v$v récupérées et synchronisées !',
             de: 'Cloud-Daten v$v erfolgreich geladen!',
@@ -559,7 +596,7 @@ class _BackupScreenState extends State<BackupScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        showToast(context, 'Restore error: $e');
+        showErrorToast(context, tr.couldNotSave('$e'));
       }
     } finally {
       if (mounted) {
@@ -615,13 +652,19 @@ class _BackupScreenState extends State<BackupScreen> {
       );
 
       if (confirmed && context.mounted) {
-        await viewModel.importData(jsonContent);
+        await showBusyWhile(context, () async {
+          await viewModel.importData(jsonContent);
+          if (getIt.isRegistered<CategoryRepository>()) {
+            await getIt<CategoryRepository>().load();
+          }
+        });
         if (context.mounted) {
           showToast(
             context,
             tr.t(
               'Data restored successfully from ${pickedFile.name}',
               ne: '${pickedFile.name} बाट डाटा सफलतापूर्वक रिस्टोर भयो',
+              hi: '${pickedFile.name} से डेटा सफलतापूर्वक रीस्टोर हुआ',
               es: 'Datos restaurados con éxito desde ${pickedFile.name}',
               fr: 'Données restaurées avec succès depuis ${pickedFile.name}',
               de: 'Daten erfolgreich wiederhergestellt aus ${pickedFile.name}',
@@ -634,7 +677,7 @@ class _BackupScreenState extends State<BackupScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        showToast(context, 'Restore error: $e');
+        showErrorToast(context, tr.couldNotSave('$e'));
       }
     }
   }

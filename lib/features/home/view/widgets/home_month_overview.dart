@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
@@ -40,6 +42,8 @@ class HomeMonthOverview extends StatelessWidget {
         // Title is strictly outside the white container with no logo
         SectionHeader(
           tr.thisMonthSoFar,
+          actionLabel: tr.analytics,
+          onAction: () => context.push(AppRoutes.analytics),
           padding: const EdgeInsets.fromLTRB(0, AppSpace.xl, 0, AppSpace.sm),
         ),
         AppCard(

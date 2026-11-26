@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/export/analytics_pdf_service.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
+import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/core/utils/dates.dart';
 import 'package:finance_tracker/features/analytics/data/analytics_tab_data.dart';
@@ -124,10 +125,21 @@ abstract final class ExportService {
     }
   }
 
+  static Rect _shareOrigin(BuildContext? context) {
+    if (context != null) {
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) {
+        return box.localToGlobal(Offset.zero) & box.size;
+      }
+    }
+    return const Rect.fromLTWH(0, 0, 1, 1);
+  }
+
   /// Generates the exported file content and writes it to disk or shares it
   static Future<ExportResult> exportData({
     required ExportFormat format,
     required ExportDestination destination,
+    Rect? sharePositionOrigin,
   }) async {
     final dataRepo = getIt<DataRepository>();
     final store = getIt<FinanceStore>();
@@ -171,6 +183,8 @@ abstract final class ExportService {
         ShareParams(
           files: [XFile(file.path)],
           text: 'Hyprwise financial export (${format.label})',
+          sharePositionOrigin:
+              sharePositionOrigin ?? const Rect.fromLTWH(0, 0, 1, 1),
         ),
       );
     }
@@ -191,7 +205,7 @@ abstract final class ExportService {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
       ),
       builder: (ctx) {
         return StatefulBuilder(
@@ -314,10 +328,31 @@ abstract final class ExportService {
     final isProFormat = format == ExportFormat.report || format == ExportFormat.analyticsReport;
     if (isProFormat && !subService.isPro) {
       if (context.mounted) {
+        final tr = context.strings;
         showProUpgradeSheet(
           context,
-          title: 'Reports Require Hyprwise Pro',
-          message: 'Summary reports and executive insights are a Hyprwise Pro feature. Standard CSV spreadsheets remain completely free.',
+          title: tr.t(
+            'Reports Require Hyprwise Pro',
+            ne: 'रिपोर्टका लागि Hyprwise Pro आवश्यक छ',
+            hi: 'रिपोर्ट के लिए Hyprwise Pro आवश्यक है',
+            es: 'Los informes requieren Hyprwise Pro',
+            fr: 'Les rapports nécessitent Hyprwise Pro',
+            de: 'Berichte erfordern Hyprwise Pro',
+            ja: 'レポート出力にはHyprwise Proが必要です',
+            zh: '汇总报告需要 Hyprwise Pro',
+            it: 'I report richiedono Hyprwise Pro',
+          ),
+          message: tr.t(
+            'Summary reports and executive insights are a Hyprwise Pro feature. Standard CSV spreadsheets remain completely free.',
+            ne: 'सारांश रिपोर्टहरू Hyprwise Pro सुविधा हुन्। सामान्य CSV निर्यात सधैं निःशुल्क छ।',
+            hi: 'सारांश रिपोर्ट Hyprwise Pro सुविधा है। मानक CSV निर्यात हमेशा मुफ़्त रहता है।',
+            es: 'Los informes resumidos son parte de Hyprwise Pro. El CSV estándar sigue siendo gratuito.',
+            fr: 'Les rapports résumés sont réservés à Hyprwise Pro. Le CSV standard reste gratuit.',
+            de: 'Zusammenfassungen sind Teil von Hyprwise Pro. Standard-CSV bleibt kostenlos.',
+            ja: 'サマリーレポートはHyprwise Pro機能です。標準CSVは無料で利用できます。',
+            zh: '汇总与分析报告为 Hyprwise Pro 功能，标准 CSV 表格导出始终免费。',
+            it: 'I report riepilogativi sono una funzione Hyprwise Pro. Il CSV standard resta gratuito.',
+          ),
           featureHighlight: 'export',
         );
       }
@@ -325,7 +360,15 @@ abstract final class ExportService {
     }
 
     try {
-      final result = await exportData(format: format, destination: destination);
+      final origin = _shareOrigin(context);
+      final result = await showBusyWhile(
+        context,
+        () => exportData(
+          format: format,
+          destination: destination,
+          sharePositionOrigin: origin,
+        ),
+      );
 
       if (context.mounted) {
         showDialog<void>(
@@ -336,12 +379,17 @@ abstract final class ExportService {
             final tr = ctx.strings;
 
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
               title: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
+                  Icon(Icons.check_circle_rounded, color: ctx.colors.income, size: 28),
                   const SizedBox(width: AppSpace.sm),
-                  Text(tr.exportCompleteTitle, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Expanded(
+                    child: Text(
+                      tr.exportCompleteTitle,
+                      style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ],
               ),
               content: Column(
@@ -383,8 +431,14 @@ abstract final class ExportService {
                   icon: const Icon(Icons.share_rounded, size: 16),
                   label: Text(tr.shareFileButton),
                   onPressed: () {
+                    final shareOrigin = _shareOrigin(ctx);
                     Navigator.pop(ctx);
-                    SharePlus.instance.share(ShareParams(files: [XFile(result.filePath)]));
+                    SharePlus.instance.share(
+                      ShareParams(
+                        files: [XFile(result.filePath)],
+                        sharePositionOrigin: shareOrigin,
+                      ),
+                    );
                   },
                 ),
               ],
@@ -394,7 +448,7 @@ abstract final class ExportService {
       }
     } catch (e) {
       if (context.mounted) {
-        showToast(context, 'Export error: $e');
+        showErrorToast(context, context.strings.couldNotSave('$e'));
       }
     }
   }

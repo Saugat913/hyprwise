@@ -105,62 +105,70 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
-      builder: (sheetCtx) => StatefulBuilder(
-        builder: (ctx, setSheetState) {
-          final theme = Theme.of(ctx);
-          final insets = MediaQuery.of(ctx).viewInsets;
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+      ),
+      builder: (sheetCtx) => DisposableScope(
+        onDispose: nameCtrl.dispose,
+        child: StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final theme = Theme.of(ctx);
+            final insets = MediaQuery.of(ctx).viewInsets;
+            final tr = ctx.strings;
 
-          final tr = context.strings;
-          return Padding(
-            padding: EdgeInsets.fromLTRB(AppSpace.page, AppSpace.lg, AppSpace.page, insets.bottom + AppSpace.xl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(tr.createCustomCategory, style: theme.textTheme.titleMedium),
-                const SizedBox(height: AppSpace.md),
-                SegmentedTabs<TransactionType>(
-                  options: {
-                    TransactionType.expense: tr.expense,
-                    TransactionType.income: tr.income,
-                  },
-                  value: type,
-                  onChanged: (val) => setSheetState(() => type = val),
-                ),
-                const SizedBox(height: AppSpace.md),
-                TextField(
-                  controller: nameCtrl,
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    labelText: tr.categoryName,
-                    hintText: tr.categoryNameHint,
-                    prefixIcon: const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: AppIcon(HugeIcons.strokeRoundedGridView, size: 20),
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(AppSpace.page, AppSpace.lg, AppSpace.page, insets.bottom + AppSpace.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(tr.createCustomCategory, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: AppSpace.md),
+                    SegmentedTabs<TransactionType>(
+                      options: {
+                        TransactionType.expense: tr.expense,
+                        TransactionType.income: tr.income,
+                      },
+                      value: type,
+                      onChanged: (val) => setSheetState(() => type = val),
                     ),
-                  ),
+                    const SizedBox(height: AppSpace.md),
+                    TextField(
+                      controller: nameCtrl,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: InputDecoration(
+                        labelText: tr.categoryName,
+                        hintText: tr.categoryNameHint,
+                        prefixIcon: const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: AppIcon(HugeIcons.strokeRoundedGridView, size: 20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.lg),
+                    AppButton(
+                      tr.saveCategory,
+                      onPressed: () async {
+                        final name = nameCtrl.text.trim();
+                        if (name.isEmpty) {
+                          showErrorToast(ctx, tr.pleaseEnterCategoryName);
+                          return;
+                        }
+                        Navigator.of(sheetCtx).pop();
+                        await repo.addCategory(label: name, type: type);
+                        if (context.mounted) {
+                          showToast(context, '${tr.categoryName}: "$name"');
+                        }
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpace.lg),
-                AppButton(
-                  tr.saveCategory,
-                  onPressed: () async {
-                    final name = nameCtrl.text.trim();
-                    if (name.isEmpty) {
-                      showToast(context, tr.pleaseEnterCategoryName);
-                      return;
-                    }
-                    Navigator.of(sheetCtx).pop();
-                    await repo.addCategory(label: name, type: type);
-                    if (context.mounted) {
-                      showToast(context, '${tr.categoryName}: "$name"');
-                    }
-                  },
-                ),
-              ],
-            ),
-          );
-        },
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -173,67 +181,76 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+      ),
       builder: (sheetCtx) {
         final theme = Theme.of(sheetCtx);
         final insets = MediaQuery.of(sheetCtx).viewInsets;
 
-        return Padding(
-          padding: EdgeInsets.fromLTRB(AppSpace.page, AppSpace.lg, AppSpace.page, insets.bottom + AppSpace.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '${tr.addMerchant}: ${category.label}',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: AppSpace.xs),
-              Text(
-                tr.t(
-                  'This store or payee will appear in quick suggestions when logging ${category.label.toLowerCase()}.',
-                  ne: 'यो स्टोर वा भुक्तानीकर्ता नयाँ कारोबार दर्ता गर्दा सुझावमा देखिनेछ।',
-                  es: 'Este comercio aparecerá en las sugerencias rápidas al registrar ${category.label.toLowerCase()}.',
-                  fr: 'Ce commerce apparaîtra dans les suggestions pour ${category.label.toLowerCase()}.',
-                  de: 'Dieser Händler wird in den Vorschlägen für ${category.label.toLowerCase()} angezeigt.',
-                  ja: '${category.label} の記録時にクイック提案として表示されます。',
-                  zh: '记录 ${category.label} 时将出现在快捷推荐中。',
-                  it: 'Questo esercente apparirà nei suggerimenti rapidi per ${category.label.toLowerCase()}.',
-                ),
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppSpace.md),
-              TextField(
-                controller: ctrl,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: tr.merchantOrPayee,
-                  hintText: category.type == TransactionType.expense
-                      ? 'McDonald\'s, 7-Eleven'
-                      : 'Upwork, Client X',
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: AppIcon(HugeIcons.strokeRoundedStore01, size: 20),
+        return DisposableScope(
+          onDispose: ctrl.dispose,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(AppSpace.page, AppSpace.lg, AppSpace.page, insets.bottom + AppSpace.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '${tr.addMerchant}: ${category.label}',
+                    style: theme.textTheme.titleMedium,
                   ),
-                ),
+                  const SizedBox(height: AppSpace.xs),
+                  Text(
+                    tr.t(
+                      'This store or payee will appear in quick suggestions when logging ${category.label.toLowerCase()}.',
+                      ne: 'यो स्टोर वा भुक्तानीकर्ता नयाँ कारोबार दर्ता गर्दा सुझावमा देखिनेछ।',
+                      hi: 'यह स्टोर या प्राप्तकर्ता ${category.label.toLowerCase()} दर्ज करते समय सुझाव में दिखेगा।',
+                      es: 'Este comercio aparecerá en las sugerencias rápidas al registrar ${category.label.toLowerCase()}.',
+                      fr: 'Ce commerce apparaîtra dans les suggestions pour ${category.label.toLowerCase()}.',
+                      de: 'Dieser Händler wird in den Vorschlägen für ${category.label.toLowerCase()} angezeigt.',
+                      ja: '${category.label} の記録時にクイック提案として表示されます。',
+                      zh: '记录 ${category.label} 时将出现在快捷推荐中。',
+                      it: 'Questo esercente apparirà nei suggerimenti rapidi per ${category.label.toLowerCase()}.',
+                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: AppSpace.md),
+                  TextField(
+                    controller: ctrl,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: tr.merchantOrPayee,
+                      hintText: category.type == TransactionType.expense
+                          ? 'McDonald\'s, 7-Eleven'
+                          : 'Upwork, Client X',
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: AppIcon(HugeIcons.strokeRoundedStore01, size: 20),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpace.lg),
+                  AppButton(
+                    tr.addMerchant,
+                    onPressed: () async {
+                      final text = ctrl.text.trim();
+                      if (text.isEmpty) {
+                        showErrorToast(sheetCtx, tr.pleaseEnterName);
+                        return;
+                      }
+                      Navigator.of(sheetCtx).pop();
+                      await repo.addMerchant(categoryKey: category.value, merchant: text);
+                      if (context.mounted) {
+                        showToast(context, '"$text" → ${category.label}');
+                      }
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpace.lg),
-              AppButton(
-                tr.addMerchant,
-                onPressed: () async {
-                  final text = ctrl.text.trim();
-                  if (text.isEmpty) {
-                    showToast(context, tr.pleaseEnterName);
-                    return;
-                  }
-                  Navigator.of(sheetCtx).pop();
-                  await repo.addMerchant(categoryKey: category.value, merchant: text);
-                  if (context.mounted) {
-                    showToast(context, '"$text" → ${category.label}');
-                  }
-                },
-              ),
-            ],
+            ),
           ),
         );
       },

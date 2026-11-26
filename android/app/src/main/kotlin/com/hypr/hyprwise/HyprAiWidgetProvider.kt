@@ -28,8 +28,12 @@ class HyprAiWidgetProvider : AppWidgetProvider() {
         ) {
             val views = RemoteViews(context.packageName, R.layout.widget_hypr_ai)
 
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("hyprwise:///assistant")).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            val intent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                data = Uri.parse("hyprwise:///assistant")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
             }
             val pending = PendingIntent.getActivity(
                 context, 301, intent,

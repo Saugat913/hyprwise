@@ -10,6 +10,7 @@ import 'package:finance_tracker/core/utils/money.dart';
 import 'package:finance_tracker/features/home/viewmodels/home_view_model.dart';
 import 'package:finance_tracker/features/shared/widgets/app_card.dart';
 import 'package:finance_tracker/features/shared/widgets/app_icon.dart';
+import 'package:finance_tracker/features/shared/widgets/empty_state.dart';
 import 'package:finance_tracker/features/shared/widgets/row_divider.dart';
 import 'package:finance_tracker/features/shared/widgets/section_header.dart';
 
@@ -51,7 +52,6 @@ class TopSpendingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = context.strings;
-    final scheme = Theme.of(context).colorScheme;
     final colors = context.colors;
 
     final categories = viewModel.topSpendingCategories;
@@ -70,14 +70,15 @@ class TopSpendingCard extends StatelessWidget {
         AppCard(
           padding: EdgeInsets.zero,
           child: categories.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(AppSpace.md),
-                  child: Text(
-                    tr.noSpendingYet,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
+              ? EmptyState(
+                  compact: true,
+                  illustration: EmptyIllustration.analytics,
+                  icon: HugeIcons.strokeRoundedPieChart,
+                  title: tr.noSpendingYet,
+                  message: tr.tapAddToRecordFirstTransaction,
+                  actionLabel: tr.addExpense,
+                  outlineAction: true,
+                  onAction: () => context.push('${AppRoutes.addTransaction}?type=expense'),
                 )
               : Column(
                   children: [

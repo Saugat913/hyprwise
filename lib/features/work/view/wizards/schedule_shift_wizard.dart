@@ -46,6 +46,7 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
   final _customBreakController = TextEditingController();
   final _customAlertHoursController = TextEditingController();
   ShiftRateConfig? _rateConfig;
+  bool _saving = false;
 
   static const _horizonOptions = {
     2: '2 weeks',
@@ -169,86 +170,92 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
   }
 
   Future<void> _save() async {
-    if (_jobId == null) return;
-    final viewModel = getIt<WorkViewModel>();
-    final selectedJob = viewModel.jobsById[_jobId];
+    if (_jobId == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      final viewModel = getIt<WorkViewModel>();
+      final selectedJob = viewModel.jobsById[_jobId];
 
-    final effectiveRateMinor = (_rateConfig != null && selectedJob != null)
-        ? _rateConfig!.getRateOverrideMinor(
-            baseHourlyRateMinor: selectedJob.hourlyRateMinor,
-            durationHours: _hoursPerShift,
-          )
-        : null;
-    final otThresholdMin = _rateConfig?.overtimeThresholdMinutes;
-    final otRateMinor = _rateConfig?.overtimeRateMinor;
+      final effectiveRateMinor = (_rateConfig != null && selectedJob != null)
+          ? _rateConfig!.getRateOverrideMinor(
+              baseHourlyRateMinor: selectedJob.hourlyRateMinor,
+              durationHours: _hoursPerShift,
+            )
+          : null;
+      final otThresholdMin = _rateConfig?.overtimeThresholdMinutes;
+      final otRateMinor = _rateConfig?.overtimeRateMinor;
 
-    List<int> createdIds = [];
+      List<int> createdIds = [];
 
-    if (_mode == _ScheduleMode.recurring) {
-      createdIds = await viewModel.scheduleRecurringShifts(
-        jobId: _jobId!,
-        weekdays: _selectedWeekdays,
-        startTime: _startTime,
-        endTime: _endTime,
-        weeksCount: _repeatWeeks,
-        breakMinutes: _breakMinutes,
-        rateOverrideMinor: effectiveRateMinor,
-        overtimeThresholdMinutes: otThresholdMin,
-        overtimeRateMinor: otRateMinor,
-        longShiftAlertMinutes: _longShiftAlertMinutes,
-      );
-    } else {
-      for (final date in _selectedDates) {
-        final startAt = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          _startTime.hour,
-          _startTime.minute,
-        );
-
-        DateTime? endAt;
-        if (_fixedEnd) {
-          final isNextDay = (_endTime.hour < _startTime.hour) ||
-              (_endTime.hour == _startTime.hour && _endTime.minute <= _startTime.minute);
-          final endBaseDate = isNextDay ? date.add(const Duration(days: 1)) : date;
-          endAt = DateTime(
-            endBaseDate.year,
-            endBaseDate.month,
-            endBaseDate.day,
-            _endTime.hour,
-            _endTime.minute,
-          );
-        }
-
-        final id = await viewModel.scheduleShift(
+      if (_mode == _ScheduleMode.recurring) {
+        createdIds = await viewModel.scheduleRecurringShifts(
           jobId: _jobId!,
-          startAt: startAt,
-          endAt: endAt,
+          weekdays: _selectedWeekdays,
+          startTime: _startTime,
+          endTime: _endTime,
+          weeksCount: _repeatWeeks,
           breakMinutes: _breakMinutes,
           rateOverrideMinor: effectiveRateMinor,
           overtimeThresholdMinutes: otThresholdMin,
           overtimeRateMinor: otRateMinor,
           longShiftAlertMinutes: _longShiftAlertMinutes,
         );
-        createdIds.add(id);
-      }
-    }
-
-    if (mounted) {
-      final tr = context.strings;
-      final count = createdIds.length;
-      showToast(
-        context,
-        tr.shiftsScheduled(count),
-        actionLabel: tr.undo,
-        onAction: () async {
-          for (final id in createdIds) {
-            await viewModel.shiftRepo.delete(id);
+      } else {
+        final isNextDay = (_endTime.hour < _startTime.hour) ||
+            (_endTime.hour == _startTime.hour && _endTime.minute <= _startTime.minute);
+        final slots = <({DateTime startAt, DateTime? endAt})>[];
+        for (final date in _selectedDates) {
+          final startAt = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            _startTime.hour,
+            _startTime.minute,
+          );
+          DateTime? endAt;
+          if (_fixedEnd) {
+            final endBaseDate = isNextDay ? date.add(const Duration(days: 1)) : date;
+            endAt = DateTime(
+              endBaseDate.year,
+              endBaseDate.month,
+              endBaseDate.day,
+              _endTime.hour,
+              _endTime.minute,
+            );
           }
-        },
-      );
-      context.pop();
+          slots.add((startAt: startAt, endAt: endAt));
+        }
+
+        createdIds = await viewModel.scheduleManyShifts(
+          jobId: _jobId!,
+          slots: slots,
+          breakMinutes: _breakMinutes,
+          rateOverrideMinor: effectiveRateMinor,
+          overtimeThresholdMinutes: otThresholdMin,
+          overtimeRateMinor: otRateMinor,
+          longShiftAlertMinutes: _longShiftAlertMinutes,
+        );
+      }
+
+      if (mounted) {
+        final tr = context.strings;
+        final count = createdIds.length;
+        showToast(
+          context,
+          tr.shiftsScheduled(count),
+          actionLabel: count > 0 ? tr.undo : null,
+          onAction: count > 0 ? () => viewModel.deleteShifts(createdIds) : null,
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorToast(context, context.strings.couldNotSave('$e'));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -573,7 +580,8 @@ class _ScheduleShiftWizardState extends State<ScheduleShiftWizard> {
           confirmClose: true,
           discardTitle: tr.discardThis,
           primaryLabel: tr.shiftsScheduled(_totalShiftCount),
-          onPrimary: _save,
+          primaryLoading: _saving,
+          onPrimary: _saving ? null : _save,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

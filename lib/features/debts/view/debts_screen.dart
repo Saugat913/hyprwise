@@ -163,11 +163,13 @@ class _DebtsScreenState extends State<DebtsScreen> {
           if (_viewMode == _DebtViewMode.byParty) ...[
             if (_viewModel.partiesSummary.isEmpty)
               EmptyState(
+                illustration: EmptyIllustration.debts,
                 icon: HugeIcons.strokeRoundedMoney01,
                 title: tr.noDebtRecordsFound,
                 message: tr.t(
                   'Track money lent to friends or borrowed with due dates and repayments.',
                   ne: 'साथीभाइलाई दिएको वा लिएको सापटी, फिर्ता मिति र किस्ता ट्र्याक गर्नुहोस्।',
+                  hi: 'दोस्तों को उधार दिए या लिए गए पैसों, देय तिथियों और भुगतान को ट्रैक करें।',
                   es: 'Controla el dinero prestado o tomado con vencimientos y pagos.',
                   fr: 'Suivez l\'argent prêté ou emprunté avec dates d\'échéance et remboursements.',
                   de: 'Verfolgen Sie geliehenes Geld mit Fälligkeitsdaten und Raten.',
@@ -224,6 +226,9 @@ class _DebtsScreenState extends State<DebtsScreen> {
             if (_filteredDebts.isEmpty)
               EmptyState(
                 icon: HugeIcons.strokeRoundedMoney01,
+                illustration: isFiltered
+                    ? EmptyIllustration.search
+                    : EmptyIllustration.debts,
                 title: isFiltered ? tr.noMatchingRecords : tr.noDebtRecordsFound,
                 message: isFiltered
                     ? tr.t('No records match the current filter criteria.', ne: 'तपाईंले छान्नुभएको फिल्टर अनुसार कुनै रेकर्ड छैन।', es: 'No hay registros que coincidan con el filtro actual.', fr: 'Aucun enregistrement ne correspond aux critères actuels.', de: 'Keine Einträge für diese Filterkriterien gefunden.', ja: '選択した条件に一致する記録はありません。', zh: '暂无符合所选筛选条件的记录。', it: 'Nessun record corrisponde ai criteri attuali.')

@@ -4,10 +4,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
+    android:gravity="center_vertical"
     android:orientation="vertical"
-    android:padding="14dp">
+    android:paddingStart="12dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="10dp">
 
-    <!-- Header Row: Live Status Dot + Job Name -->
+    <!-- Header Row: IconTile + Stacked Job Title & Rate Subtitle + StatusChip -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -15,89 +19,246 @@
         android:orientation="horizontal">
 
         <ImageView
-            android:id="@+id/widget_shift_status_icon"
-            android:layout_width="10dp"
-            android:layout_height="10dp"
-            android:layout_marginEnd="6dp"
-            android:src="@drawable/ic_widget_dot_inactive" />
+            android:id="@+id/widget_shift_icon_tile"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/widget_icon_bg"
+            android:contentDescription="@string/widget_shift_name"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_widget_briefcase" />
 
-        <TextView
-            android:id="@+id/widget_shift_job"
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_shift_job"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Shift Tracker"
+                android:textColor="@color/widget_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_shift_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Tap to clock in"
+                android:textColor="@color/widget_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- StatusChip Pill -->
+        <LinearLayout
+            android:id="@+id/widget_shift_status_chip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_chip_idle_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="7dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="7dp"
+            android:paddingBottom="3dp">
+
+            <ImageView
+                android:id="@+id/widget_shift_status_dot"
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_dot_inactive" />
+
+            <TextView
+                android:id="@+id/widget_shift_status_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="Ready"
+                android:textColor="@color/widget_muted"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Live Metric Bar (Visible when shift is active): Monospace Chronometer + Earnings -->
+    <LinearLayout
+        android:id="@+id/widget_shift_live_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/widget_action_tile_bg"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingTop="7dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="7dp"
+        android:visibility="gone">
+
+        <Chronometer
+            android:id="@+id/widget_shift_chronometer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="NO ACTIVE SHIFT"
             android:textColor="@color/widget_ink"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textSize="19sp"
+            android:textStyle="bold"
+            android:typeface="monospace" />
+
+        <TextView
+            android:id="@+id/widget_shift_timer_paused"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="00:00:00"
+            android:textColor="@color/widget_muted"
+            android:textSize="19sp"
+            android:textStyle="bold"
+            android:typeface="monospace"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/widget_shift_earnings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_chip_live_bg"
+            android:maxLines="1"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:text="$0.00"
+            android:textColor="@color/widget_green"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:typeface="monospace" />
     </LinearLayout>
 
-    <!-- Subtitle: Live Timer & Earnings or Clock In Prompt -->
-    <TextView
-        android:id="@+id/widget_shift_subtitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:text="Tap to start a shift"
-        android:textColor="@color/widget_muted"
-        android:textSize="12.5sp" />
-
-    <!-- Weight spacer (RemoteViews compatible View; NEVER use Space) -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <!-- Active Shift Action Buttons: Break & End -->
+    <!-- Active Shift Actions: Break/Resume + End -->
     <LinearLayout
         android:id="@+id/widget_shift_active_actions"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="36dp"
+        android:layout_marginTop="8dp"
         android:orientation="horizontal"
         android:visibility="gone">
 
-        <Button
+        <LinearLayout
             android:id="@+id/widget_shift_btn_break"
             android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_marginEnd="5dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="4dp"
             android:layout_weight="1"
             android:background="@drawable/widget_button_bg"
-            android:text="break"
-            android:textAllCaps="false"
-            android:textColor="@color/widget_ink"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:clickable="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
 
-        <Button
+            <ImageView
+                android:id="@+id/widget_shift_btn_break_icon"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="5dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_coffee" />
+
+            <TextView
+                android:id="@+id/widget_shift_btn_break_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Break"
+                android:textColor="@color/widget_ink"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/widget_shift_btn_end"
             android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_marginStart="5dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="4dp"
             android:layout_weight="1"
-            android:background="@drawable/widget_button_bg"
-            android:text="end"
-            android:textAllCaps="false"
-            android:textColor="@color/widget_red"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:background="@drawable/widget_button_danger_bg"
+            android:clickable="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+
+            <ImageView
+                android:id="@+id/widget_shift_btn_end_icon"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:layout_marginEnd="5dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_widget_stop" />
+
+            <TextView
+                android:id="@+id/widget_shift_btn_end_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="End"
+                android:textColor="@color/widget_red"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- Inactive Shift Action Button: Start Shift -->
-    <Button
+    <!-- Idle Primary Action: Start Shift (compact, zero dead space) -->
+    <LinearLayout
         android:id="@+id/widget_shift_btn_start"
         android:layout_width="match_parent"
         android:layout_height="36dp"
+        android:layout_marginTop="10dp"
         android:background="@drawable/widget_button_primary_bg"
-        android:text="start shift"
-        android:textAllCaps="false"
-        android:textColor="@color/widget_card"
-        android:textSize="12.5sp"
-        android:textStyle="bold"
-        android:visibility="visible" />
+        android:clickable="true"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:visibility="visible">
+
+        <ImageView
+            android:id="@+id/widget_shift_btn_start_icon"
+            android:layout_width="13dp"
+            android:layout_height="13dp"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_play" />
+
+        <TextView
+            android:id="@+id/widget_shift_btn_start_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Start Shift"
+            android:textColor="@color/widget_card"
+            android:textSize="12.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
 </LinearLayout>

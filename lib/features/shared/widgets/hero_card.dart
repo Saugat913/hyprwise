@@ -16,21 +16,25 @@ class HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultBorder = Border.all(
-      color: isDark ? const Color(0xFF474D5E) : const Color(0xFF222B26),
-      width: 1.2,
-    );
+    final colors = context.colors;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpace.xl),
-      decoration: BoxDecoration(
-        color: context.colors.hero,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: border ?? defaultBorder,
+    return Material(
+      color: colors.hero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        side: border is Border
+            ? (border as Border).top
+            : BorderSide(
+                color: colors.hairline,
+                width: 1.0,
+              ),
       ),
-      child: child,
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpace.xl),
+        child: child,
+      ),
     );
   }
 }

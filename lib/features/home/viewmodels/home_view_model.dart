@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
@@ -39,6 +40,7 @@ class HomeViewModel extends ChangeNotifier {
   HomeViewModel({required this.financeStore, required this.settingsRepo}) {
     financeStore.addListener(_onStoreChanged);
     settingsRepo.addListener(_onStoreChanged);
+    unawaited(loadChecklistState());
   }
 
   final FinanceStore financeStore;
@@ -99,42 +101,64 @@ class HomeViewModel extends ChangeNotifier {
     return (nonUsableBalanceMinor / total).clamp(0.0, 1.0);
   }
 
+  static const String _setupDismissedKey = 'setup_checklist_dismissed';
+
+  bool _setupDismissed = false;
+
   bool get hasAccounts => snapshot.accounts.isNotEmpty;
-  bool get hasJobs => snapshot.jobs.isNotEmpty;
-  bool get hasGoals => snapshot.goals.isNotEmpty;
+  bool get hasJobs => snapshot.jobs.where((j) => j.isActive).isNotEmpty;
+  bool get hasTransactions => snapshot.transactions.isNotEmpty;
+  bool get hasGoals => snapshot.goals.where((g) => !g.isArchived).isNotEmpty;
   bool get hasAlerts =>
       settingsRepo.settings.shiftReminders || settingsRepo.settings.billsDue;
+  bool get hasBackup => settingsRepo.settings.lastBackupAt != null;
+
+  bool get isSetupDismissed => _setupDismissed;
+
+  Future<void> loadChecklistState() async {
+    final stored = await settingsRepo.getString(_setupDismissedKey);
+    if (stored == 'true' && !_setupDismissed) {
+      _setupDismissed = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> dismissSetupChecklist() async {
+    _setupDismissed = true;
+    notifyListeners();
+    await settingsRepo.setString(_setupDismissedKey, 'true');
+  }
 
   int get setupCompletedCount {
     var count = 0;
-    if (hasAccounts) count++;
     if (hasJobs) count++;
+    if (hasTransactions) count++;
     if (hasGoals) count++;
-    if (hasAlerts) count++;
+    if (hasBackup || hasAlerts) count++;
     return count;
   }
 
-  bool get isSetupComplete => setupCompletedCount == 4;
+  bool get isSetupComplete => _setupDismissed || setupCompletedCount == 4;
 
   ForecastResult get forecast => financeStore.forecast(horizonDays: 30);
 
   List<ForecastEvent> get upcomingEvents {
+    if (_upcomingEventsCache != null) return _upcomingEventsCache!;
     final list = <ForecastEvent>[];
 
     // Priority 1: Shifts occurring today (scheduled or active)
     final today = AppDate.dateOnly(now);
+    final todayStartMs = today.millisecondsSinceEpoch;
+    final todayEndMs = today.add(const Duration(days: 1)).millisecondsSinceEpoch;
     final jobsById = {for (final j in snapshot.jobs) j.id: j};
+    final tr = AppStrings.current();
 
-    final todayShifts =
-        snapshot.shifts.where((s) {
-          final start = DateTime.fromMillisecondsSinceEpoch(s.startAt);
-          return AppDate.dateOnly(start) == today;
-        }).toList();
-
-    for (final shift in todayShifts) {
+    var hasTodayShifts = false;
+    for (final shift in snapshot.shifts) {
+      if (shift.startAt < todayStartMs || shift.startAt >= todayEndMs) continue;
+      hasTodayShifts = true;
       final job = jobsById[shift.jobId];
       if (job == null) continue;
-      final tr = AppStrings.current();
       final earnings = ShiftEarnings.forShift(shift, job);
       final rateStr =
           '${MoneyFormatter.format(job.hourlyRateMinor, job.currencyCode)}/${tr.hourAbbr}';
@@ -154,14 +178,14 @@ class HomeViewModel extends ChangeNotifier {
     for (final event in forecastList) {
       if (event.kind == ForecastEventKind.shift &&
           AppDate.dateOnly(event.date) == today &&
-          todayShifts.isNotEmpty) {
+          hasTodayShifts) {
         // Skip duplicate today shift already added directly from snapshot
         continue;
       }
       list.add(event);
     }
 
-    return list;
+    return _upcomingEventsCache = list;
   }
 
   List<Debt> get activeDebts =>
@@ -209,18 +233,28 @@ class HomeViewModel extends ChangeNotifier {
 
   /// Completed work is distinct from manually recorded income. Home surfaces
   /// it separately so shift workers can understand their verified earnings.
-  List<Shift> get completedShiftsThisMonth =>
-      snapshot.shifts.where((shift) {
-        if (shift.status != ShiftStatus.completed.value) return false;
-        final date = DateTime.fromMillisecondsSinceEpoch(shift.startAt);
-        return date.year == now.year && date.month == now.month;
-      }).toList();
+  List<Shift> get completedShiftsThisMonth {
+    if (_completedShiftsThisMonthCache != null) {
+      return _completedShiftsThisMonthCache!;
+    }
+    final monthStartMs = DateTime(now.year, now.month, 1).millisecondsSinceEpoch;
+    final nextMonthMs = DateTime(now.year, now.month + 1, 1).millisecondsSinceEpoch;
+    return _completedShiftsThisMonthCache = snapshot.shifts
+        .where(
+          (shift) =>
+              shift.status == ShiftStatus.completed.value &&
+              shift.startAt >= monthStartMs &&
+              shift.startAt < nextMonthMs,
+        )
+        .toList(growable: false);
+  }
 
   int get completedShiftCountThisMonth => completedShiftsThisMonth.length;
 
   int get workedMinutesThisMonth {
+    if (_workedMinutesThisMonthCache != null) return _workedMinutesThisMonthCache!;
     final jobs = {for (final job in snapshot.jobs) job.id: job};
-    return completedShiftsThisMonth.fold<int>(0, (sum, shift) {
+    return _workedMinutesThisMonthCache = completedShiftsThisMonth.fold<int>(0, (sum, shift) {
       final job = jobs[shift.jobId];
       return sum +
           (job == null ? 0 : ShiftEarnings.forShift(shift, job).workedMinutes);
@@ -228,8 +262,9 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   int get shiftEarningsThisMonth {
+    if (_shiftEarningsThisMonthCache != null) return _shiftEarningsThisMonthCache!;
     final jobs = {for (final job in snapshot.jobs) job.id: job};
-    return completedShiftsThisMonth.fold<int>(0, (sum, shift) {
+    return _shiftEarningsThisMonthCache = completedShiftsThisMonth.fold<int>(0, (sum, shift) {
       final job = jobs[shift.jobId];
       if (job == null) return sum;
       final earnings = ShiftEarnings.forShift(shift, job).earningsMinor;
@@ -281,12 +316,20 @@ class HomeViewModel extends ChangeNotifier {
   List<BalancePoint>? _forecastSeriesCache;
   List<({String label, int income, int expense})>? _monthWeeklyBucketsCache;
   List<HeroAccountSlice>? _accountSlicesCache;
+  List<ForecastEvent>? _upcomingEventsCache;
+  List<Shift>? _completedShiftsThisMonthCache;
+  int? _workedMinutesThisMonthCache;
+  int? _shiftEarningsThisMonthCache;
 
   void _invalidateHeroCaches() {
     _balanceSeriesCache.clear();
     _forecastSeriesCache = null;
     _monthWeeklyBucketsCache = null;
     _accountSlicesCache = null;
+    _upcomingEventsCache = null;
+    _completedShiftsThisMonthCache = null;
+    _workedMinutesThisMonthCache = null;
+    _shiftEarningsThisMonthCache = null;
   }
 
   /// Ordered account slices for the hero account stack bar and table.

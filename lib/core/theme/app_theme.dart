@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:finance_tracker/core/theme/app_color_scheme.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
+import 'package:finance_tracker/core/theme/app_palette.dart';
 
 /// Single place that turns the colour scheme into component themes.
 /// Google Sans everywhere; Reddit Mono only for timers and tabular figures.
@@ -16,7 +17,7 @@ abstract final class AppTheme {
   static ThemeData _build(ColorScheme scheme, AppColors colors) {
     final text = _textTheme(scheme);
     final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderRadius: BorderRadius.circular(AppRadius.md),
     );
     final hairline = BorderSide(color: scheme.outlineVariant);
 
@@ -28,8 +29,8 @@ abstract final class AppTheme {
       textTheme: text,
       scaffoldBackgroundColor:
           scheme.brightness == Brightness.light
-              ? const Color(0xFFF6F6F6)
-              : const Color(0xFF0F0F11),
+              ? AppPalette.lightPage
+              : AppPalette.darkPage,
       extensions: [colors],
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
@@ -64,7 +65,7 @@ abstract final class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           side: hairline,
         ),
       ),
@@ -126,7 +127,7 @@ abstract final class AppTheme {
         backgroundColor: scheme.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         titleTextStyle: text.titleLarge,
         contentTextStyle: text.bodyMedium?.copyWith(
@@ -139,7 +140,7 @@ abstract final class AppTheme {
         showDragHandle: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
+            top: Radius.circular(AppRadius.md),
           ),
         ),
       ),

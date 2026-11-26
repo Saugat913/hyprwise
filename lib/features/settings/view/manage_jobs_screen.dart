@@ -70,55 +70,23 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
   }
 
   Widget _buildEmptyState(ThemeData theme, AppStrings tr) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpace.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppIcon(
-              HugeIcons.strokeRoundedBriefcase01,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: AppSpace.md),
-            Text(
-              tr.noJobsAddedYet,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: AppSpace.xs),
-            Text(
-              tr.t(
-                'Add your workplace or clients to track shifts, hourly earnings, and overtime.',
-                ne:
-                    'सिफ्ट, प्रति घण्टा आम्दानी र ओभरटाइम ट्र्याक गर्न आफ्नो कार्यस्थल वा ग्राहक थप्नुहोस्।',
-                es:
-                    'Añade tu lugar de trabajo para controlar turnos, ganancias y horas extra.',
-                fr:
-                    'Ajoutez votre lieu de travail pour suivre quarts, revenus et heures sup.',
-                de:
-                    'Fügen Sie Ihren Arbeitsplatz hinzu, um Schichten und Überstunden zu erfassen.',
-                ja: 'シフト、時給、残業代を追跡するために勤務先を追加してください。',
-                zh: '添加您的工作单位以准确计算排班、时薪与加班收益。',
-                it:
-                    'Aggiungi il tuo posto di lavoro per tracciare turni, guadagni e straordinari.',
-              ),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpace.lg),
-            AppButton(
-              tr.addFirstJob,
-              compact: true,
-              onPressed: () => context.push(AppRoutes.addJob),
-            ),
-          ],
-        ),
+    return EmptyState(
+      illustration: EmptyIllustration.jobs,
+      icon: HugeIcons.strokeRoundedBriefcase01,
+      title: tr.noJobsAddedYet,
+      message: tr.t(
+        'Add your workplace or clients to track shifts, hourly earnings, and overtime.',
+        ne: 'सिफ्ट, प्रति घण्टा आम्दानी र ओभरटाइम ट्र्याक गर्न आफ्नो कार्यस्थल वा ग्राहक थप्नुहोस्।',
+        hi: 'शिफ्ट, प्रति घंटे कमाई और ओवरटाइम ट्रैक करने के लिए अपना कार्यस्थल जोड़ें।',
+        es: 'Añade tu lugar de trabajo para controlar turnos, ganancias y horas extra.',
+        fr: 'Ajoutez votre lieu de travail pour suivre quarts, revenus et heures sup.',
+        de: 'Fügen Sie Ihren Arbeitsplatz hinzu, um Schichten und Überstunden zu erfassen.',
+        ja: 'シフト、時給、残業代を追跡するために勤務先を追加してください。',
+        zh: '添加您的工作单位以准确计算排班、时薪与加班收益。',
+        it: 'Aggiungi il tuo posto di lavoro per tracciare turni, guadagni e straordinari.',
       ),
+      actionLabel: tr.addFirstJob,
+      onAction: () => context.push(AppRoutes.addJob),
     );
   }
 
@@ -263,20 +231,29 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
       ),
       builder: (ctx) {
         final scheme = Theme.of(ctx).colorScheme;
         final text = Theme.of(ctx).textTheme;
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
-            left: AppSpace.lg,
-            right: AppSpace.lg,
-            top: AppSpace.lg,
-          ),
-          child: Column(
+        return DisposableScope(
+          onDispose: () {
+            nameController.dispose();
+            rateController.dispose();
+            employerController.dispose();
+            breakController.dispose();
+            alertHoursController.dispose();
+          },
+          child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpace.lg,
+              left: AppSpace.lg,
+              right: AppSpace.lg,
+              top: AppSpace.lg,
+            ),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -398,7 +375,15 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                       newAlertHours != null
                           ? (newAlertHours * 60).round()
                           : job.longShiftAlertMinutes;
-                  if (newRate != null && newRate > 0 && newName.isNotEmpty) {
+                  if (newName.isEmpty) {
+                    showErrorToast(ctx, tr.jobNameLabel);
+                    return;
+                  }
+                  if (newRate == null || newRate <= 0) {
+                    showErrorToast(ctx, tr.enterValidAmount);
+                    return;
+                  }
+                  try {
                     await _viewModel.updateJob(
                       job.id,
                       name: newName,
@@ -411,11 +396,15 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
                       longShiftAlertMinutes: newAlertMin,
                     );
                     if (ctx.mounted) Navigator.pop(ctx);
+                  } catch (e) {
+                    if (ctx.mounted) showErrorToast(ctx, tr.couldNotSave('$e'));
                   }
                 },
               ),
             ],
           ),
+        ),
+        ),
         );
       },
     );

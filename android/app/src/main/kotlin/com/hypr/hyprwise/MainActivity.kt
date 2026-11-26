@@ -8,13 +8,14 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterFragmentActivity() {
-    private val WIDGET_CHANNEL = "com.hypr.hyprwise/widget"
+    private val widgetChannel = "com.hypr.hyprwise/widget"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).setMethodCallHandler { call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, widgetChannel).setMethodCallHandler { call, result ->
             if (call.method == "updateWidgets") {
-                updateAllAppWidgets()
+                val target = call.argument<String>("target") ?: "all"
+                updateAppWidgets(target)
                 result.success(true)
             } else {
                 result.notImplemented()
@@ -22,41 +23,28 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun updateAllAppWidgets() {
+    private fun updateAppWidgets(target: String) {
         try {
             val appWidgetManager = AppWidgetManager.getInstance(applicationContext)
 
-            // Shift Widget
-            val shiftComponent = ComponentName(applicationContext, ShiftWidgetProvider::class.java)
-            val shiftIds = appWidgetManager.getAppWidgetIds(shiftComponent)
-            if (shiftIds != null && shiftIds.isNotEmpty()) {
-                val intent = Intent(applicationContext, ShiftWidgetProvider::class.java).apply {
-                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, shiftIds)
+            fun refreshProvider(providerClass: Class<*>) {
+                val component = ComponentName(applicationContext, providerClass)
+                val ids = appWidgetManager.getAppWidgetIds(component)
+                if (ids != null && ids.isNotEmpty()) {
+                    val intent = Intent(applicationContext, providerClass).apply {
+                        action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+                    }
+                    applicationContext.sendBroadcast(intent)
                 }
-                applicationContext.sendBroadcast(intent)
             }
 
-            // Quick Actions Widget
-            val actionsComponent = ComponentName(applicationContext, QuickActionsWidgetProvider::class.java)
-            val actionIds = appWidgetManager.getAppWidgetIds(actionsComponent)
-            if (actionIds != null && actionIds.isNotEmpty()) {
-                val intent = Intent(applicationContext, QuickActionsWidgetProvider::class.java).apply {
-                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, actionIds)
-                }
-                applicationContext.sendBroadcast(intent)
+            if (target == "shift" || target == "all") {
+                refreshProvider(ShiftWidgetProvider::class.java)
             }
-
-            // HyprAI Widget
-            val aiComponent = ComponentName(applicationContext, HyprAiWidgetProvider::class.java)
-            val aiIds = appWidgetManager.getAppWidgetIds(aiComponent)
-            if (aiIds != null && aiIds.isNotEmpty()) {
-                val intent = Intent(applicationContext, HyprAiWidgetProvider::class.java).apply {
-                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, aiIds)
-                }
-                applicationContext.sendBroadcast(intent)
+            if (target == "all") {
+                refreshProvider(QuickActionsWidgetProvider::class.java)
+                refreshProvider(HyprAiWidgetProvider::class.java)
             }
         } catch (e: Exception) {
             e.printStackTrace()

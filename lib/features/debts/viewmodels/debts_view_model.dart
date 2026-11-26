@@ -38,11 +38,15 @@ class DebtsViewModel extends ChangeNotifier {
   List<Debt> get borrowedDebts =>
       financeStore.debts.where((d) => d.type == DebtType.borrowed.value && !d.isSettled).toList();
 
-  int get totalLentMinor =>
-      lentDebts.fold<int>(0, (sum, d) => sum + d.amountMinor);
+  int get totalLentMinor => lentDebts.fold<int>(
+        0,
+        (sum, d) => sum + financeStore.snapshot.convert(d.amountMinor, d.currencyCode),
+      );
 
-  int get totalBorrowedMinor =>
-      borrowedDebts.fold<int>(0, (sum, d) => sum + d.amountMinor);
+  int get totalBorrowedMinor => borrowedDebts.fold<int>(
+        0,
+        (sum, d) => sum + financeStore.snapshot.convert(d.amountMinor, d.currencyCode),
+      );
 
   /// Net balance: positive = they owe you net, negative = you owe them net.
   int get netBalanceMinor => totalLentMinor - totalBorrowedMinor;
@@ -57,7 +61,7 @@ class DebtsViewModel extends ChangeNotifier {
       .toList()
     ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
-  /// Net balance with a specific party: positive = they owe net, negative = you owe net
+  /// Net balance with a specific party in base currency: positive = they owe net, negative = you owe net
   int netForParty(String partyName) {
     final partyDebts = financeStore.debts.where(
       (d) =>
@@ -67,10 +71,11 @@ class DebtsViewModel extends ChangeNotifier {
     int lent = 0;
     int borrowed = 0;
     for (final d in partyDebts) {
+      final inBase = financeStore.snapshot.convert(d.amountMinor, d.currencyCode);
       if (d.type == DebtType.lent.value) {
-        lent += d.amountMinor;
+        lent += inBase;
       } else {
-        borrowed += d.amountMinor;
+        borrowed += inBase;
       }
     }
     return lent - borrowed;
@@ -89,14 +94,19 @@ class DebtsViewModel extends ChangeNotifier {
     for (final entry in grouped.entries) {
       final debts = entry.value;
       final displayName = debts.first.personName.trim();
+      final allSameCurrency = debts.every((d) => d.currencyCode == debts.first.currencyCode);
+      final targetCurrency = allSameCurrency ? debts.first.currencyCode : baseCurrency;
       int lent = 0;
       int borrowed = 0;
       for (final d in debts) {
         if (!d.isSettled) {
+          final amt = allSameCurrency
+              ? d.amountMinor
+              : financeStore.snapshot.convert(d.amountMinor, d.currencyCode);
           if (d.type == DebtType.lent.value) {
-            lent += d.amountMinor;
+            lent += amt;
           } else {
-            borrowed += d.amountMinor;
+            borrowed += amt;
           }
         }
       }
@@ -106,7 +116,7 @@ class DebtsViewModel extends ChangeNotifier {
           debts: debts..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
           totalLentMinor: lent,
           totalBorrowedMinor: borrowed,
-          currencyCode: debts.first.currencyCode,
+          currencyCode: targetCurrency,
         ),
       );
     }
@@ -143,6 +153,23 @@ class DebtsViewModel extends ChangeNotifier {
       fullNote = '${note != null && note.isNotEmpty ? '$note · ' : ''}Includes $interestRatePercent% interest';
     }
 
+    // Validate sufficient balance BEFORE inserting debt to prevent orphaned records
+    int? cashFlowAmountInAccountCurrency;
+    if (linkCashFlow && effectiveAccountId != null) {
+      final accCurrency = financeStore.snapshot.currencyOf(effectiveAccountId);
+      cashFlowAmountInAccountCurrency = financeStore.snapshot.converter.convert(
+        amountMinor,
+        currencyCode,
+        accCurrency,
+      );
+      if (type == DebtType.lent) {
+        final currentBalance = financeStore.snapshot.balanceOf(effectiveAccountId);
+        if (currentBalance < cashFlowAmountInAccountCurrency) {
+          throw StateError('Insufficient balance in Everyday account to lend this amount.');
+        }
+      }
+    }
+
     final debtId = await debtRepo.add(
       personName: personName,
       type: type,
@@ -155,16 +182,13 @@ class DebtsViewModel extends ChangeNotifier {
 
     // Connect to cash flow in Everyday account
     if (linkCashFlow && effectiveAccountId != null) {
+      final txAmount = cashFlowAmountInAccountCurrency ?? amountMinor;
       if (type == DebtType.lent) {
-        final currentBalance = financeStore.snapshot.balanceOf(effectiveAccountId);
-        if (currentBalance < amountMinor) {
-          throw StateError('Insufficient balance in Everyday account to lend this amount.');
-        }
         // Lent money: Outflow from Everyday account
         await transactionRepo.add(
           accountId: effectiveAccountId,
           type: TransactionType.expense,
-          amountMinor: amountMinor,
+          amountMinor: txAmount,
           category: 'Lending',
           note: 'Lent to $personName',
           occurredAt: DateTime.now(),
@@ -174,7 +198,7 @@ class DebtsViewModel extends ChangeNotifier {
         await transactionRepo.add(
           accountId: effectiveAccountId,
           type: TransactionType.income,
-          amountMinor: amountMinor,
+          amountMinor: txAmount,
           category: 'Borrowing',
           note: 'Borrowed from $personName',
           occurredAt: DateTime.now(),

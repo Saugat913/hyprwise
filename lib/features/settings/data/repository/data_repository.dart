@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:csv/csv.dart';
+import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/telemetry/telemetry_service.dart';
+import 'package:finance_tracker/features/settings/data/repository/settings_repository.dart';
 
 /// Handles bulk data operations: whole-database JSON export, import, and reset.
 class DataRepository {
@@ -9,9 +11,10 @@ class DataRepository {
 
   final AppDatabase _db;
 
-  /// Deletes all domain financial records (accounts, transactions, jobs, goals, etc.),
-  /// but preserves essential app configuration (locale, theme mode, base currency).
-  Future<void> eraseAll() async {
+  /// Deletes all domain financial records (accounts, transactions, jobs, goals,
+  /// budgets, alert & reminder rules). When [includePreferences] is true (e.g.
+  /// permanent account deletion), also wipes `appPreferences`.
+  Future<void> eraseAll({bool includePreferences = false}) async {
     await _db.transaction(() async {
       await _db.delete(_db.goalContributions).go();
       await _db.delete(_db.goals).go();
@@ -24,6 +27,12 @@ class DataRepository {
       await _db.delete(_db.accounts).go();
       await _db.delete(_db.debts).go();
       await _db.delete(_db.exchangeRates).go();
+      await _db.delete(_db.budgets).go();
+      await _db.delete(_db.alertRules).go();
+      await _db.delete(_db.reminderRules).go();
+      if (includePreferences) {
+        await _db.delete(_db.appPreferences).go();
+      }
     });
     TelemetryService.instance.trackEvent('data_erased');
   }
@@ -85,6 +94,10 @@ class DataRepository {
       ['ID', 'Date', 'Type', 'Category', 'Note/Merchant', 'Account', 'Amount', 'Currency'],
     ];
 
+    final defaultCurrency = getIt.isRegistered<SettingsRepository>()
+        ? getIt<SettingsRepository>().baseCurrency
+        : 'USD';
+
     for (final tx in transactions) {
       final acc = accountsById[tx.accountId];
       final dt = DateTime.fromMillisecondsSinceEpoch(tx.occurredAt);
@@ -97,7 +110,7 @@ class DataRepository {
         tx.note ?? '',
         acc?.name ?? 'Account #${tx.accountId}',
         (tx.amountMinor / 100).toStringAsFixed(2),
-        acc?.currencyCode ?? 'AUD',
+        acc?.currencyCode ?? defaultCurrency,
       ]);
     }
 
@@ -142,8 +155,29 @@ class DataRepository {
   }
 
   /// Imports and overwrites data from an exported JSON string.
+  /// Validates backup structure BEFORE erasing local records so malformed or
+  /// unrelated JSON files never wipe user data.
   Future<void> importJson(String jsonString) async {
-    final Map<String, dynamic> data = jsonDecode(jsonString);
+    final dynamic decoded = jsonDecode(jsonString);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid backup file: expected a JSON object.');
+    }
+    final data = decoded;
+    const knownKeys = {
+      'version',
+      'accounts',
+      'transactions',
+      'transfers',
+      'recurringRules',
+      'jobs',
+      'shifts',
+      'goals',
+      'debts',
+      'preferences',
+    };
+    if (!knownKeys.any(data.containsKey)) {
+      throw const FormatException('Invalid Hyprwise backup file: missing expected backup schema.');
+    }
 
     await _db.transaction(() async {
       await eraseAll();

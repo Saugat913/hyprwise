@@ -81,12 +81,17 @@ class LetterAvatar extends StatelessWidget {
       );
     }
 
+    final scheme = Theme.of(context).colorScheme;
+    final bgColor = svg != null
+        ? const Color(0xFFF0F1F2)
+        : scheme.surfaceContainerHighest;
+
     return Container(
       width: size,
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F1F2),
+        color: bgColor,
         shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: isCircle ? null : BorderRadius.circular(size * 0.3),
       ),

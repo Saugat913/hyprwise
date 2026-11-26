@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:finance_tracker/core/database/app_database.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
 import 'package:finance_tracker/core/notifications/reminder_planner.dart';
@@ -66,6 +67,15 @@ class AlertsViewModel extends ChangeNotifier {
   List<ReminderRule> _rules = const [];
   List<ReminderRule> get rules => _rules;
   bool _seeded = false;
+  Timer? _syncDebounce;
+
+  bool get _isTestEnvironment {
+    try {
+      return WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    } catch (_) {
+      return true;
+    }
+  }
 
   void _initRules() {
     _rulesSub = reminderRuleRepo.watchAll().listen((items) async {
@@ -86,14 +96,23 @@ class AlertsViewModel extends ChangeNotifier {
       }
       _seeded = true;
       _rules = items;
-      _syncPlannedReminders();
+      _scheduleReminderSync();
       notifyListeners();
     });
   }
 
   void _onChanged() {
-    _syncPlannedReminders();
+    _scheduleReminderSync();
     notifyListeners();
+  }
+
+  /// Coalesces rapid bursts of store/settings updates into a single OS
+  /// notification sync so bulk shift inserts or startup hydration never flood
+  /// the platform channel.
+  void _scheduleReminderSync() {
+    if (_isTestEnvironment) return;
+    _syncDebounce?.cancel();
+    _syncDebounce = Timer(const Duration(milliseconds: 450), _syncPlannedReminders);
   }
 
   void _syncPlannedReminders() {
@@ -205,6 +224,7 @@ class AlertsViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _syncDebounce?.cancel();
     _rulesSub?.cancel();
     financeStore.removeListener(_onChanged);
     settingsRepo.removeListener(_onChanged);

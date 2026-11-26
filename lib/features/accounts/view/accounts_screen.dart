@@ -62,6 +62,7 @@ class AccountsScreen extends StatelessWidget {
                   SizedBox(
                     height: 400,
                     child: EmptyState(
+                      illustration: EmptyIllustration.accounts,
                       icon: HugeIcons.strokeRoundedBank,
                       title: tr.noAccountsYet,
                       message: tr.addAccountNetPositionReal,

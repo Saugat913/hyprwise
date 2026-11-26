@@ -26,7 +26,7 @@ class FinanceTrackerApp extends StatelessWidget {
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-          systemNavigationBarColor: isDark ? const Color(0xFF111816) : Colors.white,
+          systemNavigationBarColor: isDark ? const Color(0xFF18181B) : Colors.white,
           systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarDividerColor: Colors.transparent,
         );

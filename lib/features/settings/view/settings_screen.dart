@@ -6,11 +6,10 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:finance_tracker/app/di/injection.dart';
 import 'package:finance_tracker/app/routes.dart';
 import 'package:finance_tracker/core/l10n/app_strings.dart';
-import 'package:finance_tracker/core/network/api_client.dart';
 import 'package:finance_tracker/core/theme/app_dimensions.dart';
 import 'package:finance_tracker/features/auth/data/auth_service.dart';
 import 'package:finance_tracker/features/auth/data/model/user_profile.dart';
-import 'package:finance_tracker/features/home/presentation/widgets/home_screen_widgets.dart';
+import 'package:finance_tracker/features/home/view/widgets/home_screen_widgets.dart';
 import 'package:finance_tracker/features/settings/viewmodels/settings_view_model.dart';
 import 'package:finance_tracker/features/shared/data/currency.dart';
 import 'package:finance_tracker/features/shared/widgets/widgets.dart';
@@ -117,7 +116,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpace.xl),
 
-                // Alerts section
+                // Alerts section — unified master toggle; sub-options collapse when OFF
                 Text(tr.alerts, style: text.bodySmall),
                 const SizedBox(height: AppSpace.sm),
                 AppCard(
@@ -127,28 +126,42 @@ class SettingsScreen extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
                         child: SwitchRow(
-                          title: tr.t('Enable Alerts', ne: 'सूचनाहरू सक्रिय गर्नुहोस्', es: 'Activar alertas', fr: 'Activer les alertes', de: 'Benachrichtigungen aktivieren', ja: '通知を有効にする', zh: '启用提醒', it: 'Abilita avvisi'),
-                          subtitle: tr.t('Master ON/OFF switch for all reminders', ne: 'सबै रिमाइन्डर र सूचनाहरूको मुख्य स्विच', es: 'Interruptor principal para todos los recordatorios', fr: 'Interrupteur principal pour tous les rappels', de: 'Hauptschalter für alle Erinnerungen', ja: 'すべての通知とリマインダーのマスター切替', zh: '所有提醒与通知的总开关', it: 'Interruttore principale per tutti i promemoria'),
+                          title: tr.t('Enable Alerts', ne: 'सूचनाहरू सक्रिय गर्नुहोस्', hi: 'अलर्ट सक्षम करें', es: 'Activar alertas', fr: 'Activer les alertes', de: 'Benachrichtigungen aktivieren', ja: '通知を有効にする', zh: '启用提醒', it: 'Abilita avvisi'),
+                          subtitle: viewModel.alertsMasterEnabled
+                              ? tr.t('Shift, bill, goal & custom reminders active', ne: 'सिफ्ट, बिल, लक्ष्य र अनुकूल रिमाइन्डर सक्रिय', hi: 'शिफ्ट, बिल, लक्ष्य और कस्टम रिमाइंडर सक्रिय', es: 'Recordatorios de turnos, facturas y metas activos', fr: 'Rappels de quarts, factures et objectifs actifs', de: 'Schicht-, Rechnungs- und Zielerinnerungen aktiv', ja: 'シフト・請求・目標のリマインダーが有効', zh: '班次、账单、目标与自定义提醒已启用', it: 'Promemoria turni, bollette e obiettivi attivi')
+                              : tr.t('All alerts and reminders are paused', ne: 'सबै सूचना र रिमाइन्डरहरू रोकिएका छन्', hi: 'सभी अलर्ट और रिमाइंडर बंद हैं', es: 'Todas las alertas y recordatorios están en pausa', fr: 'Toutes les alertes et rappels sont en pause', de: 'Alle Warnungen und Erinnerungen sind pausiert', ja: 'すべての通知とリマインダーは停止中', zh: '所有提醒与通知已暂停', it: 'Tutti gli avvisi e i promemoria sono in pausa'),
                           value: viewModel.alertsMasterEnabled,
                           onChanged: (value) => viewModel.toggleAllAlerts(value),
                         ),
                       ),
-                      const RowDivider(),
-                      ListRow(
-                        title: tr.alerts,
-                        leading: const IconTile(HugeIcons.strokeRoundedNotification01),
-                        trailing: const Chevron(),
-                        onTap: () => context.push(AppRoutes.alerts),
-                      ),
-                      const RowDivider(),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-                        child: SwitchRow(
-                          title: tr.shiftRemindersTitle,
-                          subtitle: tr.oneHourBefore,
-                          value: viewModel.settings.shiftReminders,
-                          onChanged: (value) => viewModel.settingsRepo.setShiftReminders(value),
-                        ),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        child: viewModel.alertsMasterEnabled
+                            ? Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const RowDivider(),
+                                  ListRow(
+                                    title: tr.alertPreferences,
+                                    subtitle: () {
+                                      final activeParts = <String>[
+                                        if (viewModel.settings.shiftReminders) tr.shiftLabel,
+                                        if (viewModel.settings.billsDue) tr.billsDueTitle,
+                                        if (viewModel.settings.goalNudges) tr.goals,
+                                        if (viewModel.settings.weeklySummary) tr.weeklySummaryTitle,
+                                      ];
+                                      return activeParts.isEmpty
+                                          ? tr.reminderRulesSubtitle
+                                          : activeParts.join(' · ');
+                                    }(),
+                                    leading: const IconTile(HugeIcons.strokeRoundedNotification01),
+                                    trailing: const Chevron(),
+                                    onTap: () => context.push(AppRoutes.alerts),
+                                  ),
+                                ],
+                              )
+                            : const SizedBox.shrink(),
                       ),
                     ],
                   ),
@@ -203,6 +216,7 @@ class SettingsScreen extends StatelessWidget {
                         subtitle: tr.t(
                           'Restore Pro or supporter purchases on this device',
                           ne: 'यो उपकरणमा Pro वा समर्थक खरिदहरू पुनर्स्थापना गर्नुहोस्',
+                          hi: 'इस डिवाइस पर Pro या सपोर्टर खरीदारी पुनर्स्थापित करें',
                           es: 'Restaurar compras Pro o de apoyo en este dispositivo',
                           fr: 'Restaurer les achats Pro ou de soutien sur cet appareil',
                           de: 'Pro- oder Unterstützer-Käufe auf diesem Gerät wiederherstellen',
@@ -213,15 +227,56 @@ class SettingsScreen extends StatelessWidget {
                         leading: const IconTile(HugeIcons.strokeRoundedRefresh),
                         trailing: const Chevron(),
                         onTap: () async {
-                          final access = await getIt<SubscriptionService>().restorePurchases();
-                          if (context.mounted) {
-                            showToast(
+                          try {
+                            final access = await showBusyWhile(
                               context,
-                              access.isPro ? tr.purchasesRestored : tr.noPurchasesFound,
+                              () => getIt<SubscriptionService>().restorePurchases(),
                             );
+                            if (context.mounted) {
+                              showToast(
+                                context,
+                                access.isPro ? tr.purchasesRestored : tr.noPurchasesFound,
+                              );
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              showErrorToast(context, tr.noPurchasesFound);
+                            }
                           }
                         },
                       ),
+                      if (getIt<SubscriptionService>().isPro) ...[
+                        const RowDivider(),
+                        ListRow(
+                          title: tr.t(
+                            'Manage Subscription',
+                            ne: 'सदस्यता व्यवस्थापन गर्नुहोस्',
+                            hi: 'सदस्यता प्रबंधित करें',
+                          ),
+                          subtitle: tr.t(
+                            'View billing, renewals, or cancel via store settings',
+                            ne: 'बिलिङ, नवीकरण हेर्नुहोस् वा रद्द गर्नुहोस्',
+                            hi: 'बिलिंग, नवीनीकरण देखें या रद्द करें',
+                          ),
+                          leading: const IconTile(HugeIcons.strokeRoundedCrown),
+                          trailing: const Chevron(),
+                          onTap: () async {
+                            final sub = getIt<SubscriptionService>();
+                            if (sub.isConfigured) {
+                              await sub.presentCustomerCenter();
+                            } else if (context.mounted) {
+                              showToast(
+                                context,
+                                tr.t(
+                                  'Manage your subscription in your device App Store or Play Store settings.',
+                                  ne: 'आफ्नो उपकरणको एप स्टोर वा प्ले स्टोर सेटिङ्सबाट सदस्यता व्यवस्थापन गर्नुहोस्।',
+                                  hi: 'अपने डिवाइस के ऐप स्टोर या प्ले स्टोर सेटिंग्स से सदस्यता प्रबंधित करें।',
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ],
                       const RowDivider(),
                       ListRow(
                         title: tr.privacyPolicy,
@@ -289,33 +344,44 @@ class SettingsScreen extends StatelessWidget {
                           trailing: const Chevron(),
                           onTap: () async {
                             final authService = getIt<AuthService>();
+                            final isPro = getIt<SubscriptionService>().isPro;
+                            final subNote = isPro
+                                ? '\n\n${tr.t("Note: Deleting your account does not automatically cancel an active App Store or Google Play subscription.", ne: "नोट: खाता मेटाउँदा सक्रिय एप स्टोर वा गुगल प्ले सदस्यता स्वतः रद्द हुँदैन।", hi: "नोट: खाता हटाने से सक्रिय ऐप स्टोर या गूगल प्ले सदस्यता स्वतः रद्द नहीं होती है।")}'
+                                : '';
                             final confirmed = await showConfirmDialog(
                               context,
                               title: tr.deleteAccountPermanentlyQuestion,
-                              message: tr.t(
+                              message: '${tr.t(
                                 'This permanently erases your cloud backups, registered user profile, and local data.',
                                 ne: 'यसले तपाईंको क्लाउड ब्याकअप, प्रोफाइल र सम्पूर्ण डाटा पूर्ण रूपमा मेटाउनेछ।',
+                                hi: 'यह आपके क्लाउड बैकअप, पंजीकृत प्रोफ़ाइल और स्थानीय डेटा को स्थायी रूप से मिटा देगा।',
                                 es: 'Esto borrará permanentemente tus copias en la nube, perfil de usuario y datos locales.',
                                 fr: 'Efface définitivement vos sauvegardes cloud, votre profil et vos données locales.',
                                 de: 'Löscht Ihre Cloud-Backups, Ihr Profil und Ihre lokalen Daten dauerhaft.',
                                 ja: 'クラウドバックアップ、登録プロフィール、ローカルデータがすべて永久に削除されます。',
                                 zh: '这将永久注销您的用户档案、彻底删除云端备份及本地全部数据。',
                                 it: 'Cancella definitivamente i tuoi backup cloud, profilo e dati locali.',
-                              ),
+                              )}$subNote',
                               confirmLabel: tr.deleteAccount,
                               cancelLabel: tr.cancel,
                             );
                             if (confirmed && context.mounted) {
-                              final userId = authService.currentUser?.id;
-                              final email = authService.currentUser?.email;
-                              await ApiClient.instance.deleteAccount(userId: userId, email: email, reason: 'in_app_request');
-                              await viewModel.eraseAllData();
+                              final result = await showBusyWhile(
+                                context,
+                                () => authService.deleteAccountPermanently(
+                                  reason: 'in_app_request',
+                                ),
+                              );
                               if (!context.mounted) return;
-                              await _signOutWithFeedback(context, authService);
-                              if (context.mounted) {
-                                showToast(context, tr.accountAndDataDeleted);
-                                context.go(AppRoutes.home);
+                              if (!result.deleted) {
+                                showErrorToast(
+                                  context,
+                                  result.error ?? tr.couldNotSave(''),
+                                );
+                                return;
                               }
+                              showToast(context, tr.accountAndDataDeleted);
+                              context.go(AppRoutes.home);
                             }
                           },
                         ),
@@ -1102,12 +1168,12 @@ class _AccountAuthCard extends StatelessWidget {
               ),
               const SizedBox(height: AppSpace.xl),
 
-              // Vertically stacked action buttons per AGENTS.md rule
+              // Vertically stacked action buttons per AGENTS.md rule (WCAG AA contrast)
               FilledButton.icon(
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, AppSize.button),
-                  backgroundColor: const Color(0xFFF59E0B),
-                  foregroundColor: Colors.white,
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),

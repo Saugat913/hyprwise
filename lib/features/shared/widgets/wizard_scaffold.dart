@@ -27,6 +27,7 @@ class WizardScaffold extends StatelessWidget {
     this.confirmClose = false,
     this.discardTitle,
     this.primaryKind = AppButtonKind.primary,
+    this.primaryLoading = false,
     this.secondaryLabel,
     this.onSecondary,
   });
@@ -46,6 +47,7 @@ class WizardScaffold extends StatelessWidget {
   final bool confirmClose;
   final String? discardTitle;
   final AppButtonKind primaryKind;
+  final bool primaryLoading;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
 
@@ -107,6 +109,7 @@ class WizardScaffold extends StatelessWidget {
                   children: [
                     RoundIconButton(
                       HugeIcons.strokeRoundedArrowLeft01,
+                      tooltip: MaterialLocalizations.of(context).backButtonTooltip,
                       onPressed: () => _back(context),
                     ),
                     const SizedBox(width: AppSpace.lg),
@@ -115,7 +118,9 @@ class WizardScaffold extends StatelessWidget {
                         children: [
                           for (var i = 0; i < steps; i++) ...[
                             Expanded(
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
                                 height: AppSize.progressStep,
                                 decoration: BoxDecoration(
                                   color:
@@ -137,6 +142,7 @@ class WizardScaffold extends StatelessWidget {
                     const SizedBox(width: AppSpace.md),
                     RoundIconButton(
                       HugeIcons.strokeRoundedCancel01,
+                      tooltip: context.strings.closeAction,
                       onPressed: () => _close(context),
                     ),
                   ],
@@ -148,12 +154,23 @@ class WizardScaffold extends StatelessWidget {
                   Text(subtitle!, style: text.bodySmall),
                 ],
                 const SizedBox(height: AppSpace.xxl),
-                Expanded(child: SingleChildScrollView(child: child)),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: SingleChildScrollView(
+                      key: ValueKey('wizard_step_$step'),
+                      child: child,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: AppSpace.md),
                 AppButton(
                   primaryLabel,
-                  onPressed: onPrimary,
+                  onPressed: primaryLoading ? null : onPrimary,
                   kind: primaryKind,
+                  loading: primaryLoading,
                 ),
                 if (secondaryLabel != null) ...[
                   const SizedBox(height: AppSpace.sm),
